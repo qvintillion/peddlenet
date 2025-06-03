@@ -1,103 +1,168 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+
+function slugifyRoomName(roomName: string): string {
+  return roomName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32);
+}
+
+export default function HomePage() {
+  const router = useRouter();
+  const [roomName, setRoomName] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedName = localStorage.getItem('displayName');
+      if (savedName) setDisplayName(savedName);
+    }
+  }, []);
+
+  const handleCreateRoom = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!roomName.trim()) return;
+
+    setIsCreating(true);
+
+    try {
+      // Ensure user has a display name
+      let userName = displayName;
+      if (!userName) {
+        userName = prompt('Enter your display name:') || `Host_${Math.floor(Math.random() * 1000)}`;
+        localStorage.setItem('displayName', userName);
+        setDisplayName(userName);
+      }
+
+      // Create room ID and auto-join
+      const roomId = slugifyRoomName(roomName);
+      
+      // Redirect directly to the chat room
+      router.push(`/chat/${roomId}`);
+      
+    } catch (error) {
+      console.error('Error creating room:', error);
+      setIsCreating(false);
+    }
+  };
+
+  // Suggested room names for events
+  const suggestedNames = [
+    'Main Stage Chat',
+    'Food Court Meetup',
+    'Lost & Found',
+    'Ride Share',
+    'After Party Planning',
+    'VIP Lounge'
+  ];
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <main className="min-h-screen bg-gradient-to-br from-purple-900 via-black to-purple-900 text-white px-6 py-12 flex flex-col items-center">
+      <div className="max-w-md w-full">
+        <div className="text-center mb-8">
+          <div className="text-6xl mb-4">🎵</div>
+          <h1 className="text-4xl font-bold mb-2">PeddleNet</h1>
+          <p className="text-purple-200">Create instant P2P chat rooms</p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        
+        <form onSubmit={handleCreateRoom} className="space-y-6" suppressHydrationWarning={true}>
+          <div>
+            <label className="block mb-3 font-semibold text-lg">Room Name</label>
+            <input
+              className="w-full px-4 py-3 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg"
+              placeholder="e.g. Main Stage VIP"
+              value={roomName}
+              onChange={(e) => setRoomName(e.target.value)}
+              disabled={isCreating}
+              required
+              suppressHydrationWarning={true}
+            />
+          </div>
+
+          {/* Quick suggestions */}
+          <div className="space-y-2">
+            <p className="text-sm text-purple-200">Quick suggestions:</p>
+            <div className="flex flex-wrap gap-2">
+              {suggestedNames.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => setRoomName(suggestion)}
+                  className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded-full text-sm transition-colors"
+                  disabled={isCreating}
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={!roomName.trim() || isCreating}
+            className="w-full py-4 rounded-lg bg-purple-600 font-bold hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-lg"
+          >
+            {isCreating ? '🚀 Creating Room...' : '🎪 Create & Join Room'}
+          </button>
+        </form>
+
+        <div className="mt-8 p-4 bg-gray-800/50 rounded-lg">
+          <h3 className="font-semibold mb-2 flex items-center">
+            <span className="mr-2">💡</span>
+            How it works
+          </h3>
+          <ol className="text-sm text-gray-300 space-y-1">
+            <li>1. Create a room and join automatically</li>
+            <li>2. Share QR code from chat to invite others</li>
+            <li>3. Instant P2P connections (5-10 seconds)</li>
+            <li>4. Works offline once connected!</li>
+          </ol>
+        </div>
+
+        {displayName && (
+          <div className="mt-4 text-center text-sm text-purple-200">
+            Creating as: <span className="font-semibold">{displayName}</span>
+            <button
+              onClick={() => {
+                const newName = prompt('Change display name:', displayName);
+                if (newName) {
+                  localStorage.setItem('displayName', newName);
+                  setDisplayName(newName);
+                }
+              }}
+              className="ml-2 text-purple-400 hover:text-purple-300"
+            >
+              (change)
+            </button>
+          </div>
+        )}
+
+        {/* Network Diagnostics CTA */}
+        <div className="mt-8 pt-6 border-t border-gray-700">
+          <Link
+            href="/diagnostics"
+            className="w-full flex items-center justify-center py-3 px-4 border-2 border-gray-600 text-gray-300 rounded-lg hover:bg-gray-800 hover:border-gray-500 transition-colors text-sm"
+          >
+            <span className="mr-2">🔍</span>
+            Network Diagnostics
+          </Link>
+          <p className="text-xs text-gray-500 text-center mt-2">
+            Test connection capabilities and troubleshoot issues
+          </p>
+        </div>
+
+        <div className="mt-6 flex items-center justify-center space-x-2 text-sm text-gray-400">
+          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+          <span>Offline - P2P Only</span>
+        </div>
+      </div>
+    </main>
   );
 }

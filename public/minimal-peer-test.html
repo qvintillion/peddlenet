@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ultra Minimal PeerJS Test</title>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <h1>Ultra Minimal PeerJS Test</h1>
+    <button onclick="testPeer()">Test PeerJS Connection</button>
+    <div id="results"></div>
+
+    <script>
+        function log(message) {
+            document.getElementById('results').innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+            console.log(message);
+        }
+
+        function testPeer() {
+            log('🚀 Starting ultra minimal test...');
+            log('🌍 URL: ' + window.location.href);
+            log('🔒 Protocol: ' + window.location.protocol);
+            
+            // Test 1: Basic Peer creation
+            try {
+                log('📡 Creating Peer with no config...');
+                const peer = new Peer();
+                
+                peer.on('open', (id) => {
+                    log('✅ SUCCESS! Peer opened with ID: ' + id);
+                    log('🎉 Connection to PeerJS server successful!');
+                    
+                    // Clean up
+                    setTimeout(() => {
+                        peer.destroy();
+                        log('🧹 Cleaned up test peer');
+                    }, 3000);
+                });
+                
+                peer.on('error', (error) => {
+                    log('❌ FAILED! Error: ' + error.type + ' - ' + error.message);
+                    log('🔍 Error details: ' + JSON.stringify(error));
+                });
+                
+                peer.on('disconnected', () => {
+                    log('🔌 Peer disconnected');
+                });
+                
+                peer.on('close', () => {
+                    log('🔒 Peer closed');
+                });
+                
+                // Timeout
+                setTimeout(() => {
+                    if (!peer.open && !peer.destroyed) {
+                        log('⏰ Test timed out after 30 seconds');
+                        peer.destroy();
+                    }
+                }, 30000);
+                
+            } catch (error) {
+                log('💥 Exception: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1991 @@
+                            <div class="content-area">
+                                <div class="connection-status">
+                                    <div class="status-indicator"></div>
+                                    <span>Connected to 4 people</span>
+                                    <div class="mesh-indicator">
+                                        <div class="mesh-node"></div>
+                                        <div class="mesh-connection"></div>
+                                        <div class="mesh-node"></div>
+                                        <div class="mesh-connection"></div>
+                                        <div class="mesh-node"></div>
+                                    </div>
+                                </div>
+                                <div class="chat-area">
+                                    <div class="message system">Alice joined the chat</div>
+                                    <div class="message">
+                                        <strong>Alice:</strong> Hey everyone! 👋
+                                    </div>
+                                    <div class="message">
+                                        <strong>Bob:</strong> This is so cool! No internet needed
+                                    </div>
+                                    <div class="message own">
+                                        Anyone know when the next set starts?
+                                    </div>
+                                    <div class="message">
+                                        <strong>Charlie:</strong> I think 8pm! 🎵
+                                    </div>
+                                    <div class="message system">You are now connected via mesh network</div>
+                                </div>
+                                <div class="message-input fixed-bottom">
+                                    <input type="text" placeholder="Type a message..." style="flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 18px; font-size: 12px;">
+                                    <button class="send-btn">→</button>
+                                </div>
+                            </div>                <!-- Passive Detection Visualization -->
+                <div class="wireframe">
+                    <h3>18. Passive Crowd Detection</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Crowd Detection Active</div>
+                            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+                                <div style="font-size: 20px; margin-bottom: 10px;">📡</div>
+                                <div style="font-weight: bold; margin-bottom: 5px;">Auto-detecting crowd levels</div>
+                                <div style="font-size: 12px; color: #666;">Scanning nearby devices to estimate queues</div>
+                            </div>
+                            
+                            <div style="height: 200px; background: #f9f9f9; border-radius: 8px; margin-bottom: 15px; position: relative; overflow: hidden;">
+                                <!-- Beer stand visualization -->
+                                <div style="position: absolute; top: 30%; left: 20%; width: 40px; height: 30px; background: #ff9800; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">🍺</div>
+                                <div style="position: absolute; top: 20%; left: 15%; font-size: 10px; background: rgba(255,255,255,0.9); padding: 2px 4px; border-radius: 3px;">Beer Stand</div>
+                                
+                                <!-- You (mesh user) -->
+                                <div style="position: absolute; bottom: 40%; right: 30%; width: 16px; height: 16px; background: #7C3AED; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
+                                <div style="position: absolute; bottom: 30%; right: 20%; font-size: 10px; background: rgba(255,255,255,0.9); padding: 2px 4px; border-radius: 3px;">You</div>
+                                
+                                <!-- Scanning radius -->
+                                <div style="position: absolute; bottom: 40%; right: 30%; width: 100px; height: 100px; border: 2px dashed #7C3AED; border-radius: 50%; opacity: 0.3; transform: translate(50%, 50%);"></div>
+                                
+                                <!-- Detected devices (not in mesh) -->
+                                <div style="position: absolute; top: 45%; left: 35%; width: 8px; height: 8px; background: #666; border-radius: 50%; border: 1px solid white;"></div>
+                                <div style="position: absolute; top: 50%; left: 40%; width: 8px; height: 8px; background: #666; border-radius: 50%; border: 1px solid white;"></div>
+                                <div style="position: absolute; top: 55%; left: 30%; width: 8px; height: 8px; background: #666; border-radius: 50%; border: 1px solid white;"></div>
+                                <div style="position: absolute; top: 40%; left: 45%; width: 8px; height: 8px; background: #666; border-radius: 50%; border: 1px solid white;"></div>
+                                <div style="position: absolute; top: 35%; left: 50%; width: 8px; height: 8px; background: #666; border-radius: 50%; border: 1px solid white;"></div>
+                                <div style="position: absolute; top: 42%; left: 55%; width: 8px; height: 8px; background: #666; border-radius: 50%; border: 1px solid white;"></div>
+                                
+                                <!-- Queue formation visualization -->
+                                <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                                    <defs>
+                                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                                            <polygon points="0 0, 10 3.5, 0 7" fill="#ff9800" />
+                                        </marker>
+                                    </defs>
+                                    <!-- Queue line -->
+                                    <line x1="32%" y1="38%" x2="55%" y2="42%" stroke="#ff9800" stroke-width="2" stroke-dasharray="3,3" marker-end="url(#arrowhead)"/>
+                                </svg>
+                                
+                                <div style="position: absolute; bottom: 10px; left: 10px; background: rgba(255,255,255,0.9); padding: 5px 8px; border-radius: 4px; font-size: 9px;">
+                                    <div style="color: #7C3AED;">● Mesh users (you)</div>
+                                    <div style="color: #666;">● Detected devices</div>
+                                    <div style="color: #ff9800;">→ Queue direction</div>
+                                </div>
+                                
+                                <div style="position: absolute; top: 10px; right: 10px; background: rgba(255,152,0,0.9); color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px;">
+                                    🟠 BUSY
+                                </div>
+                            </div>
+                            
+                            <div class="user-list">
+                                <div style="font-weight: bold; margin-bottom: 10px;">Detection Results</div>
+                                <div style="background: #f0f8ff; padding: 12px; border-radius: 8px; margin-bottom: 10px;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                        <span style="font-size: 12px; color: #666;">Devices detected:</span>
+                                        <span style="font-weight: bold;">23 devices</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                        <span style="font-size: 12px; color: #666;">Estimated queue:</span>
+                                        <span style="font-weight: bold;">~6 people</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                        <span style="font-size: 12px; color: #666;">Wait time:</span>
+                                        <span style="font-weight: bold;">~4 minutes</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="font-size: 12px; color: #666;">Confidence:</span>
+                                        <span style="font-weight: bold; color: #4caf50;">High (87%)</span>
+                                    </div>
+                                </div>
+                                
+                                <div style="background: #fff3cd; padding: 10px; border-radius: 4px; font-size: 11px; margin-bottom: 15px;">
+                                    <div style="font-weight: bold; margin-bottom: 5px;">How it works:</div>
+                                    <div style="margin-bottom: 3px;">• Detects WiFi/Bluetooth signals from nearby phones</div>
+                                    <div style="margin-bottom: 3px;">• Analyzes signal patterns to estimate crowd density</div>
+                                    <div style="margin-bottom: 3px;">• Identifies queue formations using device positions</div>
+                                    <div>• Combines with manual reports for accuracy</div>
+                                </div>
+                                
+                                <div class="user-item">
+                                    <div style="width: 30px; height: 30px; background: #ff9800; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px;">🍺</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Beer Stand Alpha</div>
+                                        <div class="user-distance">🤖 Auto: Busy • ~4 min wait</div>
+                                    </div>
+                                    <button style="background: #7C3AED; color: white; border: none; padding: 6px 12px; border-radius: 12px; font-size: 12px;">Confirm</button>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                                <button style="flex: 1; background: #4caf50; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 14px;">✓ Looks Right</button>
+                                <button style="flex: 1; background: #f44336; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 14px;">✗ Not Accurate</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-note">
+                <strong>Phase 4 Features:</strong> Private group formation, emergency broadcast system, festival map integration with crowd-sourced POI data, real-time crowd density tracking for bathrooms and beer lines using both manual reports and passive device detection, queue length estimation, and admin dashboard for event management. Enhanced mesh routing with priority queues for emergency messages.
+            </div>
+
+            <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                <h4 style="margin: 0 0 10px 0; color: #1976d2;">Passive Detection Technology</h4>
+                <div style="font-size: 14px; line-height: 1.6;">
+                    <div style="margin-bottom: 10px;"><strong>How Passive Detection Works:</strong></div>
+                    <ul style="margin: 0; padding-left: 20px;">
+                        <li><strong>WiFi & Bluetooth Scanning:</strong> Mesh network users detect nearby devices without connecting</li>
+                        <li><strong>Anonymous Tracking:</strong> Device IDs are hashed for privacy - no personal data collected</li>
+                        <li><strong>Queue Detection:</strong> Linear patterns in device positions indicate queue formations</li>
+                        <li><strong>Crowd Density:</strong> Signal strength clustering reveals how packed an area is</li>
+                        <li><strong>Hybrid Estimation:</strong> Combines passive data with manual reports for accuracy</li>
+                    </ul>
+                    <div style="margin-top: 10px; padding: 8px; background: rgba(25, 118, 210, 0.1); border-radius: 4px; font-size: 12px;">
+                        <strong>Privacy Note:</strong> All device detection is anonymous and temporary. No personal information is stored or transmitted.
+                    </div>
+                </div>
+            </div><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Festival Chat - UI Wireframes</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+        
+        .wireframe-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .phase-section {
+            margin-bottom: 60px;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .phase-title {
+            color: #7C3AED;
+            border-bottom: 3px solid #7C3AED;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .wireframe-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .wireframe {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            background: #fafafa;
+            position: relative;
+        }
+        
+        .wireframe h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 18px;
+            text-align: center;
+            background: #7C3AED;
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        
+        .phone-frame {
+            width: 300px;
+            height: 540px;
+            border: 3px solid #333;
+            border-radius: 25px;
+            padding: 15px;
+            background: white;
+            margin: 0 auto;
+            position: relative;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        
+        .screen {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #ddd;
+            border-radius: 15px;
+            padding: 10px;
+            background: #fff;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .status-bar {
+            height: 16px;
+            background: linear-gradient(90deg, #333 60%, transparent 60%);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 10px;
+            color: white;
+            padding: 0 8px;
+            flex-shrink: 0;
+        }
+        
+        .header {
+            background: #7C3AED;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        
+        .qr-scanner {
+            width: 100%;
+            height: 160px;
+            background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
+                        linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), 
+                        linear-gradient(45deg, transparent 75%, #f0f0f0 75%), 
+                        linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+            background-size: 15px 15px;
+            background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+            border: 2px dashed #7C3AED;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+        
+        .qr-overlay {
+            width: 120px;
+            height: 120px;
+            border: 3px solid #7C3AED;
+            border-radius: 8px;
+            position: relative;
+            background: rgba(124, 58, 237, 0.1);
+        }
+        
+        .qr-corner {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border: 2px solid #7C3AED;
+        }
+        
+        .qr-corner.top-left { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+        .qr-corner.top-right { top: -2px; right: -2px; border-left: none; border-bottom: none; }
+        .qr-corner.bottom-left { bottom: -2px; left: -2px; border-right: none; border-top: none; }
+        .qr-corner.bottom-right { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+        
+        .chat-area {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 8px;
+            background: #f9f9f9;
+            overflow-y: auto;
+            margin-bottom: 8px;
+            min-height: 180px;
+        }
+        
+        .message {
+            background: #e3f2fd;
+            padding: 6px 10px;
+            border-radius: 10px;
+            margin-bottom: 6px;
+            max-width: 80%;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+        
+        .message.own {
+            background: #7C3AED;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .message.system {
+            background: #f0f0f0;
+            color: #666;
+            text-align: center;
+            font-style: italic;
+            font-size: 11px;
+        }
+        
+        .message-input {
+            display: flex;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+        
+        .message-input input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 18px;
+            outline: none;
+            font-size: 12px;
+        }
+        
+        .send-btn {
+            background: #7C3AED;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            background: #e8f5e8;
+            border-radius: 16px;
+            font-size: 11px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+        
+        .status-indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #4caf50;
+            flex-shrink: 0;
+        }
+        
+        .status-indicator.offline { background: #f44336; }
+        .status-indicator.connecting { background: #ff9800; }
+        
+        .compass {
+            width: 160px;
+            height: 160px;
+            border: 3px solid #7C3AED;
+            border-radius: 50%;
+            margin: 0 auto 10px;
+            position: relative;
+            background: radial-gradient(circle, #f5f5f5 30%, #e0e0e0 100%);
+            flex-shrink: 0;
+        }
+        
+        .compass-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background: #7C3AED;
+            border-radius: 50%;
+        }
+        
+        .compass-direction {
+            position: absolute;
+            font-size: 12px;
+            font-weight: bold;
+            color: #7C3AED;
+        }
+        
+        .compass-direction.n { top: 4px; left: 50%; transform: translateX(-50%); }
+        .compass-direction.s { bottom: 4px; left: 50%; transform: translateX(-50%); }
+        .compass-direction.e { right: 4px; top: 50%; transform: translateY(-50%); }
+        .compass-direction.w { left: 4px; top: 50%; transform: translateY(-50%); }
+        
+        .user-dot {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .user-dot.strong { background: #4caf50; }
+        .user-dot.medium { background: #ff9800; }
+        .user-dot.weak { background: #f44336; }
+        
+        .user-list {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .user-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 12px;
+        }
+        
+        .user-item:last-child { border-bottom: none; }
+        
+        .user-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #7C3AED;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+            flex-shrink: 0;
+        }
+        
+        .user-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .user-name {
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+        
+        .user-distance {
+            font-size: 10px;
+            color: #666;
+        }
+        
+        .floating-action {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            width: 40px;
+            height: 40px;
+            background: #7C3AED;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+        }
+        
+        .tab-bar {
+            display: flex;
+            border-top: 1px solid #ddd;
+            margin-top: 8px;
+            flex-shrink: 0;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background: #f5f5f5;
+            border: none;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        
+        .tab.active {
+            background: #7C3AED;
+            color: white;
+        }
+        
+        .feature-note {
+            background: #fff3cd;
+            border: 1px solid #ffecb5;
+            border-radius: 4px;
+            padding: 12px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #856404;
+        }
+        
+        .admin-card {
+            background: #f8f9fa;
+            border: 2px dashed #6c757d;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .qr-code-display {
+            width: 100px;
+            height: 100px;
+            background: white;
+            border: 2px solid #333;
+            margin: 0 auto 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            color: #666;
+        }
+        
+        .mesh-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            color: #666;
+        }
+        
+        .mesh-node {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #4caf50;
+        }
+        
+        .mesh-connection {
+            width: 12px;
+            height: 1px;
+            background: #4caf50;
+        }
+
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .scrollable-content {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .fixed-bottom {
+            flex-shrink: 0;
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="wireframe-container">
+        <h1 style="text-align: center; color: #7C3AED; margin-bottom: 40px;">Festival Chat App - UI Wireframes</h1>
+        
+        <!-- PHASE 1: MVP -->
+        <div class="phase-section">
+            <h2 class="phase-title">Phase 1: MVP - QR Scanning & P2P Chat</h2>
+            
+            <div class="wireframe-grid">
+                <!-- Landing Page -->
+                <div class="wireframe">
+                    <h3>1. Landing Page</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Festival Chat</div>
+                            <div class="content-area">
+                                <div style="text-align: center; padding: 20px;">
+                                    <div style="font-size: 32px; margin-bottom: 15px;">🎵</div>
+                                    <h2 style="margin: 0 0 8px 0; color: #333; font-size: 16px;">Welcome to Festival Chat</h2>
+                                    <p style="color: #666; margin-bottom: 20px; font-size: 12px;">Connect with people nearby without internet!</p>
+                                    <button style="background: #7C3AED; color: white; border: none; padding: 12px 24px; border-radius: 20px; font-size: 14px; width: 100%; margin-bottom: 12px;">Scan QR Code</button>
+                                    <button style="background: transparent; color: #7C3AED; border: 2px solid #7C3AED; padding: 12px 24px; border-radius: 20px; font-size: 14px; width: 100%;">Join by Room ID</button>
+                                </div>
+                                <div class="connection-status fixed-bottom">
+                                    <div class="status-indicator offline"></div>
+                                    <span>Offline - P2P Only</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QR Scanner -->
+                <div class="wireframe">
+                    <h3>2. QR Code Scanner</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Scan QR Code</div>
+                            <div class="content-area">
+                                <div class="qr-scanner">
+                                    <div class="qr-overlay">
+                                        <div class="qr-corner top-left"></div>
+                                        <div class="qr-corner top-right"></div>
+                                        <div class="qr-corner bottom-left"></div>
+                                        <div class="qr-corner bottom-right"></div>
+                                    </div>
+                                </div>
+                                <div class="scrollable-content">
+                                    <div style="text-align: center; padding: 15px;">
+                                        <p style="color: #666; margin-bottom: 15px; font-size: 12px;">Point your camera at a Festival Chat QR code</p>
+                                        <button style="background: #f0f0f0; border: 1px solid #ddd; padding: 8px 16px; border-radius: 16px; margin: 0 8px; font-size: 11px;">Flash</button>
+                                        <button style="background: #f0f0f0; border: 1px solid #ddd; padding: 8px 16px; border-radius: 16px; margin: 0 8px; font-size: 11px;">Switch Camera</button>
+                                    </div>
+                                </div>
+                                <div style="text-align: center; margin-top: 15px;" class="fixed-bottom">
+                                    <button style="color: #7C3AED; background: none; border: none; text-decoration: underline; font-size: 12px;">Enter Room ID Manually</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Interface -->
+                <div class="wireframe">
+                    <h3>3. Chat Room</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Main Stage North</div>
+                            <div class="connection-status">
+                                <div class="status-indicator"></div>
+                                <span>Connected to 4 people</span>
+                                <div class="mesh-indicator">
+                                    <div class="mesh-node"></div>
+                                    <div class="mesh-connection"></div>
+                                    <div class="mesh-node"></div>
+                                    <div class="mesh-connection"></div>
+                                    <div class="mesh-node"></div>
+                                </div>
+                            </div>
+                            <div class="chat-area">
+                                <div class="message system">Alice joined the chat</div>
+                                <div class="message">
+                                    <strong>Alice:</strong> Hey everyone! 👋
+                                </div>
+                                <div class="message">
+                                    <strong>Bob:</strong> This is so cool! No internet needed
+                                </div>
+                                <div class="message own">
+                                    Anyone know when the next set starts?
+                                </div>
+                                <div class="message">
+                                    <strong>Charlie:</strong> I think 8pm! 🎵
+                                </div>
+                                <div class="message system">You are now connected via mesh network</div>
+                            </div>
+                            <div class="message-input">
+                                <input type="text" placeholder="Type a message..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 20px;">
+                                <button class="send-btn">→</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings/Status -->
+                <div class="wireframe">
+                    <h3>4. Connection Status</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Connection Status</div>
+                            <div class="content-area">
+                                <div class="scrollable-content">
+                                    <div class="user-list">
+                                        <h4 style="margin: 0 0 8px 0; font-size: 13px;">Connected Users (4)</h4>
+                                        <div class="user-item">
+                                            <div class="user-avatar">A</div>
+                                            <div class="user-info">
+                                                <div class="user-name">Alice</div>
+                                                <div class="user-distance">Direct connection</div>
+                                            </div>
+                                            <div class="status-indicator"></div>
+                                        </div>
+                                        <div class="user-item">
+                                            <div class="user-avatar">B</div>
+                                            <div class="user-info">
+                                                <div class="user-name">Bob</div>
+                                                <div class="user-distance">Via Alice (2 hops)</div>
+                                            </div>
+                                            <div class="status-indicator"></div>
+                                        </div>
+                                        <div class="user-item">
+                                            <div class="user-avatar">C</div>
+                                            <div class="user-info">
+                                                <div class="user-name">Charlie</div>
+                                                <div class="user-distance">Direct connection</div>
+                                            </div>
+                                            <div class="status-indicator"></div>
+                                        </div>
+                                        <div class="user-item">
+                                            <div class="user-avatar">D</div>
+                                            <div class="user-info">
+                                                <div class="user-name">Diana</div>
+                                                <div class="user-distance">Via Charlie (2 hops)</div>
+                                            </div>
+                                            <div class="status-indicator connecting"></div>
+                                        </div>
+                                    </div>
+                                    <div style="background: #f0f0f0; padding: 12px; border-radius: 8px; font-size: 11px;">
+                                        <div style="margin-bottom: 4px;"><strong>Network:</strong> Mesh P2P</div>
+                                        <div style="margin-bottom: 4px;"><strong>Messages:</strong> 47 sent, 52 received</div>
+                                        <div><strong>Uptime:</strong> 23 minutes</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-card">
+                <h4>QR Code Card (Physical)</h4>
+                <div class="qr-code-display">QR CODE<br/>DATA HERE</div>
+                <div><strong>Main Stage North</strong></div>
+                <div style="font-size: 12px; color: #666;">Room ID: mainstage_north_2024</div>
+            </div>
+        </div>
+
+        <!-- PHASE 2: ENHANCED MESH NETWORKING -->
+        <div class="phase-section">
+            <h2 class="phase-title">Phase 2: Enhanced Mesh Networking</h2>
+            
+            <div class="wireframe-grid">
+                <!-- Enhanced Chat with Mesh Info -->
+                <div class="wireframe">
+                    <h3>5. Enhanced Chat (Mesh Aware)</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Main Stage North</div>
+                            <div class="content-area">
+                                <div class="connection-status">
+                                    <div class="status-indicator"></div>
+                                    <span>Mesh Network: 12 people</span>
+                                    <div style="font-size: 9px; color: #666;">3 zones connected</div>
+                                </div>
+                                <div class="chat-area">
+                                    <div class="message system">Connected to Electronic Stage via mesh bridge</div>
+                                    <div class="message">
+                                        <strong>Alice:</strong> Anyone at Electronic Stage? 
+                                        <div style="font-size: 9px; color: #999;">via mesh (3 hops)</div>
+                                    </div>
+                                    <div class="message">
+                                        <strong>Sam (Electronic):</strong> Yeah! Great vibes here 🔥
+                                        <div style="font-size: 9px; color: #999;">via mesh (4 hops)</div>
+                                    </div>
+                                    <div class="message own">
+                                        Thinking of heading over after this set
+                                    </div>
+                                    <div class="message">
+                                        <strong>Bob:</strong> Network quality is really good today
+                                        <div style="font-size: 9px; color: #999;">direct</div>
+                                    </div>
+                                </div>
+                                <div class="message-input fixed-bottom">
+                                    <input type="text" placeholder="Type a message...">
+                                    <button class="send-btn">→</button>
+                                </div>
+                                <div class="tab-bar">
+                                    <button class="tab active">Chat</button>
+                                    <button class="tab">Network</button>
+                                    <button class="tab">Zones</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Network Topology View -->
+                <div class="wireframe">
+                    <h3>6. Network Topology</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Network Map</div>
+                            <div class="content-area">
+                                <div class="scrollable-content">
+                                    <div style="height: 160px; background: #f9f9f9; border-radius: 8px; margin-bottom: 10px; position: relative; overflow: hidden;">
+                                        <!-- Central node (you) -->
+                                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 14px; height: 14px; background: #7C3AED; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>
+                                        
+                                        <!-- Connected nodes -->
+                                        <div style="position: absolute; top: 30%; left: 30%; width: 10px; height: 10px; background: #4caf50; border-radius: 50%; border: 2px solid white;"></div>
+                                        <div style="position: absolute; top: 20%; right: 30%; width: 10px; height: 10px; background: #4caf50; border-radius: 50%; border: 2px solid white;"></div>
+                                        <div style="position: absolute; bottom: 30%; left: 20%; width: 10px; height: 10px; background: #ff9800; border-radius: 50%; border: 2px solid white;"></div>
+                                        <div style="position: absolute; bottom: 20%; right: 25%; width: 10px; height: 10px; background: #4caf50; border-radius: 50%; border: 2px solid white;"></div>
+                                        
+                                        <!-- Connection lines -->
+                                        <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                                            <line x1="50%" y1="50%" x2="30%" y2="30%" stroke="#7C3AED" stroke-width="2" opacity="0.6"/>
+                                            <line x1="50%" y1="50%" x2="70%" y2="20%" stroke="#7C3AED" stroke-width="2" opacity="0.6"/>
+                                            <line x1="50%" y1="50%" x2="20%" y2="70%" stroke="#ff9800" stroke-width="2" opacity="0.4"/>
+                                            <line x1="50%" y1="50%" x2="75%" y2="80%" stroke="#7C3AED" stroke-width="2" opacity="0.6"/>
+                                        </svg>
+                                        
+                                        <div style="position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.9); padding: 4px 6px; border-radius: 3px; font-size: 9px;">
+                                            <div style="color: #4caf50;">● Strong (3)</div>
+                                            <div style="color: #ff9800;">● Medium (1)</div>
+                                            <div style="color: #f44336;">● Weak (0)</div>
+                                        </div>
+                                    </div>
+                                    <div class="user-list">
+                                        <h4 style="margin: 0 0 8px 0; font-size: 13px;">Mesh Status</h4>
+                                        <div style="font-size: 11px; margin-bottom: 8px;">
+                                            <div>Total Network: 12 users across 3 zones</div>
+                                            <div>Your connections: 4 direct, 8 via mesh</div>
+                                            <div>Bridge quality: Excellent</div>
+                                        </div>
+                                        <div style="background: #e8f5e8; padding: 8px; border-radius: 4px; font-size: 10px;">
+                                            <strong>Network Health:</strong> Messages reaching all zones with avg 2.3 hop latency
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Zone Switcher -->
+                <div class="wireframe">
+                    <h3>7. Zone Selector</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Connected Zones</div>
+                            <div class="content-area">
+                                <div class="scrollable-content">
+                                    <div class="user-list">
+                                        <div class="user-item" style="background: #e3f2fd; border-radius: 6px; padding: 8px;">
+                                            <div style="width: 32px; height: 32px; background: #7C3AED; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 10px;">MS</div>
+                                            <div class="user-info">
+                                                <div class="user-name">Main Stage North</div>
+                                                <div class="user-distance">8 users • You are here</div>
+                                            </div>
+                                            <div style="color: #7C3AED; font-weight: bold; font-size: 11px;">ACTIVE</div>
+                                        </div>
+                                        <div class="user-item">
+                                            <div style="width: 32px; height: 32px; background: #ff6b35; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 10px;">ES</div>
+                                            <div class="user-info">
+                                                <div class="user-name">Electronic Stage</div>
+                                                <div class="user-distance">5 users • 200m via mesh</div>
+                                            </div>
+                                            <button style="background: #7C3AED; color: white; border: none; padding: 4px 10px; border-radius: 10px; font-size: 11px;">Join</button>
+                                        </div>
+                                        <div class="user-item">
+                                            <div style="width: 32px; height: 32px; background: #4caf50; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 10px;">FC</div>
+                                            <div class="user-info">
+                                                <div class="user-name">Food Court</div>
+                                                <div class="user-distance">3 users • 150m via mesh</div>
+                                            </div>
+                                            <button style="background: #7C3AED; color: white; border: none; padding: 4px 10px; border-radius: 10px; font-size: 11px;">Join</button>
+                                        </div>
+                                        <div class="user-item" style="opacity: 0.6;">
+                                            <div style="width: 32px; height: 32px; background: #9e9e9e; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 10px;">AS</div>
+                                            <div class="user-info">
+                                                <div class="user-name">Acoustic Stage</div>
+                                                <div class="user-distance">Out of range</div>
+                                            </div>
+                                            <div style="color: #999; font-size: 11px;">Offline</div>
+                                        </div>
+                                    </div>
+                                    <div class="feature-note">
+                                        <strong>Mesh Networking:</strong> Chat with people across different areas of the festival through connected devices acting as bridges.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="phase-section">
+            <h2 class="phase-title">Phase 2: Enhanced Mesh Networking</h2>
+            
+            <div class="wireframe-grid">
+                <!-- Advanced Chat with Mesh Info -->
+                <div class="wireframe">
+                    <h3>5. Enhanced Chat (Mesh Aware)</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Main Stage North</div>
+                            <div class="connection-status">
+                                <div class="status-indicator"></div>
+                                <span>Mesh Network: 12 people</span>
+                                <div style="font-size: 10px; color: #666;">3 zones connected</div>
+                            </div>
+                            <div class="chat-area">
+                                <div class="message system">Connected to Electronic Stage via mesh bridge</div>
+                                <div class="message">
+                                    <strong>Alice:</strong> Anyone at Electronic Stage? 
+                                    <div style="font-size: 10px; color: #999;">via mesh (3 hops)</div>
+                                </div>
+                                <div class="message">
+                                    <strong>Sam (Electronic):</strong> Yeah! Great vibes here 🔥
+                                    <div style="font-size: 10px; color: #999;">via mesh (4 hops)</div>
+                                </div>
+                                <div class="message own">
+                                    Thinking of heading over after this set
+                                </div>
+                                <div class="message">
+                                    <strong>Bob:</strong> Network quality is really good today
+                                    <div style="font-size: 10px; color: #999;">direct</div>
+                                </div>
+                            </div>
+                            <div class="message-input">
+                                <input type="text" placeholder="Type a message...">
+                                <button class="send-btn">→</button>
+                            </div>
+                            <div class="tab-bar">
+                                <button class="tab active">Chat</button>
+                                <button class="tab">Network</button>
+                                <button class="tab">Zones</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Network Topology View -->
+                <div class="wireframe">
+                    <h3>6. Network Topology</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Network Map</div>
+                            <div style="height: 200px; background: #f9f9f9; border-radius: 8px; margin-bottom: 15px; position: relative; overflow: hidden;">
+                                <!-- Central node (you) -->
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; background: #7C3AED; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
+                                
+                                <!-- Connected nodes -->
+                                <div style="position: absolute; top: 30%; left: 30%; width: 12px; height: 12px; background: #4caf50; border-radius: 50%; border: 2px solid white;"></div>
+                                <div style="position: absolute; top: 20%; right: 30%; width: 12px; height: 12px; background: #4caf50; border-radius: 50%; border: 2px solid white;"></div>
+                                <div style="position: absolute; bottom: 30%; left: 20%; width: 12px; height: 12px; background: #ff9800; border-radius: 50%; border: 2px solid white;"></div>
+                                <div style="position: absolute; bottom: 20%; right: 25%; width: 12px; height: 12px; background: #4caf50; border-radius: 50%; border: 2px solid white;"></div>
+                                
+                                <!-- Connection lines -->
+                                <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                                    <line x1="50%" y1="50%" x2="30%" y2="30%" stroke="#7C3AED" stroke-width="2" opacity="0.6"/>
+                                    <line x1="50%" y1="50%" x2="70%" y2="20%" stroke="#7C3AED" stroke-width="2" opacity="0.6"/>
+                                    <line x1="50%" y1="50%" x2="20%" y2="70%" stroke="#ff9800" stroke-width="2" opacity="0.4"/>
+                                    <line x1="50%" y1="50%" x2="75%" y2="80%" stroke="#7C3AED" stroke-width="2" opacity="0.6"/>
+                                </svg>
+                                
+                                <div style="position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.9); padding: 5px 8px; border-radius: 4px; font-size: 10px;">
+                                    <div style="color: #4caf50;">● Strong (3)</div>
+                                    <div style="color: #ff9800;">● Medium (1)</div>
+                                    <div style="color: #f44336;">● Weak (0)</div>
+                                </div>
+                            </div>
+                            <div class="user-list">
+                                <h4 style="margin: 0 0 10px 0;">Mesh Status</h4>
+                                <div style="font-size: 12px; margin-bottom: 10px;">
+                                    <div>Total Network: 12 users across 3 zones</div>
+                                    <div>Your connections: 4 direct, 8 via mesh</div>
+                                    <div>Bridge quality: Excellent</div>
+                                </div>
+                                <div style="background: #e8f5e8; padding: 10px; border-radius: 4px; font-size: 11px;">
+                                    <strong>Network Health:</strong> Messages reaching all zones with avg 2.3 hop latency
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Zone Switcher -->
+                <div class="wireframe">
+                    <h3>7. Zone Selector</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Connected Zones</div>
+                            <div class="user-list">
+                                <div class="user-item" style="background: #e3f2fd; border-radius: 8px; padding: 12px;">
+                                    <div style="width: 40px; height: 40px; background: #7C3AED; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">MS</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Main Stage North</div>
+                                        <div class="user-distance">8 users • You are here</div>
+                                    </div>
+                                    <div style="color: #7C3AED; font-weight: bold;">ACTIVE</div>
+                                </div>
+                                <div class="user-item">
+                                    <div style="width: 40px; height: 40px; background: #ff6b35; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">ES</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Electronic Stage</div>
+                                        <div class="user-distance">5 users • 200m via mesh</div>
+                                    </div>
+                                    <button style="background: #7C3AED; color: white; border: none; padding: 6px 12px; border-radius: 12px; font-size: 12px;">Join</button>
+                                </div>
+                                <div class="user-item">
+                                    <div style="width: 40px; height: 40px; background: #4caf50; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">FC</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Food Court</div>
+                                        <div class="user-distance">3 users • 150m via mesh</div>
+                                    </div>
+                                    <button style="background: #7C3AED; color: white; border: none; padding: 6px 12px; border-radius: 12px; font-size: 12px;">Join</button>
+                                </div>
+                                <div class="user-item" style="opacity: 0.6;">
+                                    <div style="width: 40px; height: 40px; background: #9e9e9e; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">AS</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Acoustic Stage</div>
+                                        <div class="user-distance">Out of range</div>
+                                    </div>
+                                    <div style="color: #999;">Offline</div>
+                                </div>
+                            </div>
+                            <div class="feature-note">
+                                <strong>Mesh Networking:</strong> Chat with people across different areas of the festival through connected devices acting as bridges.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PHASE 3: COMPASS & PROXIMITY -->
+        <div class="phase-section">
+            <h2 class="phase-title">Phase 3: Compass & Social Discovery</h2>
+            
+            <div class="wireframe-grid">
+                <!-- Compass Interface -->
+                <div class="wireframe">
+                    <h3>8. Compass View</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">People Nearby</div>
+                            <div class="content-area">
+                                <div class="scrollable-content">
+                                    <div class="compass">
+                                        <div class="compass-center"></div>
+                                        <div class="compass-direction n">N</div>
+                                        <div class="compass-direction s">S</div>
+                                        <div class="compass-direction e">E</div>
+                                        <div class="compass-direction w">W</div>
+                                        
+                                        <!-- User dots positioned around compass -->
+                                        <div class="user-dot strong" style="top: 30px; left: 60px;" title="Alice - 15m"></div>
+                                        <div class="user-dot medium" style="top: 90px; right: 25px;" title="Bob - 45m"></div>
+                                        <div class="user-dot weak" style="bottom: 45px; left: 30px;" title="Charlie - 80m"></div>
+                                        <div class="user-dot strong" style="bottom: 25px; right: 55px;" title="Diana - 25m"></div>
+                                    </div>
+                                    <div class="user-list">
+                                        <div class="user-item">
+                                            <div class="user-avatar">A</div>
+                                            <div class="user-info">
+                                                <div class="user-name">Alice</div>
+                                                <div class="user-distance">~15m northeast</div>
+                                            </div>
+                                            <button style="background: none; border: none; color: #7C3AED; font-size: 16px;">💬</button>
+                                        </div>
+                                        <div class="user-item">
+                                            <div class="user-avatar">D</div>
+                                            <div class="user-info">
+                                                <div class="user-name">Diana</div>
+                                                <div class="user-distance">~25m southeast</div>
+                                            </div>
+                                            <button style="background: none; border: none; color: #7C3AED; font-size: 16px;">💬</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-bar">
+                                    <button class="tab">Chat</button>
+                                    <button class="tab active">Compass</button>
+                                    <button class="tab">People</button>
+                                </div>
+                                <div class="floating-action">📍</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- People List with Status -->
+                <div class="wireframe">
+                    <h3>9. People & Status</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">People Around You</div>
+                            <div class="content-area">
+                                <div class="scrollable-content">
+                                    <div style="padding: 12px; background: #f0f8ff; border-radius: 6px; margin-bottom: 10px; text-align: center;">
+                                        <div style="font-size: 12px; font-weight: bold; margin-bottom: 4px;">Your Status</div>
+                                        <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 8px;">
+                                            <button style="background: #7C3AED; color: white; border: none; padding: 4px 8px; border-radius: 10px; font-size: 10px;">🎵 Enjoying music</button>
+                                            <button style="background: #f0f0f0; border: 1px solid #ddd; padding: 4px 8px; border-radius: 10px; font-size: 10px;">🍕 Getting food</button>
+                                        </div>
+                                        <button style="background: none; border: none; color: #7C3AED; font-size: 10px; text-decoration: underline;">Change status</button>
+                                    </div>
+                                    <div class="user-list">
+                                        <div class="user-item">
+                                            <div class="user-avatar">A</div>
+                                            <div class="user-info">
+                                                <div class="user-name">Alice</div>
+                                                <div class="user-distance">~15m • 🎵 Enjoying music</div>
+                                            </div>
+                                            <div style="display: flex; gap: 6px;">
+                                                <button style="background: none; border: none; color: #7C3AED; font-size: 14px;">💬</button>
+                                                <button style="background: none; border: none; color: #7C3AED; font-size: 14px;">📍</button>
+                                            </div>
+                                        </div>
+                                        <div class="user-item">
+                                            <div class="user-avatar">B</div>
+                                            <div class="user-info">
+                                                <div class="user-name">Bob</div>
+                                                <div class="user-distance">~45m • 👥 Looking for friends</div>
+                                            </div>
+                                            <div style="display: flex; gap: 6px;">
+                                                <button style="background: none; border: none; color: #7C3AED; font-size: 14px;">💬</button>
+                                                <button style="background: none; border: none; color: #7C3AED; font-size: 14px;">📍</button>
+                                            </div>
+                                        </div>
+                                        <div class="user-item">
+                                            <div class="user-avatar">C</div>
+                                            <div class="user-info">
+                                                <div class="user-name">Charlie</div>
+                                                <div class="user-distance">~80m • 🚶 Heading to Electronic Stage</div>
+                                            </div>
+                                            <div style="display: flex; gap: 6px;">
+                                                <button style="background: none; border: none; color: #7C3AED; font-size: 14px;">💬</button>
+                                                <button style="background: none; border: none; color: #7C3AED; font-size: 14px;">📍</button>
+                                            </div>
+                                        </div>
+                                        <div class="user-item">
+                                            <div class="user-avatar">D</div>
+                                            <div class="user-info">
+                                                <div class="user-name">Diana</div>
+                                                <div class="user-distance">~25m • 📳 Broadcasting location</div>
+                                            </div>
+                                            <div style="display: flex; gap: 6px;">
+                                                <button style="background: none; border: none; color: #7C3AED; font-size: 14px;">💬</button>
+                                                <button style="background: #4caf50; border: none; color: white; padding: 3px 6px; border-radius: 6px; font-size: 10px;">Find</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-bar">
+                                    <button class="tab">Chat</button>
+                                    <button class="tab">Compass</button>
+                                    <button class="tab active">People</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Find Friend Feature -->
+                <div class="wireframe">
+                    <h3>10. Find Friend Mode</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Finding Diana</div>
+                            <div class="content-area">
+                                <div class="scrollable-content">
+                                    <div style="background: #e8f5e8; padding: 12px; border-radius: 6px; margin-bottom: 10px; text-align: center;">
+                                        <div style="font-size: 20px; margin-bottom: 8px;">📍</div>
+                                        <div style="font-weight: bold; margin-bottom: 4px; font-size: 12px;">Diana is broadcasting her location</div>
+                                        <div style="font-size: 10px; color: #666;">She wants to be found for the next 10 minutes</div>
+                                    </div>
+                                    <div class="compass">
+                                        <div class="compass-center"></div>
+                                        <div class="compass-direction n">N</div>
+                                        <div class="compass-direction s">S</div>
+                                        <div class="compass-direction e">E</div>
+                                        <div class="compass-direction w">W</div>
+                                        
+                                        <!-- Diana's position with pulsing effect -->
+                                        <div style="position: absolute; bottom: 25px; right: 55px; width: 16px; height: 16px; background: #4caf50; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 0 rgba(76, 175, 80, 1); animation: pulse 2s infinite;"></div>
+                                        
+                                        <!-- Direction arrow pointing to Diana -->
+                                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(135deg); color: #4caf50; font-size: 20px;">→</div>
+                                    </div>
+                                    <div style="text-align: center; padding: 15px;">
+                                        <div style="font-size: 16px; font-weight: bold; margin-bottom: 4px;">~25 meters</div>
+                                        <div style="color: #666; margin-bottom: 12px; font-size: 12px;">Southeast direction</div>
+                                        <button style="background: #4caf50; color: white; border: none; padding: 10px 20px; border-radius: 16px; font-size: 14px; margin-bottom: 8px;">I'm here! 👋</button>
+                                        <div style="font-size: 10px; color: #666;">Tap when you find each other</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="phase-section">
+            <h2 class="phase-title">Phase 3: Compass & Social Discovery</h2>
+            
+            <div class="wireframe-grid">
+                <!-- Compass Interface -->
+                <div class="wireframe">
+                    <h3>8. Compass View</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">People Nearby</div>
+                            <div class="compass">
+                                <div class="compass-center"></div>
+                                <div class="compass-direction n">N</div>
+                                <div class="compass-direction s">S</div>
+                                <div class="compass-direction e">E</div>
+                                <div class="compass-direction w">W</div>
+                                
+                                <!-- User dots positioned around compass -->
+                                <div class="user-dot strong" style="top: 40px; left: 80px;" title="Alice - 15m"></div>
+                                <div class="user-dot medium" style="top: 120px; right: 30px;" title="Bob - 45m"></div>
+                                <div class="user-dot weak" style="bottom: 60px; left: 40px;" title="Charlie - 80m"></div>
+                                <div class="user-dot strong" style="bottom: 30px; right: 70px;" title="Diana - 25m"></div>
+                            </div>
+                            <div class="user-list">
+                                <div class="user-item">
+                                    <div class="user-avatar">A</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Alice</div>
+                                        <div class="user-distance">~15m northeast</div>
+                                    </div>
+                                    <button style="background: none; border: none; color: #7C3AED; font-size: 18px;">💬</button>
+                                </div>
+                                <div class="user-item">
+                                    <div class="user-avatar">D</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Diana</div>
+                                        <div class="user-distance">~25m southeast</div>
+                                    </div>
+                                    <button style="background: none; border: none; color: #7C3AED; font-size: 18px;">💬</button>
+                                </div>
+                            </div>
+                            <div class="tab-bar">
+                                <button class="tab">Chat</button>
+                                <button class="tab active">Compass</button>
+                                <button class="tab">People</button>
+                            </div>
+                            <div class="floating-action">📍</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- People List with Status -->
+                <div class="wireframe">
+                    <h3>9. People & Status</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">People Around You</div>
+                            <div style="padding: 15px; background: #f0f8ff; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+                                <div style="font-size: 14px; font-weight: bold; margin-bottom: 5px;">Your Status</div>
+                                <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 10px;">
+                                    <button style="background: #7C3AED; color: white; border: none; padding: 6px 12px; border-radius: 12px; font-size: 12px;">🎵 Enjoying music</button>
+                                    <button style="background: #f0f0f0; border: 1px solid #ddd; padding: 6px 12px; border-radius: 12px; font-size: 12px;">🍕 Getting food</button>
+                                </div>
+                                <button style="background: none; border: none; color: #7C3AED; font-size: 12px; text-decoration: underline;">Change status</button>
+                            </div>
+                            <div class="user-list">
+                                <div class="user-item">
+                                    <div class="user-avatar">A</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Alice</div>
+                                        <div class="user-distance">~15m • 🎵 Enjoying music</div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button style="background: none; border: none; color: #7C3AED; font-size: 16px;">💬</button>
+                                        <button style="background: none; border: none; color: #7C3AED; font-size: 16px;">📍</button>
+                                    </div>
+                                </div>
+                                <div class="user-item">
+                                    <div class="user-avatar">B</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Bob</div>
+                                        <div class="user-distance">~45m • 👥 Looking for friends</div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button style="background: none; border: none; color: #7C3AED; font-size: 16px;">💬</button>
+                                        <button style="background: none; border: none; color: #7C3AED; font-size: 16px;">📍</button>
+                                    </div>
+                                </div>
+                                <div class="user-item">
+                                    <div class="user-avatar">C</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Charlie</div>
+                                        <div class="user-distance">~80m • 🚶 Heading to Electronic Stage</div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button style="background: none; border: none; color: #7C3AED; font-size: 16px;">💬</button>
+                                        <button style="background: none; border: none; color: #7C3AED; font-size: 16px;">📍</button>
+                                    </div>
+                                </div>
+                                <div class="user-item">
+                                    <div class="user-avatar">D</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Diana</div>
+                                        <div class="user-distance">~25m • 📳 Broadcasting location</div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button style="background: none; border: none; color: #7C3AED; font-size: 16px;">💬</button>
+                                        <button style="background: #4caf50; border: none; color: white; padding: 4px 8px; border-radius: 8px; font-size: 12px;">Find</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="tab-bar">
+                                <button class="tab">Chat</button>
+                                <button class="tab">Compass</button>
+                                <button class="tab active">People</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Find Friend Feature -->
+                <div class="wireframe">
+                    <h3>10. Find Friend Mode</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Finding Diana</div>
+                            <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+                                <div style="font-size: 24px; margin-bottom: 10px;">📍</div>
+                                <div style="font-weight: bold; margin-bottom: 5px;">Diana is broadcasting her location</div>
+                                <div style="font-size: 12px; color: #666;">She wants to be found for the next 10 minutes</div>
+                            </div>
+                            <div class="compass">
+                                <div class="compass-center"></div>
+                                <div class="compass-direction n">N</div>
+                                <div class="compass-direction s">S</div>
+                                <div class="compass-direction e">E</div>
+                                <div class="compass-direction w">W</div>
+                                
+                                <!-- Diana's position with pulsing effect -->
+                                <div style="position: absolute; bottom: 30px; right: 70px; width: 20px; height: 20px; background: #4caf50; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 0 rgba(76, 175, 80, 1); animation: pulse 2s infinite;"></div>
+                                
+                                <!-- Direction arrow pointing to Diana -->
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(135deg); color: #4caf50; font-size: 24px;">→</div>
+                            </div>
+                            <div style="text-align: center; padding: 20px;">
+                                <div style="font-size: 18px; font-weight: bold; margin-bottom: 5px;">~25 meters</div>
+                                <div style="color: #666; margin-bottom: 15px;">Southeast direction</div>
+                                <button style="background: #4caf50; color: white; border: none; padding: 12px 24px; border-radius: 20px; font-size: 16px; margin-bottom: 10px;">I'm here! 👋</button>
+                                <div style="font-size: 12px; color: #666;">Tap when you find each other</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="feature-note">
+                <strong>Phase 3 Features:</strong> Compass interface shows direction and distance to nearby users. "Find me" mode allows temporary location broadcasting for meetups. Status indicators help coordinate activities.
+            </div>
+        </div>
+
+        <!-- PHASE 4: ADVANCED FEATURES -->
+        <div class="phase-section">
+            <h2 class="phase-title">Phase 4: Advanced Features & Groups</h2>
+            
+            <div class="wireframe-grid">
+                <!-- Group Formation -->
+                <div class="wireframe">
+                    <h3>11. Group Chat</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <span>Squad Goals 🎵</span>
+                                    <button style="background: none; border: none; color: white; font-size: 18px;">⚙️</button>
+                                </div>
+                            </div>
+                            <div style="background: #fff3cd; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; text-align: center;">
+                                Private group • 5 members • Emergency priority enabled
+                            </div>
+                            <div class="chat-area">
+                                <div class="message system">Alice created this group</div>
+                                <div class="message">
+                                    <strong>Alice:</strong> Let's stick together for the headliner! 🎸
+                                </div>
+                                <div class="message">
+                                    <strong>Bob:</strong> Meeting at sound booth in 10?
+                                </div>
+                                <div class="message own">
+                                    Perfect! I'm grabbing water first
+                                </div>
+                                <div class="message" style="background: #ffebee; border-left: 4px solid #f44336;">
+                                    <strong>Charlie:</strong> 🚨 EMERGENCY: Lost my friend Sarah, last seen at food trucks
+                                    <div style="font-size: 10px; color: #999;">High priority message</div>
+                                </div>
+                                <div class="message">
+                                    <strong>Diana:</strong> I'll help look! Heading to food area now
+                                </div>
+                            </div>
+                            <div class="message-input">
+                                <button style="background: #f44336; color: white; border: none; padding: 8px; border-radius: 50%; margin-right: 8px;">🚨</button>
+                                <input type="text" placeholder="Type a message...">
+                                <button class="send-btn">→</button>
+                            </div>
+                            <div class="tab-bar">
+                                <button class="tab active">Chat</button>
+                                <button class="tab">Members</button>
+                                <button class="tab">Map</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Emergency Features -->
+                <div class="wireframe">
+                    <h3>12. Emergency Mode</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div style="background: #f44336; color: white; padding: 12px; text-align: center; font-weight: bold;">
+                                🚨 EMERGENCY BROADCAST MODE
+                            </div>
+                            <div style="background: #ffebee; padding: 20px; border-radius: 8px; margin: 15px 0; text-align: center;">
+                                <div style="font-size: 24px; margin-bottom: 10px;">⚠️</div>
+                                <div style="font-weight: bold; margin-bottom: 10px;">Emergency message will be sent to:</div>
+                                <div style="font-size: 14px; color: #666; margin-bottom: 15px;">
+                                    • All nearby users (12 people)<br/>
+                                    • Your groups (2 groups)<br/>
+                                    • Festival safety network (if available)
+                                </div>
+                                <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                                    <textarea placeholder="Describe your emergency situation..." style="width: 100%; height: 60px; border: 1px solid #ddd; border-radius: 4px; padding: 8px; resize: none;"></textarea>
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <button style="flex: 1; background: #f44336; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold;">SEND EMERGENCY</button>
+                                    <button style="background: #e0e0e0; border: none; padding: 12px 20px; border-radius: 8px;">Cancel</button>
+                                </div>
+                            </div>
+                            <div style="background: #f0f0f0; padding: 15px; border-radius: 8px; font-size: 12px;">
+                                <div style="font-weight: bold; margin-bottom: 5px;">Quick Actions:</div>
+                                <button style="display: block; width: 100%; background: #ff9800; color: white; border: none; padding: 10px; border-radius: 4px; margin-bottom: 8px;">🏥 Medical Emergency</button>
+                                <button style="display: block; width: 100%; background: #ff5722; color: white; border: none; padding: 10px; border-radius: 4px; margin-bottom: 8px;">👤 Lost Person</button>
+                                <button style="display: block; width: 100%; background: #673ab7; color: white; border: none; padding: 10px; border-radius: 4px;">🔒 Safety Concern</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Festival Map Integration -->
+                <div class="wireframe">
+                    <h3>13. Festival Map with POIs</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Festival Map</div>
+                            <div style="height: 300px; background: linear-gradient(135deg, #e8f5e8 0%, #f0f8ff 50%, #fff3e0 100%); border-radius: 8px; margin-bottom: 15px; position: relative; overflow: hidden;">
+                                <!-- Map elements -->
+                                <div style="position: absolute; top: 20%; left: 30%; width: 60px; height: 40px; background: #7C3AED; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold;">MAIN<br/>STAGE</div>
+                                
+                                <div style="position: absolute; top: 40%; right: 20%; width: 50px; height: 30px; background: #ff6b35; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 8px; font-weight: bold;">ELECTRONIC</div>
+                                
+                                <div style="position: absolute; bottom: 30%; left: 20%; width: 45px; height: 25px; background: #4caf50; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 8px; font-weight: bold;">FOOD</div>
+                                
+                                <!-- POI Icons -->
+                                <!-- Bathrooms -->
+                                <div style="position: absolute; top: 60%; left: 40%; width: 20px; height: 20px; background: #2196f3; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; border: 2px solid white;">🚻</div>
+                                <div style="position: absolute; top: 25%; right: 35%; width: 20px; height: 20px; background: #ff9800; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; border: 2px solid white;">🚻</div>
+                                
+                                <!-- Beer stands -->
+                                <div style="position: absolute; bottom: 40%; left: 55%; width: 20px; height: 20px; background: #f44336; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; border: 2px solid white;">🍺</div>
+                                <div style="position: absolute; top: 45%; left: 25%; width: 20px; height: 20px; background: #4caf50; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; border: 2px solid white;">🍺</div>
+                                
+                                <!-- Your location -->
+                                <div style="position: absolute; top: 35%; left: 45%; width: 16px; height: 16px; background: #f44336; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>
+                                <div style="position: absolute; top: 25%; left: 35%; font-size: 10px; background: rgba(255,255,255,0.9); padding: 2px 4px; border-radius: 3px;">You</div>
+                                
+                                <!-- Friend locations -->
+                                <div style="position: absolute; top: 25%; left: 55%; width: 10px; height: 10px; background: #4caf50; border-radius: 50%; border: 2px solid white;"></div>
+                                <div style="position: absolute; bottom: 45%; right: 30%; width: 10px; height: 10px; background: #4caf50; border-radius: 50%; border: 2px solid white;"></div>
+                                
+                                <!-- QR code locations -->
+                                <div style="position: absolute; top: 15%; left: 25%; width: 12px; height: 12px; background: #333; border: 1px solid white; display: flex; align-items: center; justify-content: center; color: white; font-size: 6px;">QR</div>
+                                <div style="position: absolute; top: 35%; right: 15%; width: 12px; height: 12px; background: #333; border: 1px solid white; display: flex; align-items: center; justify-content: center; color: white; font-size: 6px;">QR</div>
+                                <div style="position: absolute; bottom: 25%; left: 15%; width: 12px; height: 12px; background: #333; border: 1px solid white; display: flex; align-items: center; justify-content: center; color: white; font-size: 6px;">QR</div>
+                                
+                                <!-- Coverage areas -->
+                                <div style="position: absolute; top: 10%; left: 15%; width: 80px; height: 80px; border: 2px dashed #7C3AED; border-radius: 50%; opacity: 0.3;"></div>
+                                <div style="position: absolute; top: 25%; right: 5%; width: 70px; height: 70px; border: 2px dashed #ff6b35; border-radius: 50%; opacity: 0.3;"></div>
+                                
+                                <div style="position: absolute; bottom: 10px; left: 10px; background: rgba(255,255,255,0.9); padding: 5px 8px; border-radius: 4px; font-size: 9px;">
+                                    <div style="color: #7C3AED;">● Active zones</div>
+                                    <div style="color: #4caf50;">● Friends</div>
+                                    <div style="color: #2196f3;">🚻 Bathrooms</div>
+                                    <div style="color: #f44336;">🍺 Beer stands</div>
+                                </div>
+                            </div>
+                            <div class="user-list">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <span style="font-weight: bold; font-size: 14px;">Nearby Amenities</span>
+                                    <button style="background: #7C3AED; color: white; border: none; padding: 4px 8px; border-radius: 12px; font-size: 10px;">+ Pin Location</button>
+                                </div>
+                                <div class="user-item">
+                                    <div style="width: 30px; height: 30px; background: #2196f3; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px;">🚻</div>
+                                    <div class="user-info">
+                                        <div class="user-name">North Bathrooms</div>
+                                        <div class="user-distance">~80m • 🟢 Light crowd • No wait</div>
+                                    </div>
+                                    <div style="color: #4caf50; font-size: 12px;">2 min ago</div>
+                                </div>
+                                <div class="user-item">
+                                    <div style="width: 30px; height: 30px; background: #f44336; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px;">🍺</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Main Beer Garden</div>
+                                        <div class="user-distance">~120m • 🔴 Packed • ~8 min wait</div>
+                                    </div>
+                                    <div style="color: #f44336; font-size: 12px;">1 min ago</div>
+                                </div>
+                                <div class="user-item">
+                                    <div style="width: 30px; height: 30px; background: #4caf50; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px;">🍺</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Side Beer Stand</div>
+                                        <div class="user-distance">~90m • 🟡 Moderate • ~3 min wait</div>
+                                    </div>
+                                    <div style="color: #ff9800; font-size: 12px;">5 min ago</div>
+                                </div>
+                            </div>
+                            <div class="tab-bar">
+                                <button class="tab">Chat</button>
+                                <button class="tab">People</button>
+                                <button class="tab active">Map</button>
+                            </div>
+                        </div>
+                    </div>
+                </div></div>
+                                <div class="user-item">
+                                    <div style="width: 30px; height: 30px; background: #7C3AED; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold;">MS</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Main Stage North</div>
+                                        <div class="user-distance">8 users • 50m away</div>
+                                    </div>
+                                    <div style="color: #4caf50; font-size: 12px;">Active</div>
+                                </div>
+                                <div class="user-item">
+                                    <div style="width: 30px; height: 30px; background: #ff6b35; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold;">ES</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Electronic Stage</div>
+                                        <div class="user-distance">5 users • 200m via mesh</div>
+                                    </div>
+                                    <div style="color: #ff9800; font-size: 12px;">Mesh</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Dashboard -->
+                <div class="wireframe">
+                    <h3>17. Admin Dashboard</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Pin This Location</div>
+                            <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+                                <div style="font-size: 24px; margin-bottom: 10px;">📍</div>
+                                <div style="font-weight: bold; margin-bottom: 5px;">You're at this location</div>
+                                <div style="font-size: 12px; color: #666;">GPS accuracy: ±3 meters</div>
+                            </div>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <div style="font-weight: bold; margin-bottom: 10px;">What's here?</div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                                    <button style="background: #2196f3; color: white; border: none; padding: 15px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                                        <span style="font-size: 20px;">🚻</span>
+                                        <span style="font-size: 12px;">Bathrooms</span>
+                                    </button>
+                                    <button style="background: #ff9800; color: white; border: none; padding: 15px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                                        <span style="font-size: 20px;">🍺</span>
+                                        <span style="font-size: 12px;">Beer</span>
+                                    </button>
+                                    <button style="background: #4caf50; color: white; border: none; padding: 15px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                                        <span style="font-size: 20px;">🍕</span>
+                                        <span style="font-size: 12px;">Food</span>
+                                    </button>
+                                    <button style="background: #2196f3; color: white; border: none; padding: 15px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                                        <span style="font-size: 20px;">💧</span>
+                                        <span style="font-size: 12px;">Water</span>
+                                    </button>
+                                    <button style="background: #9c27b0; color: white; border: none; padding: 15px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                                        <span style="font-size: 20px;">👕</span>
+                                        <span style="font-size: 12px;">Merch</span>
+                                    </button>
+                                    <button style="background: #f44336; color: white; border: none; padding: 15px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                                        <span style="font-size: 20px;">🏥</span>
+                                        <span style="font-size: 12px;">First Aid</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Name this spot (optional)</label>
+                                <input type="text" placeholder="e.g., 'Main Beer Garden'" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px;">
+                                
+                                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Current crowd level</label>
+                                <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                                    <button style="background: #4caf50; color: white; border: none; padding: 8px 12px; border-radius: 12px; font-size: 12px;">🟢 Empty</button>
+                                    <button style="background: #8bc34a; color: white; border: none; padding: 8px 12px; border-radius: 12px; font-size: 12px;">🟡 Light</button>
+                                    <button style="background: #ff9800; color: white; border: none; padding: 8px 12px; border-radius: 12px; font-size: 12px;">🟠 Busy</button>
+                                    <button style="background: #f0f0f0; border: 1px solid #ddd; padding: 8px 12px; border-radius: 12px; font-size: 12px;">🔴 Packed</button>
+                                </div>
+                                
+                                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Wait time (optional)</label>
+                                <input type="number" placeholder="minutes" style="width: 80px; padding: 8px; border: 1px solid #ddd; border-radius: 8px;">
+                            </div>
+                            
+                            <div style="display: flex; gap: 10px;">
+                                <button style="flex: 1; background: #7C3AED; color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold;">📍 Pin Location</button>
+                                <button style="background: #f0f0f0; border: 1px solid #ddd; padding: 15px 20px; border-radius: 8px;">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Crowd Reporting Interface -->
+                <div class="wireframe">
+                    <h3>16. Update Crowd Level</h3>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Update: Main Beer Garden</div>
+                            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+                                <div style="font-size: 20px; margin-bottom: 10px;">🍺</div>
+                                <div style="font-weight: bold; margin-bottom: 5px;">You're near Main Beer Garden</div>
+                                <div style="font-size: 12px; color: #666;">Help others by sharing current conditions</div>
+                            </div>
+                            
+                            <div style="background: #f0f0f0; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                                <div style="font-weight: bold; margin-bottom: 10px;">Previous reports:</div>
+                                <div style="font-size: 12px; margin-bottom: 5px;">• 3 min ago: 🔴 Packed (~8 min wait)</div>
+                                <div style="font-size: 12px; margin-bottom: 5px;">• 7 min ago: 🟠 Busy (~5 min wait)</div>
+                                <div style="font-size: 12px;">• 12 min ago: 🟠 Busy (~6 min wait)</div>
+                            </div>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <div style="font-weight: bold; margin-bottom: 15px;">How crowded is it right now?</div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                                    <button style="background: #4caf50; color: white; border: none; padding: 20px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                        <span style="font-size: 24px;">🟢</span>
+                                        <span style="font-weight: bold;">Empty</span>
+                                        <span style="font-size: 12px;">Walk right up</span>
+                                    </button>
+                                    <button style="background: #8bc34a; color: white; border: none; padding: 20px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                        <span style="font-size: 24px;">🟡</span>
+                                        <span style="font-weight: bold;">Light</span>
+                                        <span style="font-size: 12px;">Short wait</span>
+                                    </button>
+                                    <button style="background: #ff9800; color: white; border: none; padding: 20px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                        <span style="font-size: 24px;">🟠</span>
+                                        <span style="font-weight: bold;">Busy</span>
+                                        <span style="font-size: 12px;">Moderate wait</span>
+                                    </button>
+                                    <button style="background: #f44336; color: white; border: none; padding: 20px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 8px; border: 3px solid #333;">
+                                        <span style="font-size: 24px;">🔴</span>
+                                        <span style="font-weight: bold;">Packed</span>
+                                        <span style="font-size: 12px;">Long wait</span>
+                                    </button>
+                                </div>
+                                
+                                <div style="margin-bottom: 15px;">
+                                    <label style="display: block; font-weight: bold; margin-bottom: 8px;">How long did you wait? (optional)</label>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button style="background: #f0f0f0; border: 1px solid #ddd; padding: 8px 12px; border-radius: 12px; font-size: 12px;">0 min</button>
+                                        <button style="background: #f0f0f0; border: 1px solid #ddd; padding: 8px 12px; border-radius: 12px; font-size: 12px;">2-3 min</button>
+                                        <button style="background: #f0f0f0; border: 1px solid #ddd; padding: 8px 12px; border-radius: 12px; font-size: 12px;">5 min</button>
+                                        <button style="background: #7C3AED; color: white; border: none; padding: 8px 12px; border-radius: 12px; font-size: 12px;">8 min</button>
+                                        <button style="background: #f0f0f0; border: 1px solid #ddd; padding: 8px 12px; border-radius: 12px; font-size: 12px;">10+ min</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; gap: 10px;">
+                                <button style="flex: 1; background: #7C3AED; color: white; border: none; padding: 15px; border-radius: 8px; font-weight: bold;">📊 Update Status</button>
+                                <button style="background: #f0f0f0; border: 1px solid #ddd; padding: 15px 20px; border-radius: 8px;">Skip</button>
+                            </div>
+                            
+                            <div style="background: #e8f5e8; padding: 10px; border-radius: 4px; margin-top: 15px; font-size: 12px; text-align: center;">
+                                Thanks for helping the community! 🙌
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>9:41</span>
+                                <span>●●●</span>
+                            </div>
+                            <div class="header">Festival Chat Admin</div>
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 20px; font-weight: bold; color: #7C3AED;">147</div>
+                                        <div style="font-size: 12px; color: #666;">Active Users</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 20px; font-weight: bold; color: #4caf50;">8</div>
+                                        <div style="font-size: 12px; color: #666;">Active Zones</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 20px; font-weight: bold; color: #ff9800;">2.3k</div>
+                                        <div style="font-size: 12px; color: #666;">Messages/hr</div>
+                                    </div>
+                                </div>
+                                <div style="background: #e8f5e8; padding: 8px; border-radius: 4px; text-align: center; font-size: 12px;">
+                                    Network Health: <strong>Excellent</strong> • Avg latency: 1.2s
+                                </div>
+                            </div>
+                            
+                            <div class="user-list">
+                                <h4 style="margin: 0 0 10px 0;">Zone & POI Management</h4>
+                                <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                                    <div style="font-weight: bold; margin-bottom: 8px;">POI Statistics Today</div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; font-size: 12px; text-align: center;">
+                                        <div>
+                                            <div style="font-size: 16px; font-weight: bold; color: #2196f3;">23</div>
+                                            <div>🚻 Bathrooms</div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 16px; font-weight: bold; color: #ff9800;">18</div>
+                                            <div>🍺 Beer stands</div>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 16px; font-weight: bold; color: #4caf50;">31</div>
+                                            <div>🍕 Food spots</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="user-item">
+                                    <div style="width: 30px; height: 30px; background: #7C3AED; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px;">MS</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Main Stage North</div>
+                                        <div class="user-distance">45 users • 12 POIs reported</div>
+                                    </div>
+                                    <button style="background: #f0f0f0; border: 1px solid #ddd; padding: 4px 8px; border-radius: 4px; font-size: 10px;">Edit</button>
+                                </div>
+                                <div class="user-item">
+                                    <div style="width: 30px; height: 30px; background: #ff6b35; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px;">ES</div>
+                                    <div class="user-info">
+                                        <div class="user-name">Electronic Stage</div>
+                                        <div class="user-distance">38 users • 8 POIs reported</div>
+                                    </div>
+                                    <button style="background: #f0f0f0; border: 1px solid #ddd; padding: 4px 8px; border-radius: 4px; font-size: 10px;">Edit</button>
+                                </div>
+                                <button style="background: #7C3AED; color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; margin-top: 10px;">+ Create New Zone</button>
+                            </div>
+                            
+                            <div style="background: #fff3cd; padding: 12px; border-radius: 8px; margin-top: 15px; font-size: 12px;">
+                                <div style="font-weight: bold; margin-bottom: 5px;">Crowd Insights</div>
+                                <div style="margin-bottom: 3px;">• North bathrooms: Consistently less crowded</div>
+                                <div style="margin-bottom: 3px;">• Main beer garden: Peak times 2-4pm, 7-9pm</div>
+                                <div style="margin-bottom: 3px;">• Food court: Busiest during set breaks</div>
+                                <div>• 94% report accuracy rate today</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-note">
+                <strong>Phase 4 Features:</strong> Private group formation, emergency broadcast system, festival map integration with crowd-sourced POI data, real-time crowd density tracking for bathrooms and beer lines, and admin dashboard for event management. Enhanced mesh routing with priority queues for emergency messages.
+            </div>
+        </div>
+
+        <!-- TECHNICAL NOTES -->
+        <div class="phase-section" style="background: #f8f9fa;">
+            <h2 class="phase-title" style="color: #495057;">Technical Implementation Notes</h2>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h4>Performance Considerations</h4>
+                    <ul style="font-size: 14px; line-height: 1.6;">
+                        <li><strong>Battery Optimization:</strong> Limit concurrent connections, use efficient protocols</li>
+                        <li><strong>Memory Management:</strong> LRU cache for messages, cleanup old connections</li>
+                        <li><strong>Network Efficiency:</strong> Message compression, smart routing algorithms</li>
+                        <li><strong>UI Responsiveness:</strong> Virtual scrolling for chat, debounced location updates</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4>Security & Privacy</h4>
+                    <ul style="font-size: 14px; line-height: 1.6;">
+                        <li><strong>Message Encryption:</strong> End-to-end encryption for private groups</li>
+                        <li><strong>Location Privacy:</strong> Opt-in precise location, approximate by default</li>
+                        <li><strong>Data Minimization:</strong> No persistent user accounts, temporary IDs</li>
+                        <li><strong>Spam Prevention:</strong> Rate limiting, reputation scoring</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <h4>Responsive Design</h4>
+                <p style="font-size: 14px; line-height: 1.6; margin-bottom: 15px;">
+                    All wireframes shown are for mobile devices. The app should adapt to different screen sizes with:
+                </p>
+                <ul style="font-size: 14px; line-height: 1.6;">
+                    <li>Tablet layout with side-by-side chat and compass views</li>
+                    <li>Desktop version with multiple columns and enhanced map view</li>
+                    <li>Landscape mode optimizations for better compass visibility</li>
+                    <li>Accessibility features: high contrast mode, voice navigation</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- STYLE GUIDE -->
+        <div class="phase-section" style="background: #7C3AED; color: white;">
+            <h2 style="color: white; border-bottom: 3px solid white; padding-bottom: 10px; margin-bottom: 30px;">Design System & Style Guide</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                <div>
+                    <h4 style="color: white; margin-bottom: 15px;">Colors</h4>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 20px; height: 20px; background: #7C3AED; border-radius: 4px; border: 1px solid white;"></div>
+                            <span style="font-size: 14px;">Primary: #7C3AED</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 20px; height: 20px; background: #4caf50; border-radius: 4px;"></div>
+                            <span style="font-size: 14px;">Success: #4caf50</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 20px; height: 20px; background: #f44336; border-radius: 4px;"></div>
+                            <span style="font-size: 14px;">Emergency: #f44336</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 20px; height: 20px; background: #ff9800; border-radius: 4px;"></div>
+                            <span style="font-size: 14px;">Warning: #ff9800</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 style="color: white; margin-bottom: 15px;">Typography</h4>
+                    <div style="font-size: 14px; line-height: 1.6;">
+                        <div style="margin-bottom: 8px;"><strong>Headers:</strong> Bold, 18-24px</div>
+                        <div style="margin-bottom: 8px;"><strong>Body:</strong> Regular, 14-16px</div>
+                        <div style="margin-bottom: 8px;"><strong>Captions:</strong> Regular, 12px</div>
+                        <div><strong>Font:</strong> System font stack</div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 style="color: white; margin-bottom: 15px;">Components</h4>
+                    <div style="font-size: 14px; line-height: 1.6;">
+                        <div style="margin-bottom: 8px;">• Rounded corners: 8-25px</div>
+                        <div style="margin-bottom: 8px;">• Shadow: subtle elevation</div>
+                        <div style="margin-bottom: 8px;">• Buttons: 40px height minimum</div>
+                        <div>• Touch targets: 44px minimum</div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 style="color: white; margin-bottom: 15px;">Iconography</h4>
+                    <div style="font-size: 24px; margin-bottom: 10px;">🎵 📍 💬 🚨 👥 📳</div>
+                    <div style="font-size: 14px;">
+                        Combination of emoji and line icons for universal recognition and festival theme
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 1);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+            }
+        }
+    </style>
+</body>
+</html>
