@@ -254,32 +254,18 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
                 {navigator.share ? '📤 Share Room Link' : '📋 Copy Room Link'}
               </button>
               
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2">
                 <button
                   onClick={copyRoomId}
-                  className="py-2 bg-gray-200 hover:bg-gray-300 rounded text-sm font-medium transition"
+                  className="py-2 bg-gray-700 hover:bg-gray-800 text-white rounded text-sm font-medium transition"
                 >
                   Copy Room ID
-                </button>
-                <button
-                  onClick={generateInviteQR}
-                  className="py-2 bg-gray-200 hover:bg-gray-300 rounded text-sm font-medium transition"
-                >
-                  🔄 Refresh QR
                 </button>
               </div>
             </div>
 
-            {/* Network Settings */}
-            <button
-              onClick={() => setShowNetworkSetup(true)}
-              className="w-full py-2 text-xs text-gray-600 hover:text-gray-800 underline"
-            >
-              🌐 Change Network Settings
-            </button>
-
             {/* Festival Tips */}
-            <div className="mt-4 p-3 bg-yellow-50 rounded-lg">
+            <div className="mt-6 p-3 bg-yellow-50 rounded-lg">
               <p className="text-xs text-yellow-800 font-medium mb-1">🎪 Festival Tips:</p>
               <ul className="text-xs text-yellow-700 space-y-1">
                 <li>• Works offline once connected</li>
