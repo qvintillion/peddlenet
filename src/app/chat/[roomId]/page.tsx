@@ -2,10 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useP2PPersistent } from '@/hooks/use-p2p-persistent';
+import { useP2PMobileOptimized } from '@/hooks/use-p2p-mobile-optimized';
+import { MobileConnectionError, MobileSignalingStatus, MobileNetworkInfo } from '@/components/MobileConnectionError';
+import MobileDiagnostics from '@/components/MobileDiagnostics';
 import type { Message } from '@/lib/types';
 import { DebugPanel } from '@/components/DebugPanel';
 import { QRModal } from '@/components/QRModal';
+import { NetworkStatus, ConnectionError } from '@/components/NetworkStatus';
+import { RoomCodeDisplay } from '@/components/RoomCode';
 import { P2PDebugUtils } from '@/utils/p2p-debug';
 import { MobileConnectionDebug } from '@/utils/mobile-debug';
 import { QRPeerUtils } from '@/utils/qr-peer-utils';
@@ -24,21 +28,91 @@ export default function ChatRoomPage() {
   const [showQRModal, setShowQRModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const p2pHook = useP2PPersistent(roomId, displayName);
+  const [connectionError, setConnectionError] = useState<{type: string, message: string} | null>(null);
+
   const {
     peerId,
     status,
+    isRetrying,
+    retryCount,
+    isSignalingConnected,
     connectToPeer,
     sendMessage,
     onMessage,
     getConnectedPeers,
-  } = p2pHook;
+    forceReconnect,
+    roomDiscovery, // NEW: Optional room discovery features
+  } = useP2PMobileOptimized(roomId, displayName);
 
-  // Get/set display name
+  // Detect if we're on mobile for UI purposes
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsMobile(/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+    }
+  }, []);
+
+  // Mobile error detection
+  useEffect(() => {
+    if (!isSignalingConnected && peerId) {
+      setConnectionError({
+        type: 'disconnected',
+        message: 'Lost connection to signaling server'
+      });
+    } else if (isSignalingConnected && connectionError?.type === 'disconnected') {
+      setConnectionError(null);
+    }
+  }, [isSignalingConnected, peerId, connectionError]);
+
+  // Clear errors when successfully connected
+  useEffect(() => {
+    if (status.connectedPeers > 0 && connectionError) {
+      setConnectionError(null);
+    }
+  }, [status.connectedPeers, connectionError]);
+
+  // Check if this is a session restoration
+  const [isSessionRestored, setIsSessionRestored] = useState(false);
+  
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    // Set display name
+    const { SessionPersistence } = require('@/utils/connection-resilience');
+    const session = SessionPersistence.getSession();
+    
+    if (session && session.roomId === roomId && session.displayName && !displayName) {
+      setIsSessionRestored(true);
+      // Hide the notification after 5 seconds
+      setTimeout(() => setIsSessionRestored(false), 5000);
+    }
+  }, [roomId, displayName]);
+
+  // Get/set display name and restore session
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Clean up stale peer data first
+    console.log('🧠 Cleaning up stale peer data for room:', roomId);
+    QRPeerUtils.cleanupOldHostData(roomId);
+    
+    // Try to restore session first
+    const { SessionPersistence } = require('@/utils/connection-resilience');
+    const session = SessionPersistence.getSession();
+    
+    // Only restore session if it's recent (less than 5 minutes old)
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    const sessionIsRecent = session && session.timestamp && session.timestamp > fiveMinutesAgo;
+    
+    if (session && session.roomId === roomId && session.displayName && sessionIsRecent) {
+      console.log('📝 Restoring recent session for:', session.displayName);
+      setDisplayName(session.displayName);
+      return;
+    } else if (session && !sessionIsRecent) {
+      console.log('🕰️ Session is stale, clearing it');
+      SessionPersistence.clearSession();
+    }
+    
+    // Set display name normally if no valid session
     const storedName = localStorage.getItem('displayName');
     if (storedName) {
       setDisplayName(storedName);
@@ -47,7 +121,7 @@ export default function ChatRoomPage() {
       setDisplayName(name);
       localStorage.setItem('displayName', name);
     }
-  }, []);
+  }, [roomId]);
 
   // Handle incoming messages
   useEffect(() => {
@@ -70,14 +144,25 @@ export default function ChatRoomPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const hostPeerId = urlParams.get('host');
     const hostName = urlParams.get('name');
+    const timestamp = urlParams.get('t');
     
     if (hostPeerId && hostName) {
       console.log('📱 Found host peer info in URL:', hostPeerId);
       console.log('📱 My current peer ID:', peerId);
+      console.log('📱 Host peer timestamp:', timestamp);
       
       // Don't try to connect to ourselves
       if (hostPeerId === peerId) {
         console.log('🙅 Skipping self-connection');
+        return;
+      }
+      
+      // Check if QR code is fresh (not older than 10 minutes)
+      const qrTimestamp = parseInt(timestamp || '0');
+      const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+      
+      if (qrTimestamp < tenMinutesAgo) {
+        console.log('🕰️ QR code is stale, not attempting connection');
         return;
       }
       
@@ -90,10 +175,28 @@ export default function ChatRoomPage() {
       // Try to connect to host peer after a delay
       console.log('📱 Will attempt connection to host peer in 3 seconds...');
       setTimeout(() => {
-        QRPeerUtils.connectToHostPeer(roomId, p2pHook);
+        // Double-check that we're not trying to connect to ourselves
+        const currentPeerId = window.globalPeer?.id;
+        if (hostPeerId === currentPeerId) {
+          console.log('🙅 Aborting connection - would be self-connection');
+          return;
+        }
+        
+        QRPeerUtils.connectToHostPeer(roomId, {
+          peerId,
+          status,
+          isRetrying,
+          retryCount,
+          isSignalingConnected,
+          connectToPeer,
+          sendMessage,
+          onMessage,
+          getConnectedPeers,
+          forceReconnect,
+        });
       }, 3000);
     }
-  }, [peerId, roomId, p2pHook]);
+  }, [peerId, roomId, connectToPeer, getConnectedPeers, sendMessage, onMessage, forceReconnect]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -142,11 +245,17 @@ export default function ChatRoomPage() {
         setShowManualConnect(false);
         alert('Connected successfully!');
       } else {
-        alert('Failed to connect. Check the Peer ID and try again.');
+        setConnectionError({
+          type: 'peer-unavailable',
+          message: 'Failed to connect to peer'
+        });
       }
     } catch (error) {
       console.error('Failed to connect:', error);
-      alert('Connection failed.');
+      setConnectionError({
+        type: 'network',
+        message: 'Connection failed due to network error'
+      });
     }
   };
 
@@ -161,6 +270,37 @@ export default function ChatRoomPage() {
     <div className="flex flex-col h-screen bg-gray-100">
       {/* Enhanced Header */}
       <div className="bg-white shadow-md p-4">
+        {/* Session Restoration Notification */}
+        {isSessionRestored && (
+          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <span className="text-blue-600">📝</span>
+              <div className="text-sm">
+                <span className="font-medium text-blue-900">Session Restored!</span>
+                <p className="text-blue-700 text-xs mt-1">
+                  Welcome back! Generate a new QR code below to reconnect with others.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Mobile Connection Error */}
+        {connectionError && (
+          <MobileConnectionError
+            error={connectionError}
+            isSignalingConnected={isSignalingConnected}
+            onRetry={() => {
+              setConnectionError(null);
+              forceReconnect();
+            }}
+            onDiagnostics={() => {
+              // Toggle debug panel with mobile diagnostics
+              setShowDebug(!showDebug);
+            }}
+          />
+        )}
+        
         <div className="flex justify-between items-center mb-2">
           <div>
             <h1 className="text-xl font-bold">🎪 {roomId}</h1>
@@ -198,21 +338,71 @@ export default function ChatRoomPage() {
               <span className="text-sm font-medium text-gray-900">
                 {status.isConnected ? `Connected to ${status.connectedPeers} ${status.connectedPeers === 1 ? 'person' : 'people'}` : 'Waiting for connections...'}
               </span>
+              {isRetrying && (
+                <span className="text-xs text-blue-600">
+                  (Attempt {retryCount})
+                </span>
+              )}
             </div>
             
             {!status.isConnected && (
               <button
-                onClick={() => console.log('🔄 Retry not available in persistent mode')}
-                className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                onClick={forceReconnect}
+                disabled={isRetrying}
+                className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
-                🔄 Retry
+                {isRetrying ? (
+                  <>
+                    <span className="animate-spin mr-1">🔄</span>
+                    Retrying...
+                  </>
+                ) : (
+                  '🔄 Retry'
+                )}
               </button>
             )}
           </div>
           
+          {/* Network Status Indicator */}
+          <NetworkStatus className="mb-2" />
+          
+          {/* Mobile Network Info */}
+          <MobileNetworkInfo className="mb-2" />
+          
+          {/* Mobile Signaling Status */}
+          <MobileSignalingStatus 
+            isConnected={isSignalingConnected} 
+            reconnectAttempts={retryCount}
+          />
+          
+          {/* NEW: Room Discovery Status (optional) */}
+          {roomDiscovery?.isEnabled && (
+            <div className="text-xs text-gray-600 mb-2">
+              <div className="flex items-center space-x-2">
+                <span className={`w-2 h-2 rounded-full ${
+                  roomDiscovery.isConnected ? 'bg-blue-500' : 'bg-gray-400'
+                }`} />
+                <span>
+                  {roomDiscovery.isConnected ? 
+                    `Room discovery: ${roomDiscovery.discoveredPeers.length} found` :
+                    'Room discovery: offline'
+                  }
+                </span>
+              </div>
+              {roomDiscovery.discoveredPeers.length > status.connectedPeers && (
+                <div className="text-orange-600 bg-orange-50 p-1 rounded mt-1 text-xs">
+                  🔍 Found {roomDiscovery.discoveredPeers.length} people, connecting...
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Room Code Display */}
+          <RoomCodeDisplay roomId={roomId} className="mb-2" />
+          
           {status.connectedPeers === 0 && (
             <div className="text-xs text-gray-600 bg-yellow-50 p-2 rounded border-l-4 border-yellow-400">
-              💡 <strong>Tip:</strong> Share the QR code above to invite others for instant connections!
+              💡 <strong>Tip:</strong> {displayName ? 'Generate a new QR code below' : 'Share the QR code below'} to invite others for instant connections!
             </div>
           )}
           
@@ -344,15 +534,41 @@ export default function ChatRoomPage() {
         </div>
       </form>
 
-      {/* Debug Panel - Development Only */}
-      {process.env.NODE_ENV === 'development' && showDebug && (
-        <DebugPanel
-          peerId={peerId}
-          connectedPeers={getConnectedPeers()}
-          status={status}
-          roomId={roomId}
-          p2pHook={p2pHook}
-        />
+      {/* Debug Panel - Development & Mobile Diagnostics */}
+      {showDebug && (
+        <div className="border-t border-gray-200 bg-gray-50">
+          <div className="p-4">
+            <MobileDiagnostics
+              peerId={peerId}
+              roomId={roomId}
+              isSignalingConnected={isSignalingConnected}
+              connectedPeers={status.connectedPeers}
+            />
+            
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-4">
+                <DebugPanel
+                  peerId={peerId}
+                  connectedPeers={getConnectedPeers()}
+                  status={status}
+                  roomId={roomId}
+                  p2pHook={{
+                    peerId,
+                    status,
+                    isRetrying,
+                    retryCount,
+                    isSignalingConnected,
+                    connectToPeer,
+                    sendMessage,
+                    onMessage,
+                    getConnectedPeers,
+                    forceReconnect,
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* QR Modal */}

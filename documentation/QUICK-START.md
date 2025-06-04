@@ -17,11 +17,12 @@ Get Festival Chat running in under 5 minutes!
 # Navigate to project
 cd festival-chat
 
-# Make scripts executable (one-time)
-chmod +x make-executable.sh
-./make-executable.sh
+# Choose your development mode:
 
-# Start HTTPS development (required for mobile)
+# Option A: Same WiFi network (simpler, faster)
+./mobile-ip-fix.sh
+
+# Option B: Cross-network testing (uses ngrok)
 ./mobile-dev.sh
 ```
 

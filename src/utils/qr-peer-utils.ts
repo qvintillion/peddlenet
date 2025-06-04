@@ -126,6 +126,14 @@ export const QRPeerUtils = {
     // Update attempt tracking
     hostInfo.connectionAttempts = (hostInfo.connectionAttempts || 0) + 1;
     hostInfo.lastConnectionAttempt = now;
+    
+    // If we've failed 2+ times, this host peer is likely stale
+    if (hostInfo.connectionAttempts >= 2) {
+      console.log('🕰️ Host peer appears stale after 2 failed attempts, removing');
+      localStorage.removeItem(`host_peer_v3_${roomId}`);
+      return false;
+    }
+    
     localStorage.setItem(`host_peer_v3_${roomId}`, JSON.stringify(hostInfo));
     
     console.log(`📱 Attempting connection to host: ${hostInfo.hostPeerId} (attempt ${hostInfo.connectionAttempts})`);
@@ -138,17 +146,19 @@ export const QRPeerUtils = {
         hostInfo.connectionAttempts = 0;
         localStorage.setItem(`host_peer_v3_${roomId}`, JSON.stringify(hostInfo));
       } else {
-        console.log('❌ Failed to connect to host peer');
-        
-        // Give up after 3 attempts
-        if (hostInfo.connectionAttempts >= 3) {
-          console.log('🚫 Giving up on host peer after 3 attempts');
-          localStorage.removeItem(`host_peer_v3_${roomId}`);
-        }
+        console.log('❌ Failed to connect to host peer - removing stale data');
+        localStorage.removeItem(`host_peer_v3_${roomId}`);
       }
       return result;
     } catch (e) {
       console.error('💥 Error connecting to host peer:', e);
+      
+      // If error indicates peer doesn't exist, remove stale data immediately
+      if (e.message && (e.message.includes('peer-unavailable') || e.message.includes('could not connect'))) {
+        console.log('🧠 Peer unavailable error detected, clearing stale host data');
+        localStorage.removeItem(`host_peer_v3_${roomId}`);
+      }
+      
       return false;
     }
   },

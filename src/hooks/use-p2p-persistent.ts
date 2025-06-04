@@ -3,6 +3,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Message, ConnectionStatus } from '@/lib/types';
 import { generateCompatibleUUID } from '@/utils/peer-utils';
+import { 
+  connectionRetry, 
+  ConnectionHealthMonitor, 
+  SessionPersistence,
+  type RetryConfig,
+  type ConnectionMetrics
+} from '@/utils/connection-resilience';
 
 declare global {
   interface Window {
@@ -16,6 +23,8 @@ type DataConnection = any;
 export function useP2PPersistent(roomId: string, displayName?: string) {
   const [peerId, setPeerId] = useState<string | null>(null);
   const [connections, setConnections] = useState<Map<string, DataConnection>>(new Map());
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [status, setStatus] = useState<ConnectionStatus>({
     isConnected: false,
     connectedPeers: 0,
@@ -24,6 +33,7 @@ export function useP2PPersistent(roomId: string, displayName?: string) {
   });
   
   const effectiveDisplayName = displayName || 'Anonymous';
+  const healthMonitor = ConnectionHealthMonitor.getInstance();
   
   // Use refs to prevent recreations
   const connectionsRef = useRef<Map<string, DataConnection>>(new Map());
@@ -156,39 +166,65 @@ export function useP2PPersistent(roomId: string, displayName?: string) {
     }
 
     console.log('🚀 Attempting connection to:', targetPeerId);
+    setIsRetrying(true);
+
+    const connectFn = async (): Promise<boolean> => {
+      return new Promise<boolean>((resolve, reject) => {
+        try {
+          const conn = peer.connect(targetPeerId, {
+            reliable: true,
+            serialization: 'json',
+            metadata: { roomId, displayName: effectiveDisplayName }
+          });
+
+          const timeout = setTimeout(() => {
+            try { conn.close(); } catch (e) { /* ignore */ }
+            reject(new Error('Connection timeout'));
+          }, 8000);
+
+          conn.on('open', () => {
+            clearTimeout(timeout);
+            console.log('✅ Successfully connected to:', targetPeerId);
+            setupConnection(conn);
+            resolve(true);
+          });
+
+          conn.on('error', (error: any) => {
+            clearTimeout(timeout);
+            reject(new Error(error.type || 'Connection failed'));
+          });
+        } catch (error) {
+          reject(error);
+        }
+      });
+    };
 
     try {
-      const conn = peer.connect(targetPeerId, {
-        reliable: true,
-        serialization: 'json',
-        metadata: { roomId, displayName: effectiveDisplayName }
+      const result = await connectionRetry(
+        connectFn,
+        {
+          maxAttempts: 3,
+          baseDelay: 1000,
+          maxDelay: 5000,
+          backoffMultiplier: 2
+        },
+        (attempt, error) => {
+          setRetryCount(attempt);
+          console.log(`🔄 Connection attempt ${attempt}${error ? ` failed: ${error.message}` : ''}`);
+        }
+      );
+
+      // Record metrics
+      result.metrics.forEach(metric => {
+        healthMonitor.recordConnectionAttempt(metric);
       });
 
-      return new Promise<boolean>((resolve) => {
-        const timeout = setTimeout(() => {
-          console.log('⏰ Connection timeout:', targetPeerId);
-          try { conn.close(); } catch (e) { /* ignore */ }
-          resolve(false);
-        }, 15000);
-
-        conn.on('open', () => {
-          clearTimeout(timeout);
-          console.log('✅ Successfully connected to:', targetPeerId);
-          setupConnection(conn);
-          resolve(true);
-        });
-
-        conn.on('error', (error: any) => {
-          clearTimeout(timeout);
-          console.error('❌ Connection failed:', targetPeerId, error.type || error);
-          resolve(false);
-        });
-      });
-    } catch (error) {
-      console.error('💥 Connection exception:', error);
-      return false;
+      return result.success;
+    } finally {
+      setIsRetrying(false);
+      setRetryCount(0);
     }
-  }, [peerId, roomId, effectiveDisplayName, setupConnection]);
+  }, [peerId, roomId, effectiveDisplayName, setupConnection, healthMonitor]);
 
   const sendMessage = useCallback((message: Omit<Message, 'id' | 'timestamp'>): string => {
     const fullMessage: Message = {
@@ -257,6 +293,8 @@ export function useP2PPersistent(roomId: string, displayName?: string) {
 
       try {
         console.log('🔧 Creating persistent PeerJS instance...');
+        const initStartTime = Date.now();
+        
         const peer = new window.Peer(undefined, {
           debug: 2, // Enable debug mode to see ICE candidates
           config: {
@@ -288,6 +326,17 @@ export function useP2PPersistent(roomId: string, displayName?: string) {
           clearTimeout(initTimeout);
           console.log('✅ Persistent P2P ready with peer ID:', id);
           setPeerId(id);
+          
+          // Save session for reconnection
+          SessionPersistence.saveSession(roomId, effectiveDisplayName, id);
+          
+          // Record successful peer creation
+          healthMonitor.recordConnectionAttempt({
+            timestamp: Date.now(),
+            connectionTime: Date.now() - initStartTime,
+            success: true,
+            attemptNumber: 1
+          });
         });
 
         peer.on('connection', (conn: DataConnection) => {
@@ -298,6 +347,15 @@ export function useP2PPersistent(roomId: string, displayName?: string) {
         peer.on('error', (error: any) => {
           clearTimeout(initTimeout);
           console.error('❌ PeerJS error:', error.type || error);
+          
+          // Record failed peer creation
+          healthMonitor.recordConnectionAttempt({
+            timestamp: Date.now(),
+            connectionTime: Date.now() - initStartTime,
+            success: false,
+            errorType: error.type || 'peer_initialization_failed',
+            attemptNumber: 1
+          });
         });
 
         peer.on('disconnected', () => {
@@ -334,12 +392,31 @@ export function useP2PPersistent(roomId: string, displayName?: string) {
   return {
     peerId,
     status,
+    isRetrying,
+    retryCount,
     connectToPeer,
     sendMessage,
     onMessage,
     getConnectedPeers: () => Array.from(connectionsRef.current.keys()),
-    forceReconnect: () => {
+    forceReconnect: async () => {
       console.log('🔄 Manual reconnect triggered');
+      
+      // Clear current connections
+      connectionsRef.current.clear();
+      setConnections(new Map());
+      
+      // Reset health monitor
+      healthMonitor.reset();
+      
+      // Don't try to restore old peer connections - peer IDs change after refresh
+      // Instead, this just clears the current state and lets the user generate new QR codes
+      console.log('📝 Connection state cleared - generate new QR code to reconnect');
+      
+      return true;
     },
+    clearSession: () => {
+      SessionPersistence.clearSession();
+      console.log('🗑️ Session cleared manually');
+    }
   };
 }

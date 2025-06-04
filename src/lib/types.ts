@@ -31,4 +31,11 @@ export interface ConnectionStatus {
   connectedPeers: number;
   networkReach: 'isolated' | 'local' | 'global';
   signalStrength: 'none' | 'weak' | 'medium' | 'strong';
+  
+  // NEW: Optional room discovery status
+  roomDiscovery?: {
+    isConnected: boolean;
+    discoveredPeers: number;
+    connectedPeers: number;
+  };
 }
