@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { getSignalingConfig, testSignalingConnectivity, getSignalingDebugInfo } from '@/utils/signaling-config';
 
 interface RoomPeer {
   peerId: string;
@@ -26,82 +27,30 @@ export function useSignalingRoomDiscovery(
   const [roomPeers, setRoomPeers] = useState<RoomPeer[]>([]);
   const [isEnabled, setIsEnabled] = useState(true);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const [currentSignalingUrl, setCurrentSignalingUrl] = useState<string | null>(null);
+  
   const socketRef = useRef<Socket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const healthCheckIntervalRef = useRef<NodeJS.Timeout>();
+  const maxReconnectAttempts = 3;
 
-  // FIXED: Better signaling URL detection for mobile
-  const getSignalingUrl = useCallback(() => {
-    if (typeof window === 'undefined') return null;
-    
-    // Environment variable takes priority (set by mobile-dev.sh)
-    const envSignalingUrl = process.env.NEXT_PUBLIC_SIGNALING_SERVER;
-    if (envSignalingUrl) {
-      console.log('🔌 Using configured signaling server:', envSignalingUrl);
-      return envSignalingUrl;
-    }
-    
-    // For mobile testing: detect if we're on ngrok and try to construct signaling URL
-    const currentUrl = window.location.origin;
-    const currentHost = window.location.hostname;
-    
-    if (currentHost.includes('ngrok')) {
-      // We're on ngrok, but we need a separate tunnel for signaling
-      // This will only work if dual tunnels are set up properly
-      console.log('🔌 Detected ngrok environment, need separate signaling tunnel');
-      console.log('🔌 Check mobile-dev.sh script for proper dual tunnel setup');
-      return null; // Fallback to P2P-only mode
-    }
-    
-    // Local development - check if signaling server is actually running
-    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-      // Test if signaling server is reachable before returning URL
-      console.log('🔌 Testing localhost signaling server...');
-      return 'http://localhost:3001';
-    }
-    
-    // Production or unknown environment - disable signaling
-    console.log('🔌 Unknown environment, disabling signaling (using direct P2P only)');
-    return null;
-  }, []);
-
-  // Test signaling server connectivity
-  const testSignalingConnectivity = useCallback(async (url: string): Promise<boolean> => {
-    try {
-      console.log('🔍 Testing signaling server connectivity:', url);
-      const response = await fetch(`${url}/health`, { 
-        method: 'GET',
-        timeout: 5000,
-        signal: AbortSignal.timeout(5000)
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Signaling server health check passed:', data);
-        return true;
-      } else {
-        console.warn('⚠️ Signaling server health check failed:', response.status);
-        return false;
-      }
-    } catch (error) {
-      console.warn('❌ Signaling server unreachable:', error);
-      return false;
-    }
-  }, []);
-
-  // Enhanced connection with mobile optimizations
+  // Enhanced connection with unified config
   const connectToSignaling = useCallback(async () => {
     if (!myPeerId || !roomId || !isEnabled || socketRef.current?.connected) return;
 
-    const signalingUrl = getSignalingUrl();
-    if (!signalingUrl) {
-      console.log('🔌 No signaling server configured - using direct P2P only');
+    const signalingConfig = getSignalingConfig();
+    
+    if (!signalingConfig.enabled || !signalingConfig.url) {
+      console.log('🔌 Signaling disabled:', signalingConfig.reason || 'No URL configured');
       setIsEnabled(false);
+      setCurrentSignalingUrl(null);
       return;
     }
 
-    // Test connectivity first
-    const isReachable = await testSignalingConnectivity(signalingUrl);
+    setCurrentSignalingUrl(signalingConfig.url);
+
+    // Test connectivity first (with timeout)
+    const isReachable = await testSignalingConnectivity(signalingConfig.url);
     if (!isReachable) {
       console.log('🔌 Signaling server not reachable - falling back to direct P2P');
       setIsEnabled(false);
@@ -109,22 +58,26 @@ export function useSignalingRoomDiscovery(
     }
 
     try {
-      console.log('🔌 Connecting to signaling server:', signalingUrl);
+      console.log('🔌 Connecting to signaling server:', signalingConfig.url);
       setConnectionAttempts(prev => prev + 1);
 
-      const socket = io(signalingUrl, {
+      const socket = io(signalingConfig.url, {
         transports: ['websocket', 'polling'],
-        timeout: 8000, // Longer timeout for mobile networks
+        timeout: 8000,
         forceNew: true,
         autoConnect: true,
         reconnection: true,
-        reconnectionAttempts: 3,
+        reconnectionAttempts: maxReconnectAttempts,
         reconnectionDelay: 2000,
-        // Mobile-specific socket.io options
+        // Enhanced mobile support
         upgrade: true,
         rememberUpgrade: true,
         pingTimeout: 60000,
-        pingInterval: 25000
+        pingInterval: 25000,
+        // Add CORS handling for different environments
+        withCredentials: false,
+        // Enhanced error handling
+        closeOnBeforeunload: false
       });
 
       socketRef.current = socket;
@@ -160,14 +113,14 @@ export function useSignalingRoomDiscovery(
           clearInterval(healthCheckIntervalRef.current);
         }
         
-        // Only attempt reconnection for certain disconnect reasons
-        if (reason === 'io server disconnect' || reason === 'ping timeout') {
+        // Enhanced reconnection logic
+        if (reason === 'io server disconnect' || reason === 'ping timeout' || reason === 'transport close') {
           console.log('🔄 Will attempt to reconnect to signaling server...');
           if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
           }
           reconnectTimeoutRef.current = setTimeout(() => {
-            if (connectionAttempts < 5) {
+            if (connectionAttempts < maxReconnectAttempts) {
               connectToSignaling();
             } else {
               console.log('🔌 Max reconnection attempts reached, disabling signaling');
@@ -181,7 +134,7 @@ export function useSignalingRoomDiscovery(
         console.warn('❌ Signaling connection error:', error.message);
         setIsConnected(false);
         
-        if (connectionAttempts >= 3) {
+        if (connectionAttempts >= maxReconnectAttempts) {
           console.log('🔌 Multiple connection failures, disabling signaling for this session');
           setIsEnabled(false);
         }
@@ -189,12 +142,17 @@ export function useSignalingRoomDiscovery(
 
       // Room peer discovery events
       socket.on('room-peers', (peers: RoomPeer[]) => {
-        console.log('👥 Discovered room peers:', peers.length, peers.map(p => p.displayName));
-        setRoomPeers(peers);
-        events.onRoomPeersUpdate(peers);
+        // Filter out ourselves
+        const otherPeers = peers.filter(peer => peer.peerId !== myPeerId);
+        console.log('👥 Discovered room peers:', otherPeers.length, otherPeers.map(p => p.displayName));
+        setRoomPeers(otherPeers);
+        events.onRoomPeersUpdate(otherPeers);
       });
 
       socket.on('peer-joined', (peer: RoomPeer) => {
+        // Ignore ourselves
+        if (peer.peerId === myPeerId) return;
+        
         console.log('👋 New peer joined room:', peer.displayName, peer.peerId);
         setRoomPeers(prev => {
           const existing = prev.find(p => p.peerId === peer.peerId);
@@ -214,22 +172,27 @@ export function useSignalingRoomDiscovery(
         console.log('🏓 Signaling server pong received');
       });
 
+      // Enhanced error handling
+      socket.on('error', (error) => {
+        console.error('🔌 Socket error:', error);
+      });
+
     } catch (error) {
       console.error('❌ Failed to initialize signaling connection:', error);
       setIsConnected(false);
       setIsEnabled(false);
     }
-  }, [myPeerId, roomId, displayName, isEnabled, getSignalingUrl, testSignalingConnectivity, events, connectionAttempts]);
+  }, [myPeerId, roomId, displayName, isEnabled]);
 
   // Initialize signaling connection (with delay for P2P to initialize first)
   useEffect(() => {
     if (myPeerId && roomId && displayName && isEnabled) {
       console.log('🔌 Initializing signaling room discovery...');
       
-      // Longer delay to ensure P2P is stable first
+      // Delay to ensure P2P is stable first
       const timeout = setTimeout(() => {
         connectToSignaling();
-      }, 3000);
+      }, 2000);
 
       return () => clearTimeout(timeout);
     }
@@ -258,10 +221,13 @@ export function useSignalingRoomDiscovery(
         peerId: myPeerId,
         displayName
       });
+    } else if (isEnabled) {
+      console.log('🔄 Signaling not connected, attempting to reconnect...');
+      connectToSignaling();
     } else {
-      console.log('🔄 Cannot refresh - signaling not connected');
+      console.log('🔄 Cannot refresh - signaling disabled');
     }
-  }, [roomId, myPeerId, displayName]);
+  }, [roomId, myPeerId, displayName, isEnabled, connectToSignaling]);
 
   // Manual enable/disable toggle
   const toggleSignaling = useCallback((enabled: boolean) => {
@@ -293,16 +259,35 @@ export function useSignalingRoomDiscovery(
     }, 1000);
   }, [isEnabled, connectToSignaling]);
 
+  // Enhanced debug information
+  const getExtendedDebugInfo = useCallback(() => {
+    const debugInfo = getSignalingDebugInfo();
+    return {
+      ...debugInfo,
+      isConnected,
+      isEnabled,
+      roomPeers: roomPeers.length,
+      connectionAttempts,
+      currentSignalingUrl,
+      socketConnected: socketRef.current?.connected || false,
+      socketId: socketRef.current?.id,
+      myPeerId,
+      roomId,
+      displayName
+    };
+  }, [isConnected, isEnabled, roomPeers.length, connectionAttempts, currentSignalingUrl, myPeerId, roomId, displayName]);
+
   return {
     isSignalingConnected: isConnected,
     isSignalingEnabled: isEnabled,
     roomPeers,
     connectionAttempts,
+    currentSignalingUrl,
     refreshRoomPeers,
     toggleSignaling,
     forceReconnect,
     signalingSocket: socketRef.current,
-    // Debug info
-    currentSignalingUrl: getSignalingUrl()
+    // Enhanced debug info
+    getDebugInfo: getExtendedDebugInfo
   };
 }

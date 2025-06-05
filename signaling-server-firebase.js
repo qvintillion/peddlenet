@@ -75,8 +75,26 @@ const connectionStats = {
   firebaseEnabled: !!db
 };
 
-// Middleware
-app.use(cors());
+// Middleware - Configure CORS for all routes
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "https://peddlenet.app",
+    "https://*.vercel.app",
+    "https://*.firebaseapp.com",
+    "https://*.web.app",
+    "https://*.ngrok.io",
+    "https://*.ngrok-free.app",
+    /^https:\/\/[a-zA-Z0-9-]+\.ngrok(-free)?\.app$/,
+    /^https:\/\/[a-zA-Z0-9-]+\.ngrok\.io$/,
+    /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/,
+    /^https:\/\/[a-zA-Z0-9-]+\.firebaseapp\.com$/,
+    /^https:\/\/[a-zA-Z0-9-]+\.web\.app$/
+  ],
+  methods: ["GET", "POST", "OPTIONS"],
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(express.json());
 
 // Enhanced health check for Google Cloud

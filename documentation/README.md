@@ -10,6 +10,13 @@
 - [👥 User Guide](./USER-GUIDE.md) - How to use PeddleNet for festivals and events
 - [📚 Changelog](./CHANGELOG.md) - Project milestones and version history
 
+**Mobile Development (Recommended):**
+```bash
+# Start both servers with mobile support
+chmod +x tools/dev-mobile.sh
+./tools/dev-mobile.sh
+```
+
 ## 🛠️ For Developers
 
 **Development & Technical:**

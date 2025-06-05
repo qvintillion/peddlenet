@@ -7,6 +7,20 @@
 [![WebRTC](https://img.shields.io/badge/WebRTC-P2P-green?style=for-the-badge)](https://webrtc.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
 
+## ⚠️ **Current Development Status**
+
+**Architecture Evolution**: The project is transitioning from pure P2P to a hybrid WebSocket/P2P approach for better reliability in multi-user scenarios.
+
+**Current Implementation** (Development Branch):
+- ✅ **WebSocket Server-Based Chat** - Persistent rooms and message history
+- ✅ **Multi-user Support** - No dependency on single "host" user
+- ✅ **Cross-platform Messaging** - Reliable desktop ↔ mobile communication
+- 🔄 **P2P Optimization** - Future enhancement for direct connections
+
+**See**: [Development Session Summary](./documentation/DEVELOPMENT-SESSION-SUMMARY.md) for recent changes.
+
+---
+
 ## ⚡ Try It Now
 
 **Live Production App**: [peddlenet.app](https://peddlenet.app)
@@ -75,19 +89,23 @@ git clone https://github.com/YOUR_USERNAME/peddlenet.git
 cd peddlenet
 npm install
 
-# For cross-device testing with mobile
-./mobile-dev.sh
+# Mobile development (Recommended - with automatic IP detection)
+chmod +x tools/dev-mobile.sh
+./tools/dev-mobile.sh
 ```
 
-Visit `https://your-ngrok-url.io` to see the app running with mobile support.
+This starts both servers with **automatic IP detection** and mobile network support - perfect for cross-device testing!
 
 ### Development Commands
 ```bash
-# Standard development
-npm run dev
+# Mobile development (MAIN SCRIPT - automatic IP detection)
+./tools/dev-mobile.sh
 
-# Mobile development (HTTPS tunnel for cross-device testing)
-./mobile-dev.sh
+# Verbose mode (shows detailed network info)
+./tools/dev-mobile.sh --verbose
+
+# Standard development (localhost only)
+npm run dev
 
 # Production build
 npm run build && npm run start
@@ -102,12 +120,16 @@ npm run build && npm run start
 | Cross-Network Success | > 80% | **~95%** ✅ |
 | Mobile Compatibility | iOS + Android | **Full Support** ✅ |
 | Offline Messaging | After connection | **Working** ✅ |
+| Duplicate Connections | 0 per device | **Eliminated** ✅ |
+| IP Change Handling | Manual restart | **Automatic** ✅ |
 
 ### Key Innovations
+- **Automatic IP Detection**: Fresh IP detection every startup, handles network changes
 - **Global Peer Persistence**: Solved React + WebRTC lifecycle issues
 - **QR Code Direct Connection**: Revolutionary P2P discovery approach  
 - **Mobile WebRTC Optimization**: Enhanced configuration for mobile networks
 - **Cross-Network Reliability**: Desktop WiFi ↔ Mobile Cellular working
+- **Duplicate Connection Prevention**: Aggressive cleanup ensures 1 connection per device
 
 ## 📊 Project Structure
 
@@ -119,9 +141,11 @@ peddlenet/
 │   ├── hooks/             # Custom React hooks (P2P logic)
 │   ├── utils/             # Helper functions
 │   └── lib/               # Types and constants
+├── tools/                  # Development scripts
+│   ├── dev-mobile.sh      # Main development script (auto IP detection)
+│   └── detect-ip.js       # Reliable IP detection utility
 ├── documentation/         # Complete project documentation
-├── mobile-dev.sh          # Development script (mobile support)
-├── signaling-server.js    # Optional signaling server
+├── signaling-server.js    # WebSocket server for messaging
 └── vercel.json           # Production deployment config
 ```
 

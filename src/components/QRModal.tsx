@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import { NetworkUtils } from '@/utils/network-utils';
+import { MobileNetworkDebug } from '@/utils/mobile-network-debug';
 
 interface QRModalProps {
   roomId: string;
@@ -18,23 +19,67 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
   const [isGenerating, setIsGenerating] = useState(false);
   const [showNetworkSetup, setShowNetworkSetup] = useState(false);
   const [selectedIP, setSelectedIP] = useState('');
+  const [autoDetectedIP, setAutoDetectedIP] = useState('');
+  const [isDetectingIP, setIsDetectingIP] = useState(false);
 
+  // Auto-detect IP when modal opens
   useEffect(() => {
     if (isOpen && roomId) {
-      // Check if we can generate mobile-accessible QR
-      const isMobileAccessible = NetworkUtils.isMobileAccessible();
-      if (!isMobileAccessible && !localStorage.getItem('selected_network_ip')) {
-        setShowNetworkSetup(true);
+      // Use the current window location's IP instead of auto-detection
+      // This ensures we use the same IP that Next.js is serving on
+      const currentHostname = window.location.hostname;
+      if (currentHostname !== 'localhost' && currentHostname !== '127.0.0.1') {
+        // We're already on a network IP, use it directly
+        console.log('✅ Using current hostname from Next.js:', currentHostname);
+        generateInviteQR(currentHostname);
       } else {
-        generateInviteQR();
+        // Only auto-detect if we're on localhost
+        autoDetectAndGenerateQR();
       }
     }
   }, [isOpen, roomId, peerId, displayName]);
 
-  const generateInviteQR = async () => {
+  const autoDetectAndGenerateQR = async () => {
+    setIsDetectingIP(true);
     setIsGenerating(true);
     
-    const baseUrl = NetworkUtils.getBaseURL();
+    try {
+      console.log('🌐 Auto-detecting IP for mobile QR code...');
+      const detectedIP = await NetworkUtils.detectLocalIP();
+      setAutoDetectedIP(detectedIP);
+      
+      if (detectedIP !== 'localhost') {
+        console.log('✅ Auto-detected IP:', detectedIP);
+        await generateInviteQR(detectedIP);
+      } else {
+        console.log('⚠️ Could not auto-detect IP, showing manual setup');
+        setShowNetworkSetup(true);
+      }
+    } catch (error) {
+      console.error('Failed to auto-detect IP:', error);
+      setShowNetworkSetup(true);
+    } finally {
+      setIsDetectingIP(false);
+      setIsGenerating(false);
+    }
+  };
+
+  const generateInviteQR = async (useIP?: string) => {
+    setIsGenerating(true);
+    
+    let baseUrl;
+    if (useIP) {
+      // Use provided IP with current protocol and port
+      const protocol = window.location.protocol;
+      const port = window.location.port;
+      baseUrl = `${protocol}//${useIP}${port ? `:${port}` : ''}`;
+      console.log('🌐 Using provided IP for QR:', baseUrl);
+    } else {
+      // Use NetworkUtils method
+      baseUrl = await NetworkUtils.getBaseURL();
+      console.log('🌐 Using NetworkUtils for QR:', baseUrl);
+    }
+    
     // Detect if we're on test page or regular chat page
     const isTestPage = typeof window !== 'undefined' && window.location.pathname === '/test-room';
     let chatUrl = isTestPage ? `${baseUrl}/test-room` : `${baseUrl}/chat/${roomId}`;
@@ -47,12 +92,10 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
         t: Date.now().toString() // timestamp for uniqueness
       });
       chatUrl += `?${params.toString()}`;
-      console.log('📱 Generated invite QR with ACTUAL peer info:', peerId);
-      console.log('🌐 QR URL for mobile access:', chatUrl);
-    } else {
-      console.log('📱 Generated basic room QR (no host peer info)');
+      console.log('📱 Generated invite QR with peer info:', peerId);
     }
     
+    console.log('🌐 QR URL for mobile access:', chatUrl);
     setFullUrl(chatUrl);
     
     try {
@@ -72,11 +115,11 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
     }
   };
 
-  const handleNetworkIPSelection = (ip: string) => {
-    NetworkUtils.setNetworkIP(ip);
+  const handleNetworkIPSelection = async (ip: string) => {
+    // No longer storing IP in localStorage - just use it directly
     setSelectedIP(ip);
     setShowNetworkSetup(false);
-    generateInviteQR();
+    await generateInviteQR(ip);
   };
 
   const copyRoomId = () => {
@@ -126,7 +169,10 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
             <div className="p-4 bg-blue-50 rounded-lg">
               <h4 className="font-medium text-blue-900 mb-2">🌐 Mobile Access Setup</h4>
               <p className="text-sm text-blue-800 mb-3">
-                To let phones scan this QR code, we need your computer's network IP address.
+                {autoDetectedIP !== 'localhost' 
+                  ? `We detected IP: ${autoDetectedIP}, but you can change it if needed.`
+                  : 'To let phones scan this QR code, we need your computer\'s network IP address.'
+                }
               </p>
               
               <div className="space-y-2">
@@ -137,13 +183,30 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
               </div>
             </div>
 
+            {autoDetectedIP !== 'localhost' && (
+              <div className="p-3 bg-green-50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-green-900">✅ Auto-detected IP</p>
+                    <p className="text-sm text-green-700">{autoDetectedIP}</p>
+                  </div>
+                  <button
+                    onClick={() => handleNetworkIPSelection(autoDetectedIP)}
+                    className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700"
+                  >
+                    Use This
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Enter your computer's IP address:
+                Or enter a different IP address:
               </label>
               <input
                 type="text"
-                placeholder="192.168.1.100"
+                placeholder={autoDetectedIP || "192.168.1.100"}
                 value={selectedIP}
                 onChange={(e) => setSelectedIP(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -205,7 +268,20 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
                   </span>
                 </div>
               )}
-              {fullUrl && !NetworkUtils.isMobileAccessible() && (
+              {autoDetectedIP && autoDetectedIP !== 'localhost' && (
+                <div className="mt-2 p-2 bg-green-50 rounded text-xs">
+                  <span className="text-green-800">
+                    ✅ Mobile-accessible at: {autoDetectedIP}
+                  </span>
+                  <button 
+                    onClick={() => setShowNetworkSetup(true)}
+                    className="ml-2 text-green-600 underline"
+                  >
+                    Change
+                  </button>
+                </div>
+              )}
+              {(!autoDetectedIP || autoDetectedIP === 'localhost') && (
                 <div className="mt-2 p-2 bg-yellow-50 rounded text-xs text-yellow-800">
                   ⚠️ Using localhost - phones can't connect
                   <button 
@@ -219,11 +295,15 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
             </div>
 
             {/* QR Code */}
-            {isGenerating ? (
+            {isGenerating || isDetectingIP ? (
               <div className="bg-gray-100 p-8 rounded-lg mb-4 flex items-center justify-center">
                 <div className="text-center">
-                  <div className="animate-spin text-2xl mb-2">🎨</div>
-                  <p className="text-sm text-gray-600">Generating QR code...</p>
+                  <div className="animate-spin text-2xl mb-2">
+                    {isDetectingIP ? '🌐' : '🎨'}
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    {isDetectingIP ? 'Detecting your IP address...' : 'Generating QR code...'}
+                  </p>
                 </div>
               </div>
             ) : qrCodeUrl ? (
@@ -243,6 +323,11 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
                   : "Others will join your room when they scan"
                 }
               </p>
+              {autoDetectedIP && autoDetectedIP !== 'localhost' && (
+                <p className="text-xs text-green-600 mt-1">
+                  ✅ Mobile devices can scan this QR code
+                </p>
+              )}
             </div>
 
             {/* Action Buttons */}
@@ -254,12 +339,18 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
                 {navigator.share ? '📤 Share Room Link' : '📋 Copy Room Link'}
               </button>
               
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={copyRoomId}
                   className="py-2 bg-gray-700 hover:bg-gray-800 text-white rounded text-sm font-medium transition"
                 >
                   Copy Room ID
+                </button>
+                <button
+                  onClick={autoDetectAndGenerateQR}
+                  className="py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition"
+                >
+                  🔄 Refresh
                 </button>
               </div>
             </div>
@@ -271,6 +362,7 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
                 <li>• Works offline once connected</li>
                 <li>• Save screenshot of QR for later sharing</li>
                 <li>• Room stays active as long as someone's connected</li>
+                <li>• Both devices must be on the same WiFi network</li>
               </ul>
             </div>
           </>

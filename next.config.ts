@@ -17,6 +17,30 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  
+  // Headers for CORS support
+  async headers() {
+    return [
+      {
+        // Apply headers to all routes
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*', // Allow all origins in development
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'X-Requested-With, Content-Type, Authorization',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

@@ -153,7 +153,7 @@ export function MobileDiagnostics({
       {isRunning && (
         <div className="text-center py-4">
           <div className="animate-spin text-2xl mb-2">🔄</div>
-          <p className="text-sm text-gray-600">Running mobile connection tests...</p>
+          <p className="text-sm text-gray-800">Running mobile connection tests...</p>
         </div>
       )}
 
@@ -161,14 +161,14 @@ export function MobileDiagnostics({
         <div className="space-y-4">
           {diagnostics.error ? (
             <div className="p-3 bg-red-50 border border-red-200 rounded">
-              <p className="text-red-700 text-sm">{diagnostics.error}</p>
+              <p className="text-red-800 text-sm font-medium">{diagnostics.error}</p>
             </div>
           ) : (
             <>
               {/* Basic Mobile Tests */}
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">📱 Device Info</h4>
-                <div className="bg-white p-3 rounded border text-xs space-y-1">
+                <div className="bg-white p-3 rounded border text-sm space-y-1">
                   <div><strong>Mobile:</strong> {diagnostics.basicTests.isMobile ? 'Yes' : 'No'}</div>
                   <div><strong>WebRTC:</strong> {diagnostics.basicTests.webrtcSupport ? 'Supported' : 'Not Supported'}</div>
                   <div><strong>PeerJS:</strong> {diagnostics.basicTests.peerJSLoaded ? 'Loaded' : 'Not Loaded'}</div>
@@ -179,7 +179,7 @@ export function MobileDiagnostics({
               {/* Network Info */}
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">🌐 Network</h4>
-                <div className="bg-white p-3 rounded border text-xs space-y-1">
+                <div className="bg-white p-3 rounded border text-sm space-y-1">
                   {diagnostics.networkInfo.effectiveType && (
                     <div><strong>Type:</strong> {diagnostics.networkInfo.effectiveType}</div>
                   )}
@@ -196,7 +196,7 @@ export function MobileDiagnostics({
               {/* Connection State */}
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">🔗 Connection State</h4>
-                <div className="bg-white p-3 rounded border text-xs space-y-1">
+                <div className="bg-white p-3 rounded border text-sm space-y-1">
                   <div><strong>Peer ID:</strong> {diagnostics.connectionState.peerId || 'None'}</div>
                   <div><strong>Signaling:</strong> {diagnostics.connectionState.isSignalingConnected ? 'Connected' : 'Disconnected'}</div>
                   <div><strong>P2P Peers:</strong> {diagnostics.connectionState.connectedPeers}</div>
@@ -207,21 +207,21 @@ export function MobileDiagnostics({
               {/* WebRTC Test */}
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">🚀 WebRTC Test</h4>
-                <div className="bg-white p-3 rounded border text-xs">
+                <div className="bg-white p-3 rounded border text-sm">
                   {diagnostics.webrtcTest.supported ? (
                     <div className="space-y-1">
-                      <div className="text-green-600"><strong>✅ WebRTC Supported</strong></div>
+                      <div className="text-green-700 font-semibold"><strong>✅ WebRTC Supported</strong></div>
                       {diagnostics.webrtcTest.iceGathering && (
                         <div>
                           <strong>ICE Candidates:</strong> {diagnostics.webrtcTest.iceGathering.candidates?.length || 0}
                           {diagnostics.webrtcTest.iceGathering.timeout && (
-                            <span className="text-orange-600"> (timeout)</span>
+                            <span className="text-orange-700 font-medium"> (timeout)</span>
                           )}
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="text-red-600">
+                    <div className="text-red-700 font-semibold">
                       <strong>❌ WebRTC Issue:</strong> {diagnostics.webrtcTest.error}
                     </div>
                   )}
@@ -231,7 +231,7 @@ export function MobileDiagnostics({
               {/* Recommendations */}
               <div>
                 <h4 className="font-medium text-gray-800 mb-2">💡 Recommendations</h4>
-                <div className="bg-blue-50 p-3 rounded border text-xs space-y-1">
+                <div className="bg-blue-50 p-3 rounded border text-sm space-y-1 text-gray-800">
                   {!diagnostics.connectionState.isSignalingConnected && (
                     <div>• Check internet connection and try refreshing</div>
                   )}

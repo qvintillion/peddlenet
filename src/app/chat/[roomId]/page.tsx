@@ -2,16 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useP2PMobileOptimized } from '@/hooks/use-p2p-mobile-optimized';
+import { useWebSocketChat } from '@/hooks/use-websocket-chat';
 import { MobileConnectionError, MobileSignalingStatus, MobileNetworkInfo } from '@/components/MobileConnectionError';
 import MobileDiagnostics from '@/components/MobileDiagnostics';
+import { MobileConnectionDebug } from '@/components/MobileConnectionDebug';
 import type { Message } from '@/lib/types';
 import { DebugPanel } from '@/components/DebugPanel';
 import { QRModal } from '@/components/QRModal';
 import { NetworkStatus, ConnectionError } from '@/components/NetworkStatus';
 import { RoomCodeDisplay } from '@/components/RoomCode';
 import { P2PDebugUtils } from '@/utils/p2p-debug';
-import { MobileConnectionDebug } from '@/utils/mobile-debug';
 import { QRPeerUtils } from '@/utils/qr-peer-utils';
 
 export default function ChatRoomPage() {
@@ -22,27 +22,33 @@ export default function ChatRoomPage() {
   const [displayName, setDisplayName] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
-  const [manualPeerId, setManualPeerId] = useState('');
-  const [showManualConnect, setShowManualConnect] = useState(false);
+  const [showNetworkInfo, setShowNetworkInfo] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [connectionError, setConnectionError] = useState<{type: string, message: string} | null>(null);
 
+  // Use WebSocket chat instead of P2P (more reliable for multi-user)
   const {
     peerId,
     status,
     isRetrying,
     retryCount,
-    isSignalingConnected,
+    messages: serverMessages,
     connectToPeer,
     sendMessage,
     onMessage,
     getConnectedPeers,
     forceReconnect,
-    roomDiscovery, // NEW: Optional room discovery features
-  } = useP2PMobileOptimized(roomId, displayName);
+    isSignalingConnected
+  } = useWebSocketChat(roomId, displayName);
+
+
+
+  // Server-based room discovery (no signaling needed for WebSocket chat)
+  // isSignalingConnected is already available from the WebSocket hook
+  const refreshRoomPeers = () => forceReconnect();
 
   // Detect if we're on mobile for UI purposes
   const [isMobile, setIsMobile] = useState(false);
@@ -52,14 +58,14 @@ export default function ChatRoomPage() {
     }
   }, []);
 
-  // Mobile error detection
+  // Enhanced connection error detection
   useEffect(() => {
     if (!isSignalingConnected && peerId) {
       setConnectionError({
-        type: 'disconnected',
-        message: 'Lost connection to signaling server'
+        type: 'server-disconnected',
+        message: 'Server offline - messages will sync when reconnected'
       });
-    } else if (isSignalingConnected && connectionError?.type === 'disconnected') {
+    } else if (isSignalingConnected && connectionError?.type === 'server-disconnected') {
       setConnectionError(null);
     }
   }, [isSignalingConnected, peerId, connectionError]);
@@ -123,15 +129,18 @@ export default function ChatRoomPage() {
     }
   }, [roomId]);
 
-  // Handle incoming messages
+  // Handle incoming messages (server provides message history)
+  useEffect(() => {
+    if (serverMessages.length > 0) {
+      setMessages(serverMessages);
+    }
+  }, [serverMessages]);
+
+  // Also set up the onMessage handler for real-time updates
   useEffect(() => {
     const cleanup = onMessage((message: Message) => {
-      console.log('Received message:', message);
-      setMessages(prev => {
-        const isDuplicate = prev.some(m => m.id === message.id);
-        if (isDuplicate) return prev;
-        return [...prev, message].sort((a, b) => a.timestamp - b.timestamp);
-      });
+      console.log('Received real-time message:', message);
+      // Messages are already handled by the hook, this is just for additional processing if needed
     });
     return cleanup;
   }, [onMessage]);
@@ -203,6 +212,18 @@ export default function ChatRoomPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Close network info dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showNetworkInfo && !(event.target as Element).closest('.network-info-dropdown')) {
+        setShowNetworkInfo(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNetworkInfo]);
+
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputMessage.trim()) return;
@@ -215,49 +236,12 @@ export default function ChatRoomPage() {
       synced: false,
     };
 
-    // Send to peers
-    const messageId = sendMessage(messageData);
-
-    // Add to local messages
-    const localMessage: Message = {
-      ...messageData,
-      id: messageId,
-      timestamp: Date.now(),
-    };
-
-    setMessages(prev => {
-      const isDuplicate = prev.some(m => m.id === localMessage.id);
-      if (isDuplicate) return prev;
-      return [...prev, localMessage].sort((a, b) => a.timestamp - b.timestamp);
-    });
-
+    // Send to server (server will broadcast back to all clients)
+    sendMessage(messageData);
     setInputMessage('');
   };
 
-  const handleManualConnect = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualPeerId.trim() || manualPeerId === peerId) return;
 
-    try {
-      const success = await connectToPeer(manualPeerId.trim());
-      if (success) {
-        setManualPeerId('');
-        setShowManualConnect(false);
-        alert('Connected successfully!');
-      } else {
-        setConnectionError({
-          type: 'peer-unavailable',
-          message: 'Failed to connect to peer'
-        });
-      }
-    } catch (error) {
-      console.error('Failed to connect:', error);
-      setConnectionError({
-        type: 'network',
-        message: 'Connection failed due to network error'
-      });
-    }
-  };
 
   const copyPeerId = () => {
     if (peerId) {
@@ -285,20 +269,33 @@ export default function ChatRoomPage() {
           </div>
         )}
         
-        {/* Mobile Connection Error */}
+        {/* Enhanced Connection Error */}
         {connectionError && (
-          <MobileConnectionError
-            error={connectionError}
-            isSignalingConnected={isSignalingConnected}
-            onRetry={() => {
-              setConnectionError(null);
-              forceReconnect();
-            }}
-            onDiagnostics={() => {
-              // Toggle debug panel with mobile diagnostics
-              setShowDebug(!showDebug);
-            }}
-          />
+          <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-red-600">⚠️</span>
+                <div className="text-sm">
+                  <span className="font-medium text-red-900">{connectionError.type}</span>
+                  <p className="text-red-700 text-xs mt-1">{connectionError.message}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setConnectionError(null);
+                  // First, try to reconnect P2P
+                  forceReconnect();
+                  // Then, refresh server connection
+                  setTimeout(() => {
+                    refreshRoomPeers();
+                  }, 2000);
+                }}
+                className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+              >
+                🔄 Retry
+              </button>
+            </div>
+          </div>
         )}
         
         <div className="flex justify-between items-center mb-2">
@@ -330,14 +327,21 @@ export default function ChatRoomPage() {
           </div>
         </div>
 
-        {/* Enhanced Connection Status */}
+        {/* Simplified Connection Status */}
         <div className="mb-3 p-3 bg-gray-50 rounded-lg">
           <div className="flex items-center justify-between mb-2">
+            {/* Main Status - Clean tag style */}
             <div className="flex items-center space-x-2">
               <span className={`w-3 h-3 rounded-full ${status.isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-              <span className="text-sm font-medium text-gray-900">
-                {status.isConnected ? `Connected to ${status.connectedPeers} ${status.connectedPeers === 1 ? 'person' : 'people'}` : 'Waiting for connections...'}
-              </span>
+              {status.connectedPeers > 0 ? (
+                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                  {status.connectedPeers} online
+                </span>
+              ) : (
+                <span className="text-sm font-medium text-gray-900">
+                  Waiting for connections...
+                </span>
+              )}
               {isRetrying && (
                 <span className="text-xs text-blue-600">
                   (Attempt {retryCount})
@@ -345,101 +349,45 @@ export default function ChatRoomPage() {
               )}
             </div>
             
-            {!status.isConnected && (
+            {/* Network Info Dropdown */}
+            <div className="relative network-info-dropdown">
               <button
-                onClick={forceReconnect}
-                disabled={isRetrying}
-                className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                onClick={() => setShowNetworkInfo(!showNetworkInfo)}
+                className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300 transition"
               >
-                {isRetrying ? (
-                  <>
-                    <span className="animate-spin mr-1">🔄</span>
-                    Retrying...
-                  </>
-                ) : (
-                  '🔄 Retry'
-                )}
+                ℹ️
               </button>
-            )}
-          </div>
-          
-          {/* Network Status Indicator */}
-          <NetworkStatus className="mb-2" />
-          
-          {/* Mobile Network Info */}
-          <MobileNetworkInfo className="mb-2" />
-          
-          {/* Mobile Signaling Status */}
-          <MobileSignalingStatus 
-            isConnected={isSignalingConnected} 
-            reconnectAttempts={retryCount}
-          />
-          
-          {/* NEW: Room Discovery Status (optional) */}
-          {roomDiscovery?.isEnabled && (
-            <div className="text-xs text-gray-600 mb-2">
-              <div className="flex items-center space-x-2">
-                <span className={`w-2 h-2 rounded-full ${
-                  roomDiscovery.isConnected ? 'bg-blue-500' : 'bg-gray-400'
-                }`} />
-                <span>
-                  {roomDiscovery.isConnected ? 
-                    `Room discovery: ${roomDiscovery.discoveredPeers.length} found` :
-                    'Room discovery: offline'
-                  }
-                </span>
-              </div>
-              {roomDiscovery.discoveredPeers.length > status.connectedPeers && (
-                <div className="text-orange-600 bg-orange-50 p-1 rounded mt-1 text-xs">
-                  🔍 Found {roomDiscovery.discoveredPeers.length} people, connecting...
+              {showNetworkInfo && (
+                <div className="absolute right-0 top-8 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-10">
+                  <div className="text-xs space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <span className={`w-2 h-2 rounded-full ${
+                        isSignalingConnected ? 'bg-green-500' : 'bg-red-500'
+                      }`} />
+                      <span>Server: {isSignalingConnected ? 'Connected' : 'Disconnected'}</span>
+                    </div>
+                    <div className="text-gray-500">
+                      Mode: WebSocket Server (Persistent Rooms)
+                    </div>
+                    <NetworkStatus />
+                    <MobileNetworkInfo />
+                  </div>
                 </div>
               )}
             </div>
-          )}
+          </div>
           
           {/* Room Code Display */}
           <RoomCodeDisplay roomId={roomId} className="mb-2" />
           
           {status.connectedPeers === 0 && (
             <div className="text-xs text-gray-600 bg-yellow-50 p-2 rounded border-l-4 border-yellow-400">
-              💡 <strong>Tip:</strong> {displayName ? 'Generate a new QR code below' : 'Share the QR code below'} to invite others for instant connections!
+              💡 <strong>Tip:</strong> Share the QR code below to invite others for instant connections!
             </div>
           )}
-          
-          <div className="flex space-x-2 mt-2">
-            <button
-              onClick={() => setShowManualConnect(!showManualConnect)}
-              className="text-xs text-gray-500 hover:text-gray-700"
-            >
-              Manual Connect
-            </button>
-            <button
-              onClick={() => console.log('🧹 Clean stale not needed in persistent mode')}
-              className="text-xs text-gray-500 hover:text-gray-700"
-            >
-              🧹 Clean Stale
-            </button>
-          </div>
         </div>
 
-        {/* Manual Connect Form */}
-        {showManualConnect && (
-          <form onSubmit={handleManualConnect} className="mt-2 flex space-x-2">
-            <input
-              type="text"
-              value={manualPeerId}
-              onChange={(e) => setManualPeerId(e.target.value)}
-              placeholder="Enter Peer ID"
-              className="flex-1 p-2 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-            <button
-              type="submit"
-              className="px-3 py-2 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
-            >
-              Connect
-            </button>
-          </form>
-        )}
+
       </div>
 
       {/* Enhanced Messages */}
@@ -544,6 +492,24 @@ export default function ChatRoomPage() {
               isSignalingConnected={isSignalingConnected}
               connectedPeers={status.connectedPeers}
             />
+            
+            {/* Mobile Network Debug */}
+            <MobileConnectionDebug 
+              serverUrl={`http://localhost:3001`} // Will be auto-detected
+              className="mt-4"
+            />
+            
+            {/* Enhanced Debug Information */}
+            <div className="mt-4 p-3 bg-gray-100 rounded-lg">
+              <h4 className="font-semibold text-sm mb-2">🔍 Server Chat Debug</h4>
+              <div className="text-xs space-y-1">
+                <div>Server Connected: {isSignalingConnected ? 'Yes' : 'No'}</div>
+                <div>Message Count: {messages.length}</div>
+                <div>Online Users: {status.connectedPeers}</div>
+                <div>Connection Mode: WebSocket Server</div>
+                <div>Room Persistence: ✅ Yes (survives refreshes)</div>
+              </div>
+            </div>
             
             {process.env.NODE_ENV === 'development' && (
               <div className="mt-4">

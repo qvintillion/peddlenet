@@ -200,11 +200,7 @@ io.on('connection', (socket) => {
       const currentPeers = Array.from(roomPeers.values())
         .filter(peer => peer.peerId !== peerId);
       
-      socket.emit('room-peers', {
-        peers: currentPeers,
-        roomId,
-        timestamp: Date.now()
-      });
+      socket.emit('room-peers', currentPeers); // Send array directly, not wrapped in object
       
       console.log(`📊 Room ${roomId} now has ${roomPeers.size} peers`);
       
