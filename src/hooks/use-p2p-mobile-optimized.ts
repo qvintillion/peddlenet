@@ -125,15 +125,19 @@ export function useP2PMobileOptimized(roomId: string, displayName?: string) {
     maxSignalingReconnects: 5,
     signalingReconnectDelay: 3000,
     iceServers: [
-      // More reliable STUN servers for mobile
+      // Primary Google STUN servers (most reliable)
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
       { urls: 'stun:stun2.l.google.com:19302' },
       
-      // Cloudflare STUN (often better for mobile carriers)
+      // Cloudflare STUN (excellent for mobile carriers)
       { urls: 'stun:stun.cloudflare.com:3478' },
       
-      // TURN servers for difficult networks
+      // Additional reliable STUN servers
+      { urls: 'stun:stun.nextcloud.com:443' },
+      { urls: 'stun:stun.stunprotocol.org:3478' },
+      
+      // FREE TURN servers for difficult networks (the key fix!)
       {
         urls: [
           'turn:openrelay.metered.ca:80',
@@ -142,17 +146,26 @@ export function useP2PMobileOptimized(roomId: string, displayName?: string) {
         ],
         username: 'openrelayproject',
         credential: 'openrelayproject'
+      },
+      {
+        urls: [
+          'turn:relay1.expressturn.com:3478'
+        ],
+        username: 'ef3DYNSDSJ27UVKR',
+        credential: 'TJ5P4Zz6YD8dqDxw'
       }
     ],
     
     // Mobile-specific WebRTC config
     webrtcConfig: {
-      iceCandidatePoolSize: 15, // More candidates for mobile
+      iceCandidatePoolSize: 20, // More candidates for mobile
       iceTransportPolicy: 'all',
       bundlePolicy: 'max-bundle',
       rtcpMuxPolicy: 'require',
       // Faster ICE gathering for mobile
-      iceConnectionPolicy: 'all'
+      iceConnectionPolicy: 'all',
+      // Force TURN usage for difficult networks
+      iceServers: 'inherited' // Use the servers defined above
     }
   };
 
