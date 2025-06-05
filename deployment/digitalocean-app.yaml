@@ -1,0 +1,19 @@
+# DigitalOcean App Platform configuration for signaling server
+name: peddlenet-signaling
+services:
+- name: signaling-server
+  source_dir: /
+  github:
+    repo: YOUR_GITHUB_USERNAME/peddlenet
+    branch: main
+  run_command: node signaling-server.js
+  environment_slug: node-js
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  health_check:
+    http_path: /health
+  envs:
+  - key: NODE_ENV
+    value: production
+  routes:
+  - path: /

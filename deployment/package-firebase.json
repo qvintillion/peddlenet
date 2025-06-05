@@ -1,0 +1,47 @@
+{
+  "name": "peddlenet-signaling-firebase",
+  "version": "2.0.0",
+  "description": "Firebase-enhanced WebRTC signaling server for PeddleNet P2P festival chat",
+  "main": "signaling-server-firebase.js",
+  "scripts": {
+    "start": "node signaling-server-firebase.js",
+    "start:production": "NODE_ENV=production node signaling-server-firebase.js",
+    "start:basic": "node signaling-server-production.js",
+    "dev": "node signaling-server.js",
+    "test": "node -e \"console.log('Firebase signaling server package ready')\"",
+    "deploy:gcloud": "./scripts/deploy-gcloud.sh"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1",
+    "cors": "^2.8.5",
+    "firebase-admin": "^12.0.0"
+  },
+  "optionalDependencies": {
+    "firebase-admin": "^12.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "webrtc",
+    "signaling",
+    "p2p",
+    "websocket",
+    "festival",
+    "chat",
+    "firebase",
+    "google-cloud",
+    "cloud-run"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_USERNAME/peddlenet.git"
+  },
+  "gcp": {
+    "service": "peddlenet-signaling",
+    "region": "us-central1",
+    "platform": "Cloud Run"
+  }
+}

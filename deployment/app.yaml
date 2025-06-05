@@ -1,0 +1,31 @@
+# Cloud Run deployment configuration
+service: peddlenet-signaling
+runtime: nodejs18
+
+env_variables:
+  NODE_ENV: production
+  PORT: 3001
+
+resources:
+  cpu: 1
+  memory_gb: 1
+
+automatic_scaling:
+  min_instances: 0
+  max_instances: 10
+  target_cpu_utilization: 0.8
+
+network:
+  session_affinity: false
+
+deployment:
+  container:
+    ports:
+      - container_port: 3001
+        
+healthcheck:
+  path: /health
+  initial_delay_sec: 30
+  timeout_sec: 10
+  check_interval_sec: 30
+  failure_threshold: 3

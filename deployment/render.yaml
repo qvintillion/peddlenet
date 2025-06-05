@@ -1,0 +1,22 @@
+# Render deployment configuration for signaling server
+version: 2
+services:
+  - type: web
+    name: peddlenet-signaling
+    env: node
+    buildCommand: npm install
+    startCommand: node signaling-server.js
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        fromService:
+          type: web
+          name: peddlenet-signaling
+          property: port
+    scaling:
+      minInstances: 1
+      maxInstances: 1
