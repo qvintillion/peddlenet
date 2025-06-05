@@ -121,38 +121,22 @@ export function useP2PMobileOptimized(roomId: string, displayName?: string) {
 
   // Enhanced mobile-specific configuration
   const MOBILE_CONFIG = {
-    connectionTimeout: 15000, // Increased timeout for mobile networks
+    connectionTimeout: 25000, // Increased timeout for mobile networks (25 seconds)
     maxSignalingReconnects: 5,
     signalingReconnectDelay: 3000,
     iceServers: [
-      // Primary Google STUN servers (most reliable)
+      // Only the most reliable STUN servers
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
       
-      // Cloudflare STUN (excellent for mobile carriers)
+      // Cloudflare backup
       { urls: 'stun:stun.cloudflare.com:3478' },
       
-      // Additional reliable STUN servers
-      { urls: 'stun:stun.nextcloud.com:443' },
-      { urls: 'stun:stun.stunprotocol.org:3478' },
-      
-      // FREE TURN servers for difficult networks (the key fix!)
+      // ONE reliable TURN server for testing
       {
-        urls: [
-          'turn:openrelay.metered.ca:80',
-          'turn:openrelay.metered.ca:443',
-          'turns:openrelay.metered.ca:443'
-        ],
+        urls: 'turn:openrelay.metered.ca:80',
         username: 'openrelayproject',
         credential: 'openrelayproject'
-      },
-      {
-        urls: [
-          'turn:relay1.expressturn.com:3478'
-        ],
-        username: 'ef3DYNSDSJ27UVKR',
-        credential: 'TJ5P4Zz6YD8dqDxw'
       }
     ],
     
