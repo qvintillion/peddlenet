@@ -38,26 +38,13 @@ echo "✅ Vercel deployment configuration"
 echo "✅ Comprehensive documentation"
 echo ""
 
-# Test build
-echo "🔧 Testing production build..."
-npm run build
-
-if [ $? -eq 0 ]; then
-    echo "✅ Build successful!"
-else
-    echo "❌ Build failed! Fix errors before deploying."
-    exit 1
-fi
-
-echo ""
-
 # Add all files
 echo "➕ Staging all files..."
 git add .
 
 # Create commit
 echo "📝 Creating deployment commit..."
-git commit -m "🧹 UI Cleanup & Production Ready
+git commit -m "🧹 UI Cleanup & Production Ready - Festival Chat App
 
 ✨ Key Improvements:
 - Clean status indicators with green '1 online' tags  

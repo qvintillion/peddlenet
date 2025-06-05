@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Disable ESLint during builds for now
+  transpilePackages: ['archive'], // Add this line to transpile the archive directory
   eslint: {
     ignoreDuringBuilds: true,
   },
