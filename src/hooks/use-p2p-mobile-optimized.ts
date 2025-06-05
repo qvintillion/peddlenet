@@ -163,9 +163,8 @@ export function useP2PMobileOptimized(roomId: string, displayName?: string) {
       bundlePolicy: 'max-bundle',
       rtcpMuxPolicy: 'require',
       // Faster ICE gathering for mobile
-      iceConnectionPolicy: 'all',
-      // Force TURN usage for difficult networks
-      iceServers: 'inherited' // Use the servers defined above
+      iceConnectionPolicy: 'all'
+      // Note: iceServers will be passed separately to PeerJS
     }
   };
 
