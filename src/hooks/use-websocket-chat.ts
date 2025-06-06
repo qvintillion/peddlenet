@@ -192,27 +192,73 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       setMessages(messageHistory);
     });
 
-    // Handle new messages
+    // Handle new messages (try multiple event names)
     socket.on('chat-message', (message: Message) => {
+      console.log('📥 Received chat-message from server:', message);
+      addMessageToState(message);
+    });
+
+    socket.on('message', (message: any) => {
       console.log('📥 Received message from server:', message);
+      addMessageToState(message);
+    });
+
+    socket.on('room-message', (message: any) => {
+      console.log('📥 Received room-message from server:', message);
+      addMessageToState(message);
+    });
+
+    socket.on('send-message', (message: any) => {
+      console.log('📥 Received send-message from server:', message);
+      addMessageToState(message);
+    });
+
+    // Helper function to add messages to state
+    const addMessageToState = (message: any) => {
+      // Normalize message format
+      const normalizedMessage: Message = {
+        id: message.id || message.messageId || generateCompatibleUUID(),
+        content: message.content || message.text || message.message?.content || '',
+        sender: message.sender || message.user || message.from || message.message?.sender || 'Unknown',
+        timestamp: message.timestamp || message.time || Date.now(),
+        type: 'chat',
+        roomId: roomId,
+        synced: true
+      };
+      
       setMessages(prev => {
-        const isDuplicate = prev.some(m => m.id === message.id);
+        const isDuplicate = prev.some(m => m.id === normalizedMessage.id);
         if (isDuplicate) {
-          console.log('⚠️ Duplicate message ignored:', message.id);
+          console.log('⚠️ Duplicate message ignored:', normalizedMessage.id);
           return prev;
         }
-        console.log('✅ Adding message to state:', message);
-        return [...prev, message].sort((a, b) => a.timestamp - b.timestamp);
+        console.log('✅ Adding normalized message to state:', normalizedMessage);
+        return [...prev, normalizedMessage].sort((a, b) => a.timestamp - b.timestamp);
       });
       
       // Notify message handlers
       messageHandlersRef.current.forEach(handler => {
         try {
-          handler(message);
+          handler(normalizedMessage);
         } catch (e) {
           console.error('Message handler error:', e);
         }
       });
+    };
+
+    // Listen for server errors
+    socket.on('error', (error) => {
+      console.error('🚨 Server error:', error);
+    });
+
+    // Listen for any message-related errors
+    socket.on('message-error', (error) => {
+      console.error('🚨 Message error:', error);
+    });
+
+    // Listen for generic server responses
+    socket.on('server-response', (response) => {
+      console.log('🔔 Server response:', response);
     });
 
     // Handle peer list updates
@@ -296,7 +342,10 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
 
     const messageId = generateCompatibleUUID();
     
-    const messageToSend = {
+    // Try multiple message formats to see which one works
+    
+    // Format 1: Current nested format
+    const messageFormat1 = {
       roomId,
       message: {
         id: messageId,
@@ -309,12 +358,38 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       }
     };
     
-    console.log('📤 Sending message to server:', JSON.stringify(messageToSend, null, 2));
+    // Format 2: Flatter format
+    const messageFormat2 = {
+      roomId,
+      id: messageId,
+      content: messageData.content,
+      sender: effectiveDisplayName,
+      timestamp: Date.now(),
+      type: 'chat'
+    };
     
-    // Send to server
-    socket.emit('chat-message', messageToSend);
-
-    console.log('✅ Message sent via server');
+    // Format 3: Simple format
+    const messageFormat3 = {
+      room: roomId,
+      text: messageData.content,
+      user: effectiveDisplayName,
+      time: Date.now()
+    };
+    
+    console.log('📤 Trying message format 1 (nested):', JSON.stringify(messageFormat1, null, 2));
+    socket.emit('chat-message', messageFormat1);
+    
+    // Also try alternative event names
+    console.log('📤 Trying message format 2 (flat):', JSON.stringify(messageFormat2, null, 2));
+    socket.emit('message', messageFormat2);
+    
+    console.log('📤 Trying message format 3 (simple):', JSON.stringify(messageFormat3, null, 2));
+    socket.emit('send-message', messageFormat3);
+    
+    // Also try the event name that might be expected
+    socket.emit('room-message', messageFormat1);
+    
+    console.log('✅ All message formats sent to server');
     return messageId;
   }, [roomId, effectiveDisplayName]);
 
