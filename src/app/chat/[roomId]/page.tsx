@@ -475,9 +475,9 @@ export default function ChatRoomPage() {
                 <div>{message.content}</div>
                 <div className="text-xs opacity-70 mt-1 flex items-center space-x-1">
                   <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
-                  {process.env.NODE_ENV === 'development' && (
+                  {process.env.NODE_ENV === 'development' && isMyMessage && (
                     <span className="bg-black bg-opacity-20 px-1 rounded text-xs">
-                      {isMyMessage ? 'ME' : 'THEM'}
+                      ME
                     </span>
                   )}
                 </div>
@@ -495,27 +495,29 @@ export default function ChatRoomPage() {
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            placeholder={status.connectedPeers > 0 ? "Type a message..." : "Waiting for connections to send messages..."}
+            placeholder={isSignalingConnected ? "Type a message..." : "Connecting to server..."}
             className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900"
-            disabled={status.connectedPeers === 0}
+            disabled={!isSignalingConnected || !displayName}
           />
           <button
             type="submit"
-            disabled={!inputMessage.trim() || status.connectedPeers === 0}
+            disabled={!inputMessage.trim() || !isSignalingConnected || !displayName}
             className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition"
           >
-            {status.connectedPeers > 0 ? 'Send' : '⏳'}
+            {isSignalingConnected ? 'Send' : '⏳'}
           </button>
         </div>
         
         <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
           <span>
-            {status.connectedPeers > 0 
-              ? `Connected to ${status.connectedPeers} ${status.connectedPeers === 1 ? 'person' : 'people'}` 
-              : 'No connections - invite others to start chatting'
+            {isSignalingConnected 
+              ? (status.connectedPeers > 0 
+                  ? `Connected to ${status.connectedPeers} other ${status.connectedPeers === 1 ? 'person' : 'people'}` 
+                  : 'Connected to server - ready to chat')
+              : 'Connecting to server...'
             }
           </span>
-          {status.connectedPeers === 0 && (
+          {status.connectedPeers === 0 && isSignalingConnected && (
             <button
               onClick={() => setShowQRModal(true)}
               className="text-purple-600 hover:text-purple-700 font-medium"

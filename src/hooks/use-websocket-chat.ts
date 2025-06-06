@@ -170,6 +170,8 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
         displayName: effectiveDisplayName
       });
       console.log(`🏠 [${connectionId.current}] Joining room:`, roomId, 'as:', effectiveDisplayName);
+      console.log(`🏠 [${connectionId.current}] Server will store displayName:`, effectiveDisplayName, 'in socket.userData');
+      console.log(`🏠 [${connectionId.current}] This will be used for message.sender when we send messages`);
     });
 
     socket.on('disconnect', (reason) => {
@@ -194,7 +196,10 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
 
     // Handle new messages - simplified to match server exactly
     socket.on('chat-message', (message: any) => {
-      console.log('📥 Received chat-message from server:', message);
+      console.log('📥 RAW message from server:', message);
+      console.log('📥 Message type:', typeof message);
+      console.log('📥 Message keys:', Object.keys(message || {}));
+      console.log('📥 Current effectiveDisplayName:', effectiveDisplayName);
       addMessageToState(message);
     });
 
@@ -346,27 +351,23 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
 
     const messageId = generateCompatibleUUID();
     
-    // Use the exact format the server expects
+    // Use the EXACT format the server expects: { roomId, message: { content } }
     const messagePayload = {
       roomId,
       message: {
-        id: messageId,
         content: messageData.content,
-        sender: effectiveDisplayName,
-        timestamp: Date.now(),
-        type: 'chat',
-        roomId: roomId,
-        synced: true
+        // Server will override id, sender, timestamp anyway, so don't include them
       }
     };
     
     console.log('📤 Sending message:', messageData.content, 'from:', effectiveDisplayName);
+    console.log('📤 Server will use sender:', effectiveDisplayName, '(from socket.userData.displayName)');
     console.log('📤 Message payload:', JSON.stringify(messagePayload, null, 2));
     
     // Send using the exact event name the server listens for
     socket.emit('chat-message', messagePayload);
     
-    console.log('✅ Message sent to server');
+    console.log('✅ Message sent to server - server will broadcast back with own format');
     return messageId;
   }, [roomId, effectiveDisplayName]);
 
