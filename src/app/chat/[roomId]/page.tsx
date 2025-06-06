@@ -131,6 +131,7 @@ export default function ChatRoomPage() {
 
   // Handle incoming messages (server provides message history)
   useEffect(() => {
+    console.log('📨 Server messages updated:', serverMessages.length, serverMessages);
     if (serverMessages.length > 0) {
       setMessages(serverMessages);
     }
@@ -139,8 +140,18 @@ export default function ChatRoomPage() {
   // Also set up the onMessage handler for real-time updates
   useEffect(() => {
     const cleanup = onMessage((message: Message) => {
-      console.log('Received real-time message:', message);
-      // Messages are already handled by the hook, this is just for additional processing if needed
+      console.log('📨 Received real-time message:', message);
+      // The WebSocket hook should already handle adding to serverMessages
+      // But let's also update local messages just in case
+      setMessages(prev => {
+        const isDuplicate = prev.some(m => m.id === message.id);
+        if (isDuplicate) {
+          console.log('⚠️ Duplicate message detected:', message.id);
+          return prev;
+        }
+        console.log('✅ Adding new message to UI:', message);
+        return [...prev, message].sort((a, b) => a.timestamp - b.timestamp);
+      });
     });
     return cleanup;
   }, [onMessage]);
@@ -226,7 +237,9 @@ export default function ChatRoomPage() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMessage.trim()) return;
+    if (!inputMessage.trim() || !displayName) return;
+
+    console.log('📤 Sending message:', inputMessage, 'from:', displayName);
 
     const messageData: Omit<Message, 'id' | 'timestamp'> = {
       type: 'chat',
@@ -237,7 +250,8 @@ export default function ChatRoomPage() {
     };
 
     // Send to server (server will broadcast back to all clients)
-    sendMessage(messageData);
+    const messageId = sendMessage(messageData);
+    console.log('📤 Message sent with ID:', messageId);
     setInputMessage('');
   };
 
