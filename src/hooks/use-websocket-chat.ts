@@ -192,48 +192,52 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       setMessages(messageHistory);
     });
 
-    // Handle new messages (try multiple event names)
-    socket.on('chat-message', (message: Message) => {
+    // Handle new messages - simplified to match server exactly
+    socket.on('chat-message', (message: any) => {
       console.log('📥 Received chat-message from server:', message);
-      addMessageToState(message);
-    });
-
-    socket.on('message', (message: any) => {
-      console.log('📥 Received message from server:', message);
-      addMessageToState(message);
-    });
-
-    socket.on('room-message', (message: any) => {
-      console.log('📥 Received room-message from server:', message);
-      addMessageToState(message);
-    });
-
-    socket.on('send-message', (message: any) => {
-      console.log('📥 Received send-message from server:', message);
       addMessageToState(message);
     });
 
     // Helper function to add messages to state
     const addMessageToState = (message: any) => {
-      // Normalize message format
+      // Normalize message format to match server response
       const normalizedMessage: Message = {
-        id: message.id || message.messageId || generateCompatibleUUID(),
-        content: message.content || message.text || message.message?.content || '',
-        sender: message.sender || message.user || message.from || message.message?.sender || 'Unknown',
-        timestamp: message.timestamp || message.time || Date.now(),
-        type: 'chat',
+        id: message.id || generateCompatibleUUID(),
+        content: message.content || '',
+        sender: message.sender || 'Unknown',
+        timestamp: message.timestamp || Date.now(),
+        type: message.type || 'chat',
         roomId: roomId,
         synced: true
       };
       
+      console.log('🔄 Processing message:', {
+        original: message,
+        normalized: normalizedMessage,
+        currentSender: effectiveDisplayName
+      });
+      
       setMessages(prev => {
-        const isDuplicate = prev.some(m => m.id === normalizedMessage.id);
-        if (isDuplicate) {
-          console.log('⚠️ Duplicate message ignored:', normalizedMessage.id);
+        // Check for duplicates by ID or content+timestamp combo
+        const isDuplicateById = prev.some(m => m.id === normalizedMessage.id);
+        const isDuplicateByContent = prev.some(m => 
+          m.content === normalizedMessage.content && 
+          m.sender === normalizedMessage.sender &&
+          Math.abs(m.timestamp - normalizedMessage.timestamp) < 1000 // Within 1 second
+        );
+        
+        if (isDuplicateById || isDuplicateByContent) {
+          console.log('⚠️ Duplicate message ignored:', normalizedMessage.id, {
+            byId: isDuplicateById,
+            byContent: isDuplicateByContent
+          });
           return prev;
         }
-        console.log('✅ Adding normalized message to state:', normalizedMessage);
-        return [...prev, normalizedMessage].sort((a, b) => a.timestamp - b.timestamp);
+        
+        console.log('✅ Adding message to state:', normalizedMessage);
+        const updated = [...prev, normalizedMessage].sort((a, b) => a.timestamp - b.timestamp);
+        console.log('📋 Total messages now:', updated.length);
+        return updated;
       });
       
       // Notify message handlers
@@ -327,7 +331,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     };
   }, [roomId, effectiveDisplayName, connectToServer]); // Include connectToServer but it's stable
 
-  // Send message function
+  // Send message function - simplified to match server exactly
   const sendMessage = useCallback((messageData: Omit<Message, 'id' | 'timestamp'>) => {
     const socket = socketRef.current;
     if (!socket || !socket.connected) {
@@ -342,10 +346,8 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
 
     const messageId = generateCompatibleUUID();
     
-    // Try multiple message formats to see which one works
-    
-    // Format 1: Current nested format
-    const messageFormat1 = {
+    // Use the exact format the server expects
+    const messagePayload = {
       roomId,
       message: {
         id: messageId,
@@ -358,38 +360,13 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       }
     };
     
-    // Format 2: Flatter format
-    const messageFormat2 = {
-      roomId,
-      id: messageId,
-      content: messageData.content,
-      sender: effectiveDisplayName,
-      timestamp: Date.now(),
-      type: 'chat'
-    };
+    console.log('📤 Sending message:', messageData.content, 'from:', effectiveDisplayName);
+    console.log('📤 Message payload:', JSON.stringify(messagePayload, null, 2));
     
-    // Format 3: Simple format
-    const messageFormat3 = {
-      room: roomId,
-      text: messageData.content,
-      user: effectiveDisplayName,
-      time: Date.now()
-    };
+    // Send using the exact event name the server listens for
+    socket.emit('chat-message', messagePayload);
     
-    console.log('📤 Trying message format 1 (nested):', JSON.stringify(messageFormat1, null, 2));
-    socket.emit('chat-message', messageFormat1);
-    
-    // Also try alternative event names
-    console.log('📤 Trying message format 2 (flat):', JSON.stringify(messageFormat2, null, 2));
-    socket.emit('message', messageFormat2);
-    
-    console.log('📤 Trying message format 3 (simple):', JSON.stringify(messageFormat3, null, 2));
-    socket.emit('send-message', messageFormat3);
-    
-    // Also try the event name that might be expected
-    socket.emit('room-message', messageFormat1);
-    
-    console.log('✅ All message formats sent to server');
+    console.log('✅ Message sent to server');
     return messageId;
   }, [roomId, effectiveDisplayName]);
 

@@ -132,10 +132,24 @@ export default function ChatRoomPage() {
   // Handle incoming messages (server provides message history)
   useEffect(() => {
     console.log('📨 Server messages updated:', serverMessages.length, serverMessages);
+    console.log('👤 Current display name:', displayName);
+    
+    // Always update messages, even if empty (for cleanup)
+    setMessages(serverMessages);
+    
+    // Debug message senders
     if (serverMessages.length > 0) {
-      setMessages(serverMessages);
+      console.log('📋 Message senders breakdown:');
+      const senderCounts = serverMessages.reduce((acc, msg) => {
+        acc[msg.sender] = (acc[msg.sender] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      console.log(senderCounts);
+      
+      console.log('👤 My messages:', serverMessages.filter(m => m.sender === displayName).length);
+      console.log('👥 Other messages:', serverMessages.filter(m => m.sender !== displayName).length);
     }
-  }, [serverMessages]);
+  }, [serverMessages, displayName]);
 
   // Also set up the onMessage handler for real-time updates
   useEffect(() => {
@@ -433,28 +447,44 @@ export default function ChatRoomPage() {
           </div>
         )}
         
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.sender === displayName ? 'justify-end' : 'justify-start'}`}
-          >
+        {messages.map((message) => {
+          const isMyMessage = message.sender === displayName;
+          console.log('💬 Rendering message:', {
+            id: message.id,
+            sender: message.sender,
+            content: message.content,
+            isMyMessage,
+            currentDisplayName: displayName
+          });
+          
+          return (
             <div
-              className={`max-w-[70%] rounded-lg p-3 ${
-                message.sender === displayName
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-white text-gray-800 shadow'
-              }`}
+              key={message.id}
+              className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}
             >
-              {message.sender !== displayName && (
-                <div className="font-semibold text-sm mb-1">{message.sender}</div>
-              )}
-              <div>{message.content}</div>
-              <div className="text-xs opacity-70 mt-1">
-                {new Date(message.timestamp).toLocaleTimeString()}
+              <div
+                className={`max-w-[70%] rounded-lg p-3 ${
+                  isMyMessage
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-white text-gray-800 shadow'
+                }`}
+              >
+                {!isMyMessage && (
+                  <div className="font-semibold text-sm mb-1">{message.sender}</div>
+                )}
+                <div>{message.content}</div>
+                <div className="text-xs opacity-70 mt-1 flex items-center space-x-1">
+                  <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
+                  {process.env.NODE_ENV === 'development' && (
+                    <span className="bg-black bg-opacity-20 px-1 rounded text-xs">
+                      {isMyMessage ? 'ME' : 'THEM'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
