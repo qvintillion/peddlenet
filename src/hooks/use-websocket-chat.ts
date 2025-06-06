@@ -18,7 +18,6 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
   const messageHandlersRef = useRef<Set<(message: Message) => void>>(new Set());
   // Don't allow any connection until we have a real display name
   const effectiveDisplayName = displayName && displayName.trim() && displayName !== 'Anonymous' ? displayName.trim() : null;
-  console.log('📝 Display name check:', { displayName, effectiveDisplayName });
   const myPeerId = useRef<string>(generateCompatibleUUID());
   const connectionId = useRef<string>(Math.random().toString(36).substring(7)); // Unique ID for debugging
   const roomConnectionRef = useRef<string>(''); // Track which room we're connected to
