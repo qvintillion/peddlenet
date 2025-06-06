@@ -39,7 +39,8 @@ const io = new Server(server, {
 });
 
 // Store room and connection information
-const rooms = new Map();
+const rooms = new Map(); // roomId -> { peers: Map, messages: Array, created: timestamp }
+const MESSAGE_HISTORY_LIMIT = 100; // Keep last 100 messages per room
 const connectionStats = {
   totalConnections: 0,
   currentConnections: 0,
@@ -81,7 +82,7 @@ app.get('/health', (req, res) => {
     },
     rooms: {
       active: rooms.size,
-      totalPeers: Array.from(rooms.values()).reduce((sum, room) => sum + room.size, 0)
+      totalPeers: Array.from(rooms.values()).reduce((sum, room) => sum + room.peers.size, 0)
     },
     memory: {
       used: Math.round(memoryUsage.heapUsed / 1024 / 1024) + 'MB',
@@ -89,7 +90,7 @@ app.get('/health', (req, res) => {
       rss: Math.round(memoryUsage.rss / 1024 / 1024) + 'MB'
     },
     timestamp: Date.now(),
-    version: '1.1.0'
+    version: '1.2.0'
   });
 });
 
@@ -99,10 +100,11 @@ app.get('/metrics', (req, res) => {
     connections: connectionStats,
     rooms: {
       count: rooms.size,
-      details: Array.from(rooms.entries()).map(([roomId, peers]) => ({
+      details: Array.from(rooms.entries()).map(([roomId, room]) => ({
         roomId: roomId.substring(0, 8) + '...', // Privacy: only show partial room ID
-        peerCount: peers.size,
-        createdAt: Math.min(...Array.from(peers.values()).map(p => p.joinedAt))
+        peerCount: room.peers.size,
+        messageCount: room.messages.length,
+        createdAt: Math.min(...Array.from(room.peers.values()).map(p => p.joinedAt))
       }))
     },
     uptime: process.uptime(),
@@ -115,7 +117,7 @@ app.get('/signaling-proxy', (req, res) => {
   res.json({
     signalingAvailable: true,
     endpoint: '/socket.io/',
-    version: '1.1.0',
+    version: '1.2.0',
     features: ['peer-discovery', 'connection-assistance', 'room-management'],
     timestamp: Date.now()
   });
@@ -125,7 +127,7 @@ app.get('/signaling-proxy', (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     service: 'PeddleNet Signaling Server',
-    version: '1.1.0',
+    version: '1.2.0',
     status: 'running',
     description: 'WebRTC signaling server for P2P festival chat',
     endpoints: {
@@ -177,16 +179,26 @@ io.on('connection', (socket) => {
       
       // Initialize room if it doesn't exist
       if (!rooms.has(roomId)) {
-        rooms.set(roomId, new Map());
+        rooms.set(roomId, {
+          peers: new Map(),
+          messages: [],
+          created: Date.now()
+        });
       }
       
-      const roomPeers = rooms.get(roomId);
+      const room = rooms.get(roomId);
+      const roomPeers = room.peers;
       roomPeers.set(socket.id, {
         peerId,
         displayName,
         joinedAt: Date.now(),
         socketId: socket.id
       });
+      
+      // Send recent message history to new user
+      if (room.messages.length > 0) {
+        socket.emit('message-history', room.messages);
+      }
       
       // Notify existing peers about new user
       socket.to(roomId).emit('peer-joined', {
@@ -246,6 +258,48 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle chat messages (persistent messaging)
+  socket.on('chat-message', ({ roomId, message }) => {
+    try {
+      if (!socket.userData || socket.userData.roomId !== roomId) {
+        console.warn('Unauthorized message attempt');
+        return;
+      }
+
+      const room = rooms.get(roomId);
+      if (!room) {
+        console.warn('Message to non-existent room:', roomId);
+        return;
+      }
+
+      // Create message with server timestamp and ID
+      const chatMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        content: message.content,
+        sender: socket.userData.displayName,
+        timestamp: Date.now(),
+        type: 'chat'
+      };
+
+      // Store message in room history
+      room.messages.push(chatMessage);
+      
+      // Keep only recent messages
+      if (room.messages.length > MESSAGE_HISTORY_LIMIT) {
+        room.messages = room.messages.slice(-MESSAGE_HISTORY_LIMIT);
+      }
+
+      // Broadcast to all users in room (including sender for confirmation)
+      io.to(roomId).emit('chat-message', chatMessage);
+
+      console.log(`Message in ${roomId} from ${socket.userData.displayName}: ${message.content}`);
+      
+    } catch (error) {
+      console.error('Error in chat-message:', error);
+      socket.emit('error', { message: 'Failed to send chat message', code: 'CHAT_MESSAGE_ERROR' });
+    }
+  });
+
   // Room announcements (not P2P chat messages)
   socket.on('room-message', ({ roomId, message, type = 'announcement' }) => {
     try {
@@ -280,7 +334,8 @@ io.on('connection', (socket) => {
       
       // Remove from room
       if (rooms.has(roomId)) {
-        const roomPeers = rooms.get(roomId);
+        const room = rooms.get(roomId);
+        const roomPeers = room.peers;
         roomPeers.delete(socket.id);
         
         // Notify other peers
@@ -327,7 +382,8 @@ setInterval(() => {
   const now = Date.now();
   const staleThreshold = 30 * 60 * 1000; // 30 minutes
   
-  for (const [roomId, peers] of rooms.entries()) {
+  for (const [roomId, room] of rooms.entries()) {
+    const peers = room.peers;
     // Remove stale peers
     for (const [socketId, peer] of peers.entries()) {
       if (now - peer.joinedAt > staleThreshold) {
@@ -347,7 +403,7 @@ setInterval(() => {
 // Start server
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-  console.log(`🎵 PeddleNet Signaling Server v1.1.0 running on port ${PORT}`);
+  console.log(`🎵 PeddleNet Signaling Server v1.2.0 running on port ${PORT}`);
   console.log(`🔍 Health check: http://localhost:${PORT}/health`);
   console.log(`📊 Metrics: http://localhost:${PORT}/metrics`);
   console.log(`🌐 Production ready with enhanced monitoring and reliability`);

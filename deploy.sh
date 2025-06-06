@@ -11,39 +11,39 @@ echo ""
 # ⚠️ EDIT THIS SECTION BEFORE EACH DEPLOYMENT ⚠️
 # ================================================
 
-COMMIT_TITLE="🔧 Fix: Message display and solo messaging + UI cleanup"
+COMMIT_TITLE="🔧 URGENT: Fix production server for chat messaging"
 
-COMMIT_DESCRIPTION="🎯 **Issues Resolved**
-1. Messages not displaying at all (format mismatch) ✅ FIXED
-2. Users can now send messages when alone in room ✅ FIXED
-3. Removed redundant 'THEM' debug tags from UI ✅ CLEANED
+COMMIT_DESCRIPTION="🎯 **CRITICAL FIX**
+Production messaging was broken - server missing chat-message handler!
 
-🛠️ **Key Changes**
-✅ Fixed message format - simplified to match server expectations exactly
-✅ Server expects: { roomId, message: { content } }
-✅ Removed redundant fields that server overrides anyway
-✅ Enhanced debugging to track message flow server → client
-✅ Fixed input enabling logic (server connection vs peer count)
-✅ Improved status messages for better UX
-✅ Cleaned up debug tags: keep 'ME' for own messages, remove 'THEM' (username already shown)
+🐛 **Root Cause Found**
+Dev works perfectly, but production server (signaling-only/server.js) 
+was running OLD version without chat-message support.
+
+🛠️ **Production Server Updates**
+✅ Added chat-message handler with persistent storage
+✅ Added message history on room join
+✅ Updated room structure: { peers: Map, messages: Array }
+✅ Fixed disconnect cleanup for new room structure
+✅ Fixed metrics/health endpoints for new structure
+✅ Updated to v1.2.0 (indicates chat support)
 
 📂 **Files Modified**
-- src/hooks/use-websocket-chat.ts (message format + debugging)
-- src/app/chat/[roomId]/page.tsx (input logic + UI cleanup)
+- signaling-only/server.js (production server with chat support)
+- deploy.sh (updated commit message)
 
-🎉 **Results Confirmed**
-- Messages display correctly on both sender and receiver ✅
-- Solo messaging works when connected to server ✅
-- Clean UI with no redundant debug labels ✅
-- Clear debugging shows message processing pipeline ✅
-- Fixed server message reconstruction using proper displayName ✅
+🎉 **Expected Results**
+✅ Messages now display in production (same as dev)
+✅ Cross-device messaging works in production
+✅ Message persistence across room joins
+✅ Solo messaging enabled in production
+✅ Complete parity between dev and production
 
-🧪 **Technical Fix**
-Server was reconstructing messages with socket.userData.displayName
-but client wasn't receiving them due to format mismatch.
-Now using exact server format: message.content only.
+🧪 **Technical Details**
+Production server at https://peddlenet-signaling-433318323150.us-central1.run.app
+needs to be updated with this new server.js code to enable chat messaging.
 
-🏠 Ready for complete festival chat experience!"
+🏠 Production festival chat ready after server deployment!"
 
 # ================================================
 # END EDITABLE SECTION
