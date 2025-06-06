@@ -18,6 +18,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
   const messageHandlersRef = useRef<Set<(message: Message) => void>>(new Set());
   // Don't allow any connection until we have a real display name
   const effectiveDisplayName = displayName && displayName.trim() && displayName !== 'Anonymous' ? displayName.trim() : null;
+  console.log('📝 Display name check:', { displayName, effectiveDisplayName });
   const myPeerId = useRef<string>(generateCompatibleUUID());
   const connectionId = useRef<string>(Math.random().toString(36).substring(7)); // Unique ID for debugging
   const roomConnectionRef = useRef<string>(''); // Track which room we're connected to
@@ -194,10 +195,14 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
 
     // Handle new messages
     socket.on('chat-message', (message: Message) => {
-      console.log('Received message:', message);
+      console.log('📥 Received message from server:', message);
       setMessages(prev => {
         const isDuplicate = prev.some(m => m.id === message.id);
-        if (isDuplicate) return prev;
+        if (isDuplicate) {
+          console.log('⚠️ Duplicate message ignored:', message.id);
+          return prev;
+        }
+        console.log('✅ Adding message to state:', message);
         return [...prev, message].sort((a, b) => a.timestamp - b.timestamp);
       });
       
@@ -264,22 +269,36 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
   const sendMessage = useCallback((messageData: Omit<Message, 'id' | 'timestamp'>) => {
     const socket = socketRef.current;
     if (!socket || !socket.connected) {
-      console.log('Cannot send message - not connected');
+      console.log('❌ Cannot send message - not connected');
+      return generateCompatibleUUID();
+    }
+
+    if (!effectiveDisplayName) {
+      console.log('❌ Cannot send message - no valid display name');
       return generateCompatibleUUID();
     }
 
     const messageId = generateCompatibleUUID();
     
-    // Send to server
-    socket.emit('chat-message', {
+    const messageToSend = {
       roomId,
       message: {
+        id: messageId,
         content: messageData.content,
-        sender: effectiveDisplayName
+        sender: effectiveDisplayName,
+        timestamp: Date.now(),
+        type: 'chat',
+        roomId: roomId,
+        synced: true
       }
-    });
+    };
+    
+    console.log('📤 Sending message to server:', messageToSend);
+    
+    // Send to server
+    socket.emit('chat-message', messageToSend);
 
-    console.log('Sent message via server');
+    console.log('✅ Message sent via server');
     return messageId;
   }, [roomId, effectiveDisplayName]);
 
