@@ -217,24 +217,32 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
 
     // Handle peer list updates
     socket.on('room-peers', (peers: any[]) => {
-      console.log('Room peers:', peers.length);
-      // Remove duplicates by displayName
-      const uniquePeerNames = Array.from(new Set(peers.map(p => p.displayName)));
+      console.log('Room peers total:', peers.length);
+      // Remove duplicates by displayName and exclude self
+      const uniquePeerNames = Array.from(new Set(peers.map(p => p.displayName)))
+        .filter(name => name !== effectiveDisplayName);
+      console.log('Other peers (excluding self):', uniquePeerNames.length, uniquePeerNames);
       setConnectedPeers(uniquePeerNames);
     });
 
     socket.on('peer-joined', (peer: any) => {
       console.log('Peer joined:', peer.displayName);
-      setConnectedPeers(prev => {
-        // Avoid duplicates
-        if (prev.includes(peer.displayName)) return prev;
-        return [...prev, peer.displayName];
-      });
+      // Only add if it's not ourselves
+      if (peer.displayName !== effectiveDisplayName) {
+        setConnectedPeers(prev => {
+          // Avoid duplicates
+          if (prev.includes(peer.displayName)) return prev;
+          return [...prev, peer.displayName];
+        });
+      }
     });
 
     socket.on('peer-left', (peer: any) => {
       console.log('Peer left:', peer.displayName);
-      setConnectedPeers(prev => prev.filter(name => name !== peer.displayName));
+      // Only remove if it's not ourselves (shouldn't happen, but just in case)
+      if (peer.displayName !== effectiveDisplayName) {
+        setConnectedPeers(prev => prev.filter(name => name !== peer.displayName));
+      }
     });
 
   }, [roomId, effectiveDisplayName]); // Only stable dependencies
@@ -246,15 +254,24 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       connectToServer();
     } else {
       console.log(`⏳ [${connectionId.current}] Waiting for valid display name... current:`, displayName, '→', effectiveDisplayName);
+      
+      // Disconnect if we lose the display name to prevent stale connections
+      if (socketRef.current && socketRef.current.connected && !effectiveDisplayName) {
+        console.log(`🔌 [${connectionId.current}] Disconnecting due to invalid display name`);
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        roomConnectionRef.current = '';
+      }
     }
 
     return () => {
       if (socketRef.current) {
-        console.log(`🛑 [${connectionId.current}] Disconnecting from chat server`);
+        console.log(`🛑 [${connectionId.current}] Disconnecting from chat server - cleanup`);
         // More graceful cleanup to avoid "closed before established" errors
         const socket = socketRef.current;
         socketRef.current = null;
         isConnectingRef.current = false;
+        roomConnectionRef.current = '';
         
         // Only disconnect if actually connected or connecting
         if (socket.connected || socket.disconnected === false) {
@@ -292,7 +309,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       }
     };
     
-    console.log('📤 Sending message to server:', messageToSend);
+    console.log('📤 Sending message to server:', JSON.stringify(messageToSend, null, 2));
     
     // Send to server
     socket.emit('chat-message', messageToSend);
