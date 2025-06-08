@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useWebSocketChat } from '@/hooks/use-websocket-chat';
+import { useMessageNotifications } from '@/hooks/use-push-notifications';
 import { MobileConnectionError, MobileSignalingStatus, MobileNetworkInfo } from '@/components/MobileConnectionError';
 import MobileDiagnostics from '@/components/MobileDiagnostics';
 import { MobileConnectionDebug } from '@/components/MobileConnectionDebug';
@@ -11,6 +12,7 @@ import { DebugPanel } from '@/components/DebugPanel';
 import { QRModal } from '@/components/QRModal';
 import { NetworkStatus, ConnectionError } from '@/components/NetworkStatus';
 import { RoomCodeDisplay } from '@/components/RoomCode';
+import { NotificationSettings } from '@/components/NotificationSettings';
 import { P2PDebugUtils } from '@/utils/p2p-debug';
 import { QRPeerUtils } from '@/utils/qr-peer-utils';
 
@@ -25,6 +27,7 @@ export default function ChatRoomPage() {
   const [showNetworkInfo, setShowNetworkInfo] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [connectionError, setConnectionError] = useState<{type: string, message: string} | null>(null);
@@ -43,6 +46,9 @@ export default function ChatRoomPage() {
     forceReconnect,
     isSignalingConnected
   } = useWebSocketChat(roomId, displayName);
+
+  // Set up message notifications
+  const { triggerNotification } = useMessageNotifications(roomId, displayName);
 
 
 
@@ -155,6 +161,10 @@ export default function ChatRoomPage() {
   useEffect(() => {
     const cleanup = onMessage((message: Message) => {
       console.log('📨 Received real-time message:', message);
+      
+      // Trigger push notification if appropriate
+      triggerNotification(message);
+      
       // The WebSocket hook should already handle adding to serverMessages
       // But let's also update local messages just in case
       setMessages(prev => {
@@ -168,7 +178,7 @@ export default function ChatRoomPage() {
       });
     });
     return cleanup;
-  }, [onMessage]);
+  }, [onMessage, triggerNotification]);
 
   // Check for host peer info from QR code
   useEffect(() => {
@@ -338,6 +348,12 @@ export default function ChatRoomPage() {
             >
               📱 Invite
             </button>
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition font-medium"
+            >
+              🔔 Alerts
+            </button>
             {process.env.NODE_ENV === 'development' && (
               <button
                 onClick={() => setShowDebug(!showDebug)}
@@ -414,6 +430,13 @@ export default function ChatRoomPage() {
             </div>
           )}
         </div>
+
+        {/* Notification Settings Panel */}
+        {showNotifications && (
+          <div className="mb-3">
+            <NotificationSettings roomId={roomId} />
+          </div>
+        )}
 
 
       </div>
