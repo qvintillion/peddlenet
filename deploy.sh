@@ -11,39 +11,50 @@ echo ""
 # ⚠️ EDIT THIS SECTION BEFORE EACH DEPLOYMENT ⚠️
 # ================================================
 
-COMMIT_TITLE="🎆 SUCCESS: Document production messaging breakthrough"
+COMMIT_TITLE="✨ Priority 2: Streamlined Join Room Section"
 
-COMMIT_DESCRIPTION="🏆 **PRODUCTION SUCCESS ACHIEVED!**
-Festival chat messaging now works flawlessly in production!
+COMMIT_DESCRIPTION="🎯 **PRIORITY 2 COMPLETE: Enhanced Join Room Experience**
 
-🎉 **What's Working Perfectly:**
-✅ Fast connections (5-10 seconds) in production
-✅ Instant bidirectional messaging (sender ↔ receiver)
-✅ Cross-device communication (desktop ↔ mobile)
-✅ Solo messaging (start conversations when alone)
-✅ Message persistence (history for late joiners)
-✅ Clean production UI (removed debug tags)
+Implemented horizontal Recent Rooms above Room Code input with Clear button, focusing only on Room CODES for joining (Room ID becomes display name only).
 
-📁 **Documentation Added:**
-✅ PRODUCTION-MESSAGE-FIX-SUCCESS.md (detailed technical analysis)
-✅ PRODUCTION-SUCCESS-FINAL.md (complete victory documentation)
-✅ Updated README.md with success announcement
-✅ Updated SCRIPTS-README.md with production status
+🎉 **What's New:**
+✅ Recent Rooms moved above Room Code input as horizontal scrolling cards
+✅ Clear button with confirmation dialog next to \"Recent Rooms\" title
+✅ Enhanced 7-day retention for 8 recent rooms (was 24h for 5 rooms)
+✅ Room ID displayed above Room Code in cards for easy identification
+✅ Improved mobile-friendly card design with hidden scrollbars
+✅ Updated Room Code vs Room ID terminology throughout UI
 
-📈 **Performance Verified:**
-- Connection speed: 5-10 seconds (✅ exceeds target)
-- Message display: Instant (✅ perfect)
-- Cross-device: Flawless (✅ desktop ↔ mobile)
-- Reliability: ~95% success rate (✅ production-grade)
+📱 **User Experience Improvements:**
+✅ Horizontal scrolling optimized for mobile touch
+✅ Smart timestamps (Just now, 2m ago, 3h ago, 2d ago)
+✅ Enhanced Room Code Display with ticket emoji 🎫
+✅ \"Primary Join Method\" indicator for clarity
+✅ Removed Room ID join option - Room Codes are now the only join method
 
-🎪 **Festival-Ready Status:**
-✅ Production environment fully operational
-✅ All core messaging features working
-✅ Ready for immediate festival deployment
-✅ Complete development-production parity
+🗂️ **Files Modified:**
+- src/components/RoomCode.tsx (complete restructure with horizontal layout)
+- src/utils/room-codes.ts (added clear functionality & formatTimeAgo helper)
+- src/app/globals.css (added horizontal scrollbar hiding CSS)
+- src/app/page.tsx (removed Room ID join section, updated terminology)
+- documentation/PRIORITY-2-COMPLETE.md (complete implementation docs)
 
-🎆 This marks the complete success of the festival chat project!
-Messaging breakthrough achieved - ready for festivals worldwide! 🎵"
+🔧 **Technical Enhancements:**
+✅ Added RoomCodeManager.clearRecentRooms() method
+✅ Added RoomCodeManager.formatTimeAgo() helper
+✅ Enhanced getRecentRoomCodes() with better retention logic
+✅ Cross-browser scrollbar hiding with .scrollbar-hide CSS class
+✅ Force re-render mechanism for clearing recent rooms
+
+🎪 **Festival-Ready Features:**
+✅ Recent rooms persist for 7 days (perfect for multi-day festivals)
+✅ Horizontal cards show Room ID for quick identification
+✅ Room Codes remain the prominent clickable element
+✅ Clean, intuitive interface for quick reconnections
+✅ All existing functionality preserved (WebSocket, QR codes, cross-device)
+
+🚀 **Ready for Priority 3: Push Notifications**
+Streamlined join experience complete - festival chat is even more user-friendly!"
 
 # ================================================
 # END EDITABLE SECTION
@@ -88,12 +99,14 @@ if [ $? -eq 0 ]; then
             echo "⏳ Vercel auto-deployment starting..."
             echo "🔗 Monitor: https://vercel.com/dashboard"
             echo ""
-            echo "🧪 Test the live app once deployed:"
+            echo "🧪 Test the Priority 2 changes once deployed:"
             echo "• Visit: https://peddlenet.app"
-            echo "• Test the changes you just deployed"
-            echo "• Verify everything works as expected"
+            echo "• Test Join Room section with horizontal Recent Rooms"
+            echo "• Verify Clear button functionality"
+            echo "• Check Room Code vs Room ID display"
+            echo "• Test mobile horizontal scrolling"
             echo ""
-            echo "🎪 Festival chat deployment complete!"
+            echo "🎪 Priority 2 deployment complete - ready for Priority 3!"
         else
             echo "❌ Push failed. Check error above."
         fi
