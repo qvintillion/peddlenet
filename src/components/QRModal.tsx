@@ -29,11 +29,12 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
       // This ensures we use the same IP that Next.js is serving on
       const currentHostname = window.location.hostname;
       if (currentHostname !== 'localhost' && currentHostname !== '127.0.0.1') {
-        // We're already on a network IP, use it directly
+        // We're already on a network IP (staging/production), use it directly
         console.log('✅ Using current hostname from Next.js:', currentHostname);
+        setAutoDetectedIP(currentHostname);
         generateInviteQR(currentHostname);
       } else {
-        // Only auto-detect if we're on localhost
+        // Only auto-detect if we're on localhost (development)
         autoDetectAndGenerateQR();
       }
     }
@@ -46,13 +47,14 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
     try {
       console.log('🌐 Auto-detecting IP for mobile QR code...');
       const detectedIP = await NetworkUtils.detectLocalIP();
+      console.log('🔍 Detected IP from NetworkUtils:', detectedIP);
       setAutoDetectedIP(detectedIP);
       
-      if (detectedIP !== 'localhost') {
-        console.log('✅ Auto-detected IP:', detectedIP);
+      if (detectedIP !== 'localhost' && detectedIP !== '127.0.0.1') {
+        console.log('✅ Auto-detected valid IP:', detectedIP);
         await generateInviteQR(detectedIP);
       } else {
-        console.log('⚠️ Could not auto-detect IP, showing manual setup');
+        console.log('⚠️ Could not auto-detect valid IP, showing manual setup');
         setShowNetworkSetup(true);
       }
     } catch (error) {
@@ -268,28 +270,21 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
                   </span>
                 </div>
               )}
-              {autoDetectedIP && autoDetectedIP !== 'localhost' && (
+              {/* Only show mobile access status if we have a detected IP and it's useful */}
+              {autoDetectedIP && autoDetectedIP !== 'localhost' && autoDetectedIP !== '127.0.0.1' && (
                 <div className="mt-2 p-2 bg-green-50 rounded text-xs">
                   <span className="text-green-800">
                     ✅ Mobile-accessible at: {autoDetectedIP}
                   </span>
-                  <button 
-                    onClick={() => setShowNetworkSetup(true)}
-                    className="ml-2 text-green-600 underline"
-                  >
-                    Change
-                  </button>
-                </div>
-              )}
-              {(!autoDetectedIP || autoDetectedIP === 'localhost') && (
-                <div className="mt-2 p-2 bg-yellow-50 rounded text-xs text-yellow-800">
-                  ⚠️ Using localhost - phones can't connect
-                  <button 
-                    onClick={() => setShowNetworkSetup(true)}
-                    className="ml-2 underline"
-                  >
-                    Fix this
-                  </button>
+                  {/* Only show change button in development */}
+                  {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                    <button 
+                      onClick={() => setShowNetworkSetup(true)}
+                      className="ml-2 text-green-600 underline"
+                    >
+                      Change
+                    </button>
+                  )}
                 </div>
               )}
             </div>

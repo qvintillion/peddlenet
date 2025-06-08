@@ -11,50 +11,42 @@ echo ""
 # ⚠️ EDIT THIS SECTION BEFORE EACH DEPLOYMENT ⚠️
 # ================================================
 
-COMMIT_TITLE="✨ Priority 2: Streamlined Join Room Section"
+COMMIT_TITLE="🎨 UI Sync: Dev/Staging/Production Alignment"
 
-COMMIT_DESCRIPTION="🎯 **PRIORITY 2 COMPLETE: Enhanced Join Room Experience**
+COMMIT_DESCRIPTION="🎯 **UI SYNCHRONIZATION COMPLETE: Professional Interface Across All Environments**
 
-Implemented horizontal Recent Rooms above Room Code input with Clear button, focusing only on Room CODES for joining (Room ID becomes display name only).
+Fixed UI inconsistencies to ensure identical, professional experience across dev, staging, and production environments.
 
-🎉 **What's New:**
-✅ Recent Rooms moved above Room Code input as horizontal scrolling cards
-✅ Clear button with confirmation dialog next to \"Recent Rooms\" title
-✅ Enhanced 7-day retention for 8 recent rooms (was 24h for 5 rooms)
-✅ Room ID displayed above Room Code in cards for easy identification
-✅ Improved mobile-friendly card design with hidden scrollbars
-✅ Updated Room Code vs Room ID terminology throughout UI
+🧹 **Cleaned Up Development-Only Elements:**
+✅ Removed \"ME\" tag from message timestamps (cleaner UI)
+✅ Eliminated localhost warnings from QR Modal in staging/production
+✅ Debug panel properly restricted to development only
+✅ Enhanced QR Modal IP detection for staging environments
 
-📱 **User Experience Improvements:**
-✅ Horizontal scrolling optimized for mobile touch
-✅ Smart timestamps (Just now, 2m ago, 3h ago, 2d ago)
-✅ Enhanced Room Code Display with ticket emoji 🎫
-✅ \"Primary Join Method\" indicator for clarity
-✅ Removed Room ID join option - Room Codes are now the only join method
-
-🗂️ **Files Modified:**
-- src/components/RoomCode.tsx (complete restructure with horizontal layout)
-- src/utils/room-codes.ts (added clear functionality & formatTimeAgo helper)
-- src/app/globals.css (added horizontal scrollbar hiding CSS)
-- src/app/page.tsx (removed Room ID join section, updated terminology)
-- documentation/PRIORITY-2-COMPLETE.md (complete implementation docs)
+🎨 **UI Consistency Improvements:**
+✅ Clean message timestamps across all environments
+✅ Professional QR Modal without unnecessary warnings
+✅ Environment-aware IP detection and display
+✅ Staging shows same clean interface as production
 
 🔧 **Technical Enhancements:**
-✅ Added RoomCodeManager.clearRecentRooms() method
-✅ Added RoomCodeManager.formatTimeAgo() helper
-✅ Enhanced getRecentRoomCodes() with better retention logic
-✅ Cross-browser scrollbar hiding with .scrollbar-hide CSS class
-✅ Force re-render mechanism for clearing recent rooms
+- Enhanced QR Modal IP detection logic for staging/production
+- Better hostname-based environment detection
+- Improved autoDetectedIP state management
+- Added defensive checks for localhost/127.0.0.1
+- Environment-specific button visibility (Change button only in dev)
 
-🎪 **Festival-Ready Features:**
-✅ Recent rooms persist for 7 days (perfect for multi-day festivals)
-✅ Horizontal cards show Room ID for quick identification
-✅ Room Codes remain the prominent clickable element
-✅ Clean, intuitive interface for quick reconnections
-✅ All existing functionality preserved (WebSocket, QR codes, cross-device)
+📱 **Cross-Environment Experience:**
+✅ **Development**: Clean UI + debug panel + full IP detection options
+✅ **Staging**: Professional clean interface + mobile-accessible QR codes
+✅ **Production**: Identical to staging (clean, professional experience)
 
-🚀 **Ready for Priority 3: Push Notifications**
-Streamlined join experience complete - festival chat is even more user-friendly!"
+🗂️ **Files Modified:**
+- src/app/chat/[roomId]/page.tsx (removed ME tags, kept debug panel in dev only)
+- src/components/QRModal.tsx (enhanced IP detection, removed localhost warnings)
+- documentation/UI-SYNC-COMPLETE.md (complete implementation documentation)
+
+🎪 **Result**: Perfect UI synchronization across all environments - festival chat now provides a consistent, professional experience whether users access via peddlenet.app (production) or staging, while maintaining full debugging capabilities in development."
 
 # ================================================
 # END EDITABLE SECTION
@@ -99,14 +91,14 @@ if [ $? -eq 0 ]; then
             echo "⏳ Vercel auto-deployment starting..."
             echo "🔗 Monitor: https://vercel.com/dashboard"
             echo ""
-            echo "🧪 Test the Priority 2 changes once deployed:"
+            echo "🧪 Test the UI sync changes once deployed:"
             echo "• Visit: https://peddlenet.app"
-            echo "• Test Join Room section with horizontal Recent Rooms"
-            echo "• Verify Clear button functionality"
-            echo "• Check Room Code vs Room ID display"
-            echo "• Test mobile horizontal scrolling"
+            echo "• Test QR Modal (should be clean, no localhost warnings)"
+            echo "• Check message timestamps (no ME tags)"
+            echo "• Verify professional appearance matches staging"
+            echo "• Test mobile QR code scanning"
             echo ""
-            echo "🎪 Priority 2 deployment complete - ready for Priority 3!"
+            echo "🎪 UI synchronization deployment complete!"
         else
             echo "❌ Push failed. Check error above."
         fi

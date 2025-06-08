@@ -473,13 +473,8 @@ export default function ChatRoomPage() {
                   <div className="font-semibold text-sm mb-1">{message.sender}</div>
                 )}
                 <div>{message.content}</div>
-                <div className="text-xs opacity-70 mt-1 flex items-center space-x-1">
+                <div className="text-xs opacity-70 mt-1">
                   <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
-                  {process.env.NODE_ENV === 'development' && isMyMessage && (
-                    <span className="bg-black bg-opacity-20 px-1 rounded text-xs">
-                      ME
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
