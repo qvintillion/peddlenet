@@ -1,0 +1,23 @@
+# Ignore everything by default
+*
+
+# Include only what we need
+!signaling-server-cloudrun.js
+!package-server.json
+
+# Exclude specific files/folders
+node_modules
+.git
+.next
+out
+.env*
+.vercel
+.firebase
+documentation
+tools
+archive
+src
+public
+*.md
+*.log
+.DS_Store

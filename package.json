@@ -10,7 +10,13 @@
     "build": "next build",
     "start": "next start -H 0.0.0.0",
     "lint": "next lint",
-    "deploy:vercel": "vercel --prod"
+    "deploy:vercel": "vercel --prod",
+    "build:firebase": "cp .env.firebase .env.local && BUILD_TARGET=firebase next build",
+    "deploy:firebase": "npm run build:firebase && npx firebase deploy",
+    "preview:firebase": "npx firebase hosting:channel:deploy preview",
+    "firebase:init": "npx firebase login && npx firebase init",
+    "firebase:serve": "npm run build:firebase && npx firebase serve",
+    "firebase:setup": "chmod +x tools/firebase-setup-alternative.sh && ./tools/firebase-setup-alternative.sh"
   },
   "dependencies": {
     "@zxing/library": "^0.21.3",
@@ -49,6 +55,7 @@
     "eslint-config-next": "15.3.2",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "firebase-tools": "^13.0.0",
     "jest": "^29.7.0",
     "tailwindcss": "^4",
     "typescript": "^5"

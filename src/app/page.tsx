@@ -113,7 +113,10 @@ export default function HomePage() {
                 suppressHydrationWarning={true}
               />
               <p className="mt-1 text-xs text-gray-400">
-                This will create room ID: {roomName ? slugifyRoomName(roomName) : 'room-name-here'}
+                This creates Room ID: {roomName ? slugifyRoomName(roomName) : 'room-name-here'}
+              </p>
+              <p className="mt-1 text-xs text-purple-200">
+                💡 Others will join using the Room Code shown in chat
               </p>
             </div>
 
@@ -144,60 +147,9 @@ export default function HomePage() {
             </button>
           </form>
         ) : (
-          /* Join Room Form - FIXED */
+          /* Join Room Form - Room Code Only */
           <div className="space-y-6">
-            {/* Direct Room ID Join */}
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              if (!roomName.trim()) return;
-              
-              setIsCreating(true);
-              
-              // Ensure user has a display name
-              let userName = displayName;
-              if (!userName) {
-                userName = prompt('Enter your display name:') || `Guest_${Math.floor(Math.random() * 1000)}`;
-                localStorage.setItem('displayName', userName);
-                setDisplayName(userName);
-              }
-              
-              // Join room by exact ID (no slugification)
-              const exactRoomId = roomName.trim();
-              console.log('🚪 Joining existing room by ID:', exactRoomId);
-              router.push(`/chat/${exactRoomId}`);
-            }} className="space-y-4">
-              <div>
-                <label className="block mb-3 font-semibold text-lg">Room ID</label>
-                <input
-                  className="w-full px-4 py-3 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg font-mono"
-                  placeholder="e.g. main-stage-chat or food-court-meetup"
-                  value={roomName}
-                  onChange={(e) => setRoomName(e.target.value)}
-                  disabled={isCreating}
-                  required
-                />
-                <p className="mt-1 text-xs text-gray-400">
-                  Enter the exact room ID (no changes will be made)
-                </p>
-              </div>
-              
-              <button
-                type="submit"
-                disabled={!roomName.trim() || isCreating}
-                className="w-full py-4 rounded-lg bg-green-600 font-bold hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-lg"
-              >
-                {isCreating ? '🚪 Joining...' : '🚪 Join Room by ID'}
-              </button>
-            </form>
-            
-            {/* Divider */}
-            <div className="flex items-center my-4">
-              <div className="flex-1 border-t border-gray-600"></div>
-              <span className="px-3 text-sm text-gray-400">OR</span>
-              <div className="flex-1 border-t border-gray-600"></div>
-            </div>
-            
-            {/* Room Code Join */}
+            {/* Room Code Join - Primary Method */}
             <RoomCodeJoin className="" />
             
             {/* Festival Reconnection Tips */}
@@ -207,10 +159,10 @@ export default function HomePage() {
                 Festival Reconnection
               </h3>
               <ul className="text-sm text-gray-300 space-y-1">
-                <li>• Lost connection? Use the room ID to rejoin</li>
-                <li>• Room IDs work even after phone refresh</li>
-                <li>• Share room IDs with friends as backup</li>
-                <li>• Recent rooms show up for quick access</li>
+                <li>• Lost connection? Recent rooms show your history</li>
+                <li>• Room codes work even after phone refresh</li>
+                <li>• Share room codes with friends as backup</li>
+                <li>• All conversations preserved automatically</li>
               </ul>
             </div>
           </div>
@@ -230,10 +182,10 @@ export default function HomePage() {
             </ol>
           ) : (
             <ol className="text-sm text-gray-300 space-y-1">
-              <li>1. Enter exact room ID like "main-stage-chat"</li>
-              <li>2. Or use room codes like "blue-stage-42"</li>
-              <li>3. Perfect for festival reconnections</li>
-              <li>4. Works even after phone refresh!</li>
+              <li>1. Get a Room Code from someone (e.g., "blue-stage-42")</li>
+              <li>2. Enter it in the Room Code field</li>
+              <li>3. Join the conversation instantly</li>
+              <li>4. Room Code is saved for quick rejoin</li>
             </ol>
           )}
         </div>

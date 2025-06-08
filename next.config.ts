@@ -11,8 +11,17 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Remove output export for now - Vercel handles this automatically
-  // output: 'export',
+  // Output for Firebase hosting (static export)
+  output: process.env.BUILD_TARGET === 'firebase' ? 'export' : undefined,
+  trailingSlash: process.env.BUILD_TARGET === 'firebase' ? true : false,
+  
+  // Disable problematic features for Firebase export
+  ...(process.env.BUILD_TARGET === 'firebase' && {
+    // Skip build-time optimizations that don't work with export
+    experimental: {
+      // Remove the problematic optimizePackageImports
+    },
+  }),
   
   // Image optimization off for compatibility
   images: {
