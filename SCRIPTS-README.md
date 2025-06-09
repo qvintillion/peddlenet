@@ -23,13 +23,18 @@
 
 ### 🚀 Deployment
 ```bash
-# 1. Edit the commit message in deploy.sh
-# 2. Run deployment
+# Option 1: Quick deploy with current message
+./deploy.sh
+
+# Option 2: Update commit message first
+cd scripts
+./update-deploy-message.sh
+cd ..
 ./deploy.sh
 ```
 - Stages, commits, and pushes to GitHub
-- Triggers automatic Vercel deployment
-- Edit commit message before each deployment
+- Triggers automatic deployment
+- Helper script available for custom commit messages
 
 ---
 
@@ -38,7 +43,8 @@
 | Script | Purpose | Usage |
 |--------|---------|-------|
 | `dev-mobile.sh` | Development testing | `./dev-mobile.sh` |
-| `deploy.sh` | Production deployment | Edit message, then `./deploy.sh` |
+| `deploy.sh` | Production deployment | `./deploy.sh` |
+| `scripts/update-deploy-message.sh` | Customize commit messages | `cd scripts && ./update-deploy-message.sh` |
 
 ---
 
@@ -46,8 +52,19 @@
 
 1. **Make changes** to your code
 2. **Test locally**: `./dev-mobile.sh`
-3. **Edit commit message** in `deploy.sh`
+3. **Optional**: Customize commit message with `scripts/update-deploy-message.sh`
 4. **Deploy**: `./deploy.sh`
+
+### 🎯 Deployment Types
+The helper script provides templates for:
+- 🐛 Bug fixes
+- ✨ New features  
+- 🎨 UI improvements
+- 📱 Mobile enhancements
+- ⚡ Performance optimizations
+- 📚 Documentation updates
+- 🔧 Infrastructure changes
+- And more...
 
 ---
 

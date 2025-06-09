@@ -97,6 +97,26 @@ async function initializeDatabase() {
 app.use(cors());
 app.use(express.json());
 
+// Root endpoint for service info
+app.get('/', (req, res) => {
+  res.json({
+    service: 'Festival Chat WebSocket Server',
+    version: '2.0.0',
+    status: 'running',
+    timestamp: Date.now(),
+    endpoints: {
+      health: '/health',
+      registerCode: '/register-room-code',
+      resolveCode: '/resolve-room-code/:code',
+      debugRooms: '/debug/rooms'
+    },
+    websocket: {
+      available: true,
+      transports: ['websocket', 'polling']
+    }
+  });
+});
+
 // Enhanced health check endpoint with database stats
 app.get('/health', async (req, res) => {
   let dbStats = null;
