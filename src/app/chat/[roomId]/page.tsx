@@ -261,17 +261,29 @@ export default function ChatRoomPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-purple-900 via-black to-purple-900 text-white fixed inset-0 overflow-hidden supports-[height:100svh]:h-[100svh]">
+      {/* Ensure proper mobile viewport */}
+      <style jsx global>{`
+        html, body {
+          height: 100%;
+          overflow: hidden;
+        }
+        @supports (height: 100svh) {
+          html, body {
+            height: 100svh;
+          }
+        }
+      `}</style>
       {/* Enhanced Header */}
-      <div className="bg-white shadow-md p-4">
+      <div className="bg-gray-900/80 backdrop-blur border-b border-gray-700 p-3 sm:p-4 shrink-0">
         {/* Session Restoration Notification */}
         {isSessionRestored && (
-          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="mb-3 p-3 bg-blue-900/50 border border-blue-500/30 rounded-lg">
             <div className="flex items-center space-x-2">
-              <span className="text-blue-600">📝</span>
+              <span className="text-blue-400">📝</span>
               <div className="text-sm">
-                <span className="font-medium text-blue-900">Session Restored!</span>
-                <p className="text-blue-700 text-xs mt-1">
+                <span className="font-medium text-blue-200">Session Restored!</span>
+                <p className="text-blue-300 text-xs mt-1">
                   Welcome back! Generate a new QR code below to reconnect with others.
                 </p>
               </div>
@@ -281,13 +293,13 @@ export default function ChatRoomPage() {
         
         {/* Enhanced Connection Error */}
         {connectionError && (
-          <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mb-3 p-3 bg-red-900/50 border border-red-500/30 rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <span className="text-red-600">⚠️</span>
+                <span className="text-red-400">⚠️</span>
                 <div className="text-sm">
-                  <span className="font-medium text-red-900">{connectionError.type}</span>
-                  <p className="text-red-700 text-xs mt-1">{connectionError.message}</p>
+                  <span className="font-medium text-red-200">{connectionError.type}</span>
+                  <p className="text-red-300 text-xs mt-1">{connectionError.message}</p>
                 </div>
               </div>
               <button
@@ -308,43 +320,45 @@ export default function ChatRoomPage() {
           </div>
         )}
         
-        <div className="flex justify-between items-center mb-2">
-          <div>
-            <h1 className="text-xl font-bold">🎪 {roomId}</h1>
-            <p className="text-xs text-gray-600">PeddleNet Room</p>
+        <div className="flex items-center mb-2">
+          <div className="flex-shrink-0">
+            <button
+              onClick={() => router.push('/')}
+              className="text-purple-400 hover:text-purple-300 text-xs sm:text-sm flex items-center"
+            >
+              ← Home
+            </button>
           </div>
-          <div className="flex space-x-2">
+          <div className="flex-1 text-center">
+            <h1 className="text-lg sm:text-xl font-bold text-white">🎪 {roomId}</h1>
+            <p className="text-xs text-purple-300">PeddleNet Room</p>
+          </div>
+          <div className="flex flex-wrap gap-2 flex-shrink-0">
             <button
               onClick={() => setShowQRModal(true)}
-              className="px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition font-medium"
+              className="px-2 sm:px-3 py-2 bg-purple-600 text-white text-xs sm:text-sm rounded-lg hover:bg-purple-700 transition font-medium"
             >
               📱 Invite
             </button>
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition font-medium"
+              className="px-2 sm:px-3 py-2 bg-gray-600 text-white text-xs sm:text-sm rounded-lg hover:bg-gray-700 transition font-medium"
             >
               🔔 Alerts
             </button>
             {process.env.NODE_ENV === 'development' && (
               <button
                 onClick={() => setShowDebug(!showDebug)}
-                className="text-sm text-gray-600 hover:text-gray-800"
+                className="text-xs sm:text-sm text-gray-400 hover:text-white"
               >
                 {showDebug ? 'Hide' : 'Show'} Debug
               </button>
             )}
-            <button
-              onClick={() => router.push('/')}
-              className="text-purple-600 hover:text-purple-700"
-            >
-              ← Home
-            </button>
           </div>
         </div>
 
         {/* Simplified Connection Status */}
-        <div className="mb-3 p-3 bg-gray-50 rounded-lg">
+        <div className="mb-3 p-3 bg-gray-800/50 rounded-lg border border-gray-600">
           <div className="flex items-center justify-between mb-2">
             {/* Main Status - Clean tag style */}
             <div className="flex items-center space-x-2">
@@ -354,12 +368,12 @@ export default function ChatRoomPage() {
                   {status.connectedPeers} online
                 </span>
               ) : (
-                <span className="text-sm font-medium text-gray-900">
+                <span className="text-sm font-medium text-gray-200">
                   Waiting for connections...
                 </span>
               )}
               {isRetrying && (
-                <span className="text-xs text-blue-600">
+                <span className="text-xs text-blue-400">
                   (Attempt {retryCount})
                 </span>
               )}
@@ -369,20 +383,20 @@ export default function ChatRoomPage() {
             <div className="relative network-info-dropdown">
               <button
                 onClick={() => setShowNetworkInfo(!showNetworkInfo)}
-                className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300 transition"
+                className="text-xs px-2 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition"
               >
                 ℹ️
               </button>
               {showNetworkInfo && (
-                <div className="absolute right-0 top-8 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-10">
-                  <div className="text-xs space-y-2">
+                <div className="absolute right-0 top-8 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-lg p-3 z-10">
+                  <div className="text-xs space-y-2 text-white">
                     <div className="flex items-center space-x-2">
                       <span className={`w-2 h-2 rounded-full ${
                         isSignalingConnected ? 'bg-green-500' : 'bg-red-500'
                       }`} />
                       <span>Server: {isSignalingConnected ? 'Connected' : 'Disconnected'}</span>
                     </div>
-                    <div className="text-gray-500">
+                    <div className="text-gray-400">
                       Mode: WebSocket Server (Persistent Rooms)
                     </div>
                     <NetworkStatus />
@@ -395,12 +409,6 @@ export default function ChatRoomPage() {
           
           {/* Room Code Display */}
           <RoomCodeDisplay roomId={roomId} className="mb-2" />
-          
-          {status.connectedPeers === 0 && (
-            <div className="text-xs text-gray-600 bg-yellow-50 p-2 rounded border-l-4 border-yellow-400">
-              💡 <strong>Tip:</strong> Share the QR code below to invite others for instant connections!
-            </div>
-          )}
         </div>
 
         {/* Notification Settings Panel */}
@@ -414,17 +422,17 @@ export default function ChatRoomPage() {
       </div>
 
       {/* Enhanced Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
         {messages.length === 0 && (
-          <div className="text-center text-gray-500 mt-8">
+          <div className="text-center text-gray-300 mt-8">
             {status.connectedPeers === 0 ? (
               <div className="space-y-4">
                 <div className="text-6xl mb-4">🎪</div>
-                <h3 className="text-xl font-semibold text-gray-700">Welcome to {roomId}!</h3>
-                <p className="text-gray-600">You're the first person here.</p>
-                <div className="bg-purple-50 p-4 rounded-lg max-w-md mx-auto">
-                  <p className="text-sm text-purple-800 font-medium mb-2">🚀 Get started:</p>
-                  <ol className="text-xs text-purple-700 text-left space-y-1">
+                <h3 className="text-xl font-semibold text-white">Welcome to {roomId}!</h3>
+                <p className="text-gray-400">You're the first person here.</p>
+                <div className="bg-purple-900/30 border border-purple-500/30 p-4 rounded-lg max-w-md mx-auto">
+                  <p className="text-sm text-purple-200 font-medium mb-2">🚀 Get started:</p>
+                  <ol className="text-xs text-purple-300 text-left space-y-1">
                     <li>1. Tap the "📱 Invite" button above</li>
                     <li>2. Share the QR code with friends</li>
                     <li>3. They'll connect in 5-10 seconds!</li>
@@ -435,8 +443,8 @@ export default function ChatRoomPage() {
             ) : (
               <div className="space-y-4">
                 <div className="text-6xl mb-4">💬</div>
-                <h3 className="text-lg font-semibold text-gray-700">Ready to chat!</h3>
-                <p className="text-gray-600">Connected to {status.connectedPeers} {status.connectedPeers === 1 ? 'person' : 'people'}. Start the conversation!</p>
+                <h3 className="text-lg font-semibold text-white">Ready to chat!</h3>
+                <p className="text-gray-400">Connected to {status.connectedPeers} {status.connectedPeers === 1 ? 'person' : 'people'}. Start the conversation!</p>
               </div>
             )}
           </div>
@@ -451,16 +459,16 @@ export default function ChatRoomPage() {
               className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[70%] rounded-lg p-3 ${
+                className={`max-w-[85%] sm:max-w-[70%] rounded-lg p-2 sm:p-3 ${
                   isMyMessage
                     ? 'bg-purple-600 text-white'
-                    : 'bg-white text-gray-800 shadow'
+                    : 'bg-gray-800 text-gray-100 border border-gray-600'
                 }`}
               >
                 {!isMyMessage && (
-                  <div className="font-semibold text-sm mb-1">{message.sender}</div>
+                  <div className="font-semibold text-xs sm:text-sm mb-1">{message.sender}</div>
                 )}
-                <div>{message.content}</div>
+                <div className="text-sm sm:text-base break-words">{message.content}</div>
                 <div className="text-xs opacity-70 mt-1">
                   <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
                 </div>
@@ -472,27 +480,27 @@ export default function ChatRoomPage() {
       </div>
 
       {/* Enhanced Message Input */}
-      <form onSubmit={handleSendMessage} className="bg-white p-4 shadow-md border-t">
-        <div className="flex space-x-2">
+      <form onSubmit={handleSendMessage} className="bg-gray-900/95 backdrop-blur p-3 sm:p-4 border-t border-gray-700 shrink-0 pb-[max(12px,env(safe-area-inset-bottom))]">
+        <div className="flex space-x-2 items-end">
           <input
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             placeholder={isSignalingConnected ? "Type a message..." : "Connecting to server..."}
-            className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-gray-900"
+            className="flex-1 p-3 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400 min-h-[44px] text-base"
             disabled={!isSignalingConnected || !displayName}
           />
           <button
             type="submit"
             disabled={!inputMessage.trim() || !isSignalingConnected || !displayName}
-            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition"
+            className="px-4 sm:px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition min-h-[44px] text-sm sm:text-base"
           >
             {isSignalingConnected ? 'Send' : '⏳'}
           </button>
         </div>
         
-        <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-          <span>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 text-xs text-gray-400 space-y-1 sm:space-y-0">
+          <span className="truncate">
             {isSignalingConnected 
               ? (status.connectedPeers > 0 
                   ? `Connected to ${status.connectedPeers} other ${status.connectedPeers === 1 ? 'person' : 'people'}` 
@@ -503,7 +511,7 @@ export default function ChatRoomPage() {
           {status.connectedPeers === 0 && isSignalingConnected && (
             <button
               onClick={() => setShowQRModal(true)}
-              className="text-purple-600 hover:text-purple-700 font-medium"
+              className="text-purple-400 hover:text-purple-300 font-medium text-left sm:text-right"
             >
               📱 Invite Friends
             </button>
@@ -513,7 +521,7 @@ export default function ChatRoomPage() {
 
       {/* Debug Panel - Development & Mobile Diagnostics */}
       {showDebug && (
-        <div className="border-t border-gray-200 bg-gray-50">
+        <div className="border-t border-gray-700 bg-gray-900/80">
           <div className="p-4">
             {/* Connection Test Component */}
             <ConnectionTest className="mb-4" />
@@ -532,9 +540,9 @@ export default function ChatRoomPage() {
             />
             
             {/* Enhanced Debug Information */}
-            <div className="mt-4 p-3 bg-gray-100 rounded-lg">
-              <h4 className="font-semibold text-sm mb-2">🔍 Connection Status</h4>
-              <div className="text-xs space-y-1">
+            <div className="mt-4 p-3 bg-gray-800 rounded-lg border border-gray-600">
+              <h4 className="font-semibold text-sm mb-2 text-white">🔍 Connection Status</h4>
+              <div className="text-xs space-y-1 text-gray-300">
                 <div>Server Connected: {isSignalingConnected ? 'Yes' : 'No'}</div>
                 <div>Message Count: {messages.length}</div>
                 <div>Online Users: {status.connectedPeers}</div>

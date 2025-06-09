@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { RoomCodeManager } from '@/utils/room-codes';
+import { RoomCodeManager, RoomCodeDiagnostics } from '@/utils/room-codes';
 
 interface RoomCodeJoinProps {
   className?: string;
@@ -37,6 +37,8 @@ export function RoomCodeJoin({ className = '' }: RoomCodeJoinProps) {
         localStorage.setItem('displayName', userName);
       }
 
+      console.log('🔍 Looking up room code:', roomCode);
+      
       // Try to find room ID from code (now async with server lookup)
       const roomId = await RoomCodeManager.getRoomIdFromCode(roomCode);
       
@@ -45,14 +47,35 @@ export function RoomCodeJoin({ className = '' }: RoomCodeJoinProps) {
         console.log('🎯 Joining existing room via code:', roomCode, '→', roomId);
         router.push(`/chat/${roomId}`);
       } else {
-        // No existing mapping, treat code as new room ID
-        const slugifiedCode = roomCode.toLowerCase().replace(/[^a-z0-9-]/g, '');
-        console.log('🆕 Creating new room from code:', roomCode, '→', slugifiedCode);
-        router.push(`/chat/${slugifiedCode}`);
+        // No existing mapping found - this could mean:
+        // 1. Server is offline/unreachable
+        // 2. Room code doesn't exist yet
+        // 3. Room code expired
+        
+        console.warn('❌ Room code not found on server:', roomCode);
+        
+        // Instead of creating a new room automatically, ask the user
+        const shouldCreateNew = confirm(
+          `Room code "${roomCode}" not found.\n\n` +
+          'This could mean:\n' +
+          '• The room doesn\'t exist yet\n' +
+          '• The server is offline\n' +
+          '• The code expired\n\n' +
+          'Would you like to create a new room with this code?'
+        );
+        
+        if (shouldCreateNew) {
+          const slugifiedCode = roomCode.toLowerCase().replace(/[^a-z0-9-]/g, '');
+          console.log('🆕 Creating new room from code:', roomCode, '→', slugifiedCode);
+          router.push(`/chat/${slugifiedCode}`);
+        } else {
+          setError('Room code not found. Please check the code and try again.');
+          setIsJoining(false);
+        }
       }
     } catch (error) {
       console.error('Failed to join room by code:', error);
-      setError('Failed to join room. Please try again.');
+      setError('Failed to connect to server. Please check your connection and try again.');
       setIsJoining(false);
     }
   };
@@ -64,6 +87,28 @@ export function RoomCodeJoin({ className = '' }: RoomCodeJoinProps) {
       RoomCodeManager.clearRecentRooms();
       setRecentRoomsKey(prev => prev + 1); // Force re-render
     }
+  };
+  
+  const runDiagnostics = async () => {
+    setError('Running diagnostics...');
+    try {
+      const connectivity = await RoomCodeDiagnostics.testServerConnectivity();
+      const systemTest = await RoomCodeDiagnostics.testRoomCodeSystem();
+      
+      console.log('🔍 Room Code Diagnostics Results:');
+      console.log('Server Connectivity:', connectivity);
+      console.log('System Test:', systemTest);
+      
+      if (connectivity.serverReachable && systemTest.success) {
+        setError('✅ All diagnostics passed! Room codes should work.');
+      } else {
+        setError(`❌ Diagnostics failed. Server: ${connectivity.serverReachable ? 'OK' : 'OFFLINE'}, System: ${systemTest.success ? 'OK' : 'FAILED'}`);
+      }
+    } catch (error) {
+      setError('❌ Diagnostics error: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+    
+    setTimeout(() => setError(''), 5000);
   };
 
   return (
@@ -146,6 +191,17 @@ export function RoomCodeJoin({ className = '' }: RoomCodeJoinProps) {
             '🚪 Join Room'
           )}
         </button>
+        
+        {/* Debug button for development */}
+        {process.env.NODE_ENV === 'development' && (
+          <button
+            type="button"
+            onClick={runDiagnostics}
+            className="w-full mt-2 py-2 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700 transition"
+          >
+            🔧 Test Room Code System
+          </button>
+        )}
       </form>
     </div>
   );
@@ -188,14 +244,14 @@ export function RoomCodeDisplay({ roomId, className = '' }: RoomCodeDisplayProps
   };
 
   return (
-    <div className={`p-3 bg-blue-50 rounded-lg border border-blue-200 ${className}`}>
+    <div className={`p-3 bg-blue-900/30 rounded-lg border border-blue-500/30 ${className}`}>
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm font-medium text-blue-900">
+          <div className="text-sm font-medium text-blue-200">
             🎫 Room Code
           </div>
-          <div className="font-mono text-xl font-bold text-blue-700">{roomCode}</div>
-          <div className="text-xs text-blue-600 mt-1">
+          <div className="font-mono text-xl font-bold text-blue-300">{roomCode}</div>
+          <div className="text-xs text-blue-400 mt-1">
             <strong>Share this code</strong> for others to join instantly
           </div>
         </div>
@@ -206,9 +262,6 @@ export function RoomCodeDisplay({ roomId, className = '' }: RoomCodeDisplayProps
           >
             {copied ? '✅ Copied!' : '📋 Copy'}
           </button>
-          <div className="text-xs text-blue-500 text-center">
-            Primary<br/>Join Method
-          </div>
         </div>
       </div>
     </div>

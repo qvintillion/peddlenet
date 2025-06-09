@@ -1,54 +1,67 @@
-# User Guide
+# User Guide - PeddleNet Festival Chat 🎪
 
-## Welcome to Festival Chat! 🎵
+## Welcome to the Future of Festival Communication! 🎆
 
-Festival Chat is a peer-to-peer messaging app designed for music festivals and events. Connect with friends and fellow attendees without relying on crowded cellular networks!
+PeddleNet Festival Chat is a cutting-edge peer-to-peer messaging app designed specifically for music festivals and events. Connect instantly with friends using QR codes, enjoy a beautiful dark mode interface optimized for festival environments, and communicate reliably even when cellular networks are overloaded!
 
-## Getting Started
+## 🚀 Quick Start
 
 ### Creating a Chat Room
 
-1. **Go to the Admin Page**
-   - Navigate to `/admin` or click "Create Room" from the homepage
+1. **Visit the Homepage**
+   - Go to PeddleNet and click "Create Room"
    
 2. **Choose a Room Name**
-   - Enter a memorable name like "Main Stage Crew" or "Camp Thunder Dome"
-   - The app will convert it to a URL-friendly format
+   - Enter a memorable name like "Main Stage VIP" or "Camp Thunder Dome"
+   - The app automatically creates a clean room ID
    - Example: "Lost & Found Tent" becomes "lost-found-tent"
 
-3. **Generate QR Code**
-   - Click the "Generate QR 🎲" button
-   - A QR code will appear that others can scan to join
+3. **Enter the Room**
+   - Click "🎪 Create & Join Room"
+   - Set your display name when prompted
+   - You're now in your own room!
 
-4. **Share the Room**
-   - Show the QR code to friends
-   - Or copy the room ID to share manually
-   - The QR code contains the full URL for easy mobile scanning
-
-5. **Join the Room**
-   - Click "Join This Room" to enter the chat
-   - You'll be prompted for a display name if you haven't set one
+4. **Invite Others**
+   - Click the "📱 Invite" button in the header
+   - Share the QR code for instant connections
+   - Or share the room code (e.g., "blue-stage-42")
 
 ### Joining an Existing Room
 
-#### Method 1: QR Code Scanning
+#### Method 1: QR Code Scanning (Recommended)
 1. Open your phone's camera or QR scanner
 2. Point at the QR code
 3. Tap the notification to open the chat room
-4. Enter your display name
-5. Start chatting!
+4. Enter your display name if prompted
+5. Start chatting instantly!
 
-#### Method 2: Direct Link
-1. Get the room ID from someone already in the room
-2. Go to `/chat/[room-id]` 
+#### Method 2: Room Code Entry
+1. Get the room code from someone (e.g., "purple-vibe-23")
+2. Click "Join Room" on the homepage
+3. Enter the room code in the input field
+4. Click "🚪 Join Room"
+5. If the room exists, you'll join immediately
+6. If not found, choose whether to create a new room
+
+#### Method 3: Direct Link
+1. Get the room link from someone already in the room
+2. Open the link in your browser
 3. Enter your display name when prompted
-4. Wait for automatic connection (2-5 seconds)
+4. Wait for automatic connection (5-10 seconds)
 
-#### Method 3: Manual Connection
-1. If auto-connect fails, click "Manual Connect"
-2. Ask someone for their Peer ID (shown in the chat header)
-3. Enter their Peer ID and click "Connect"
-4. You should connect within seconds
+## 🎨 Beautiful Dark Mode Interface
+
+### Modern Festival Design
+- **Dark purple gradient background** - Easy on the eyes in festival lighting
+- **High contrast text** - Readable in bright sunlight or low light
+- **Purple accent colors** - Consistent branding throughout
+- **Mobile-optimized layout** - Perfect for phones and tablets
+
+### Visual Elements
+- **Centered room title** - Clean, balanced header design
+- **Message bubbles** - Your messages in purple, others in dark gray
+- **Responsive design** - Looks great on any screen size
+- **Touch-friendly buttons** - Easy to tap on mobile devices
 
 ## Using the Chat
 

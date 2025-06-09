@@ -66,7 +66,33 @@ npm run dev
 5. **QR Code Generation:** Include connection details for instant pairing
 6. **Message Sync:** Real-time broadcast with persistence
 
-## 🔧 Recent Fixes (June 2025)
+## 🔧 Recent Updates (June 2025)
+
+### **Room Code Join Fixes**
+- ✅ **Fixed room code joining issue** - No longer creates new rooms when entering existing codes
+- ✅ **Added user confirmation dialog** - Users choose whether to create new room if code not found
+- ✅ **Enhanced error handling** - Better feedback and debugging for room code lookup
+- ✅ **Improved server communication** - Robust timeouts and retry logic for room code resolution
+- ✅ **Added diagnostic tools** - Debug button to test room code system end-to-end
+
+### **Dark Mode Interface**
+- ✅ **Complete dark theme redesign** - Chat interface now matches homepage purple gradient
+- ✅ **Improved contrast** - All text optimized for readability on dark backgrounds
+- ✅ **Consistent branding** - Purple accent colors throughout for cohesive experience
+- ✅ **Modern aesthetics** - Professional dark theme suitable for festival environments
+
+### **Mobile Responsiveness**
+- ✅ **Fully responsive design** - Optimized for all screen sizes from mobile to desktop
+- ✅ **Sticky message input** - Input stays at bottom with proper safe area support
+- ✅ **Touch-friendly interactions** - All buttons meet minimum touch target sizes (44px)
+- ✅ **Responsive typography** - Text scales appropriately for different screen sizes
+- ✅ **Improved layouts** - Better spacing and organization on mobile devices
+
+### **UI/UX Improvements**
+- ✅ **Cleaned up interface** - Removed unnecessary tip banners and redundant text
+- ✅ **Centered room title** - Better visual hierarchy with balanced header layout
+- ✅ **Streamlined navigation** - Home button repositioned for intuitive flow
+- ✅ **Enhanced message bubbles** - Better mobile sizing and responsive padding
 
 ### **Protocol Issues Resolved**
 - ✅ **Fixed WSS/HTTPS URL confusion** - ServerUtils automatically converts protocols

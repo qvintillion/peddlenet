@@ -42,27 +42,84 @@ export class RoomCodeManager {
     
     if (cachedRoomId) {
       console.log('🔍 Found room code in cache:', normalizedCode, '->', cachedRoomId);
+      
+      // Still check server to make sure room is active (optional verification)
+      try {
+        const serverUrl = ServerUtils.getHttpServerUrl();
+        const response = await fetch(`${serverUrl}/resolve-room-code/${encodeURIComponent(normalizedCode)}`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(5000), // 5 second timeout
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.roomId === cachedRoomId) {
+            console.log('✅ Server confirmed cached room code is still valid');
+            return cachedRoomId;
+          } else if (data.success && data.roomId !== cachedRoomId) {
+            console.log('🔄 Server has different room ID for code, updating cache');
+            this.storeCodeMapping(data.roomId, normalizedCode);
+            return data.roomId;
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not verify cached room code with server, using cached version:', error);
+      }
+      
+      // Use cached version if server check fails
       return cachedRoomId;
     }
     
     // Try server lookup for room codes created by other users
+    console.log('🌐 Checking server for room code:', normalizedCode);
+    
     try {
       const serverUrl = ServerUtils.getHttpServerUrl();
-      const response = await fetch(`${serverUrl}/resolve-room-code/${encodeURIComponent(normalizedCode)}`);
+      console.log('🔗 Requesting:', `${serverUrl}/resolve-room-code/${encodeURIComponent(normalizedCode)}`);
+      
+      const response = await fetch(`${serverUrl}/resolve-room-code/${encodeURIComponent(normalizedCode)}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: AbortSignal.timeout(8000), // 8 second timeout for server lookup
+        mode: 'cors'
+      });
+      
+      console.log('📡 Server response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log('🚫 Room code not found on server (404):', normalizedCode);
+          return null;
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+      }
+      
       const data = await response.json();
+      console.log('📄 Server response data:', data);
       
       if (data.success && data.roomId) {
-        console.log('🌐 Found room code on server:', normalizedCode, '->', data.roomId);
-        // Cache it locally for future use
-        this.storeCodeMapping(data.roomId, normalizedCode);
+        console.log('✅ Found room code on server:', normalizedCode, '->', data.roomId);
+        // Cache it locally for future use (but don't await - do it in background)
+        this.storeCodeMapping(data.roomId, normalizedCode).catch(err => 
+          console.warn('Failed to cache room code mapping:', err)
+        );
         return data.roomId;
       } else {
-        console.log('❌ Room code not found on server:', normalizedCode);
+        console.log('🚫 Room code not found - server returned no roomId:', normalizedCode, data);
         return null;
       }
     } catch (error) {
-      console.warn('⚠️ Failed to resolve room code on server:', error);
-      // Fallback to local lookup only
+      console.error('❌ Failed to resolve room code on server:', error);
+      console.error('Error details:', {
+        code: normalizedCode,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      // Return null to indicate lookup failed (don't fallback to cache if server fails)
       return null;
     }
   }
@@ -79,32 +136,51 @@ export class RoomCodeManager {
     
     try {
       localStorage.setItem('peddlenet_room_codes', JSON.stringify(mappings));
+      console.log('💾 Stored room code mapping locally:', normalizedCode, '->', roomId);
     } catch (error) {
       console.warn('Failed to store room code mapping locally:', error);
     }
     
-    // Also register with server so others can find it
+    // Register with server so others can find it (with better error handling)
     try {
       const serverUrl = ServerUtils.getHttpServerUrl();
+      console.log('📡 Registering room code with server:', `${serverUrl}/register-room-code`);
+      
       const response = await fetch(`${serverUrl}/register-room-code`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({
           roomId,
           roomCode: normalizedCode
-        })
+        }),
+        signal: AbortSignal.timeout(10000), // 10 second timeout
+        mode: 'cors'
       });
       
+      console.log('📡 Server registration response:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
+      console.log('📄 Server registration data:', data);
+      
       if (data.success) {
-        console.log('📋 Room code registered with server:', normalizedCode, '->', roomId);
+        console.log('✅ Room code registered with server:', normalizedCode, '->', roomId);
       } else {
-        console.warn('⚠️ Failed to register room code with server:', data.error);
+        console.warn('⚠️ Server rejected room code registration:', data.error);
       }
     } catch (error) {
-      console.warn('⚠️ Failed to register room code with server:', error);
+      console.error('❌ Failed to register room code with server:', error);
+      console.error('Registration error details:', {
+        roomId,
+        code: normalizedCode,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
       // Continue anyway - local storage will work for this user
     }
   }
@@ -236,6 +312,165 @@ export class RoomCodeManager {
     
     // Fallback to date
     return new Date(timestamp).toLocaleDateString();
+  }
+}
+
+/**
+ * Room code debugging and diagnostics utilities
+ */
+export class RoomCodeDiagnostics {
+  /**
+   * Test room code functionality end-to-end
+   */
+  static async testRoomCodeSystem(testCode: string = 'test-debug-42'): Promise<{
+    success: boolean;
+    steps: Array<{ step: string; success: boolean; data?: any; error?: string }>;
+  }> {
+    const results = {
+      success: false,
+      steps: [] as Array<{ step: string; success: boolean; data?: any; error?: string }>
+    };
+    
+    // Step 1: Generate a room code
+    try {
+      const testRoomId = 'test-room-debug-' + Date.now();
+      const generatedCode = RoomCodeManager.generateRoomCode(testRoomId);
+      results.steps.push({
+        step: 'Generate room code',
+        success: true,
+        data: { roomId: testRoomId, code: generatedCode }
+      });
+      
+      // Step 2: Store the mapping
+      try {
+        await RoomCodeManager.storeCodeMapping(testRoomId, generatedCode);
+        results.steps.push({
+          step: 'Store room code mapping',
+          success: true,
+          data: { roomId: testRoomId, code: generatedCode }
+        });
+        
+        // Step 3: Retrieve the mapping
+        try {
+          const retrievedRoomId = await RoomCodeManager.getRoomIdFromCode(generatedCode);
+          if (retrievedRoomId === testRoomId) {
+            results.steps.push({
+              step: 'Retrieve room code mapping',
+              success: true,
+              data: { expected: testRoomId, actual: retrievedRoomId }
+            });
+            results.success = true;
+          } else {
+            results.steps.push({
+              step: 'Retrieve room code mapping',
+              success: false,
+              error: `Expected ${testRoomId}, got ${retrievedRoomId}`
+            });
+          }
+        } catch (error) {
+          results.steps.push({
+            step: 'Retrieve room code mapping',
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
+      } catch (error) {
+        results.steps.push({
+          step: 'Store room code mapping',
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    } catch (error) {
+      results.steps.push({
+        step: 'Generate room code',
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+    
+    return results;
+  }
+  
+  /**
+   * Test server connectivity for room codes
+   */
+  static async testServerConnectivity(): Promise<{
+    serverReachable: boolean;
+    httpUrl: string;
+    health?: any;
+    roomCodeEndpoints?: {
+      register: boolean;
+      resolve: boolean;
+    };
+    error?: string;
+  }> {
+    try {
+      const serverUrl = ServerUtils.getHttpServerUrl();
+      
+      // Test health endpoint
+      const healthResponse = await fetch(`${serverUrl}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000)
+      });
+      
+      if (!healthResponse.ok) {
+        return {
+          serverReachable: false,
+          httpUrl: serverUrl,
+          error: `Health check failed: HTTP ${healthResponse.status}`
+        };
+      }
+      
+      const health = await healthResponse.json();
+      
+      // Test room code endpoints
+      const testCode = 'test-connectivity-' + Date.now();
+      const testRoomId = 'test-room-' + Date.now();
+      
+      // Test register endpoint
+      let registerWorks = false;
+      try {
+        const registerResponse = await fetch(`${serverUrl}/register-room-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ roomId: testRoomId, roomCode: testCode }),
+          signal: AbortSignal.timeout(5000)
+        });
+        registerWorks = registerResponse.ok;
+      } catch (error) {
+        console.warn('Register endpoint test failed:', error);
+      }
+      
+      // Test resolve endpoint
+      let resolveWorks = false;
+      try {
+        const resolveResponse = await fetch(`${serverUrl}/resolve-room-code/${testCode}`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(5000)
+        });
+        resolveWorks = resolveResponse.status === 200 || resolveResponse.status === 404; // 404 is fine for non-existent code
+      } catch (error) {
+        console.warn('Resolve endpoint test failed:', error);
+      }
+      
+      return {
+        serverReachable: true,
+        httpUrl: serverUrl,
+        health,
+        roomCodeEndpoints: {
+          register: registerWorks,
+          resolve: resolveWorks
+        }
+      };
+      
+    } catch (error) {
+      return {
+        serverReachable: false,
+        httpUrl: ServerUtils.getHttpServerUrl(),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 }
 
