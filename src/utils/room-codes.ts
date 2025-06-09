@@ -27,17 +27,23 @@ export class RoomCodeManager {
     const nounIndex = Math.abs(hash >> 8) % this.NOUNS.length;
     const number = (Math.abs(hash >> 16) % 99) + 1;
     
-    return `${this.ADJECTIVES[adjIndex]}-${this.NOUNS[nounIndex]}-${number}`;
+    const code = `${this.ADJECTIVES[adjIndex]}-${this.NOUNS[nounIndex]}-${number}`;
+    
+    console.log('🏷️ Generated room code:', code, 'for room ID:', roomId, 'hash:', hash);
+    
+    return code;
   }
 
   /**
-   * Extract room ID from room code (now with server lookup)
+   * Extract room ID from room code (now with server lookup AND reverse engineering)
    */
   static async getRoomIdFromCode(code: string): Promise<string | null> {
     const normalizedCode = code.toLowerCase().trim();
     
+    console.log('🔍 getRoomIdFromCode called with:', normalizedCode);
+    
     // First try localStorage cache for faster lookup
-    const mappings = this.getCodeMappings();
+    const mappings = this.getStoredCodeMappings();
     const cachedRoomId = mappings[normalizedCode];
     
     if (cachedRoomId) {
@@ -88,28 +94,23 @@ export class RoomCodeManager {
       
       console.log('📡 Server response status:', response.status, response.statusText);
       
-      if (!response.ok) {
-        if (response.status === 404) {
-          console.log('🚫 Room code not found on server (404):', normalizedCode);
-          return null;
-        } else {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📄 Server response data:', data);
+        
+        if (data.success && data.roomId) {
+          console.log('✅ Found room code on server:', normalizedCode, '->', data.roomId);
+          // Cache it locally for future use (but don't await - do it in background)
+          this.storeCodeMapping(data.roomId, normalizedCode).catch(err => 
+            console.warn('Failed to cache room code mapping:', err)
+          );
+          return data.roomId;
         }
-      }
-      
-      const data = await response.json();
-      console.log('📄 Server response data:', data);
-      
-      if (data.success && data.roomId) {
-        console.log('✅ Found room code on server:', normalizedCode, '->', data.roomId);
-        // Cache it locally for future use (but don't await - do it in background)
-        this.storeCodeMapping(data.roomId, normalizedCode).catch(err => 
-          console.warn('Failed to cache room code mapping:', err)
-        );
-        return data.roomId;
+      } else if (response.status === 404) {
+        console.log('🚫 Room code not found on server (404):', normalizedCode);
+        // Don't fall through to reverse engineering yet - let's see if server is just missing the endpoints
       } else {
-        console.log('🚫 Room code not found - server returned no roomId:', normalizedCode, data);
-        return null;
+        console.warn('⚠️ Server response not OK:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('❌ Failed to resolve room code on server:', error);
@@ -118,10 +119,95 @@ export class RoomCodeManager {
         error: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined
       });
-      
-      // Return null to indicate lookup failed (don't fallback to cache if server fails)
-      return null;
     }
+    
+    // FALLBACK: Try reverse engineering common room ID patterns
+    console.log('🔧 Attempting reverse engineering for room code:', normalizedCode);
+    const possibleRoomIds = this.generatePossibleRoomIds(normalizedCode);
+    
+    for (const possibleRoomId of possibleRoomIds) {
+      const generatedCode = this.generateRoomCode(possibleRoomId);
+      if (generatedCode === normalizedCode) {
+        console.log('✅ Reverse engineered room ID:', possibleRoomId, 'for code:', normalizedCode);
+        // Cache this mapping for future use
+        this.storeCodeMapping(possibleRoomId, normalizedCode).catch(err => 
+          console.warn('Failed to cache reverse-engineered mapping:', err)
+        );
+        return possibleRoomId;
+      }
+    }
+    
+    console.log('🚫 Room code not found anywhere:', normalizedCode);
+    return null;
+  }
+
+  /**
+   * Generate possible room IDs that could produce this room code
+   * This is a reverse engineering approach for when server lookup fails
+   */
+  private static generatePossibleRoomIds(roomCode: string): string[] {
+    const possibleIds: string[] = [];
+    
+    // Extract the parts from the room code
+    const parts = roomCode.split('-');
+    if (parts.length !== 3) {
+      return possibleIds;
+    }
+    
+    const [adjective, noun, numberStr] = parts;
+    
+    // Common room ID patterns based on the code components
+    const commonPatterns = [
+      // Direct conversion: "blue-stage-42" -> "blue-stage-42"
+      roomCode,
+      
+      // Title case: "blue-stage-42" -> "Blue-Stage-42"
+      parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('-'),
+      
+      // Spaces: "blue-stage-42" -> "blue stage 42"
+      parts.join(' '),
+      
+      // Title case with spaces: "Blue Stage 42"
+      parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' '),
+      
+      // Without numbers: "blue-stage"
+      `${adjective}-${noun}`,
+      
+      // Just the noun: "stage"
+      noun,
+      
+      // Common room naming patterns
+      `${adjective}-${noun}-room`,
+      `${adjective}-${noun}-chat`,
+      `${adjective}-${noun}-${numberStr}`,
+      `${noun}-${numberStr}`,
+      `${adjective}-room`,
+      `${noun}-room`,
+      
+      // Festival-specific patterns
+      `${adjective}-${noun}-fest`,
+      `${adjective}-${noun}-party`,
+      `${noun}-${adjective}`,
+      `${noun}-${adjective}-${numberStr}`
+    ];
+    
+    // Add variations with different cases and separators
+    const variations: string[] = [];
+    for (const pattern of commonPatterns) {
+      variations.push(
+        pattern,
+        pattern.toLowerCase(),
+        pattern.toUpperCase(),
+        pattern.replace(/-/g, '_'),
+        pattern.replace(/-/g, ''),
+        pattern.replace(/ /g, '-'),
+        pattern.replace(/ /g, '_'),
+        pattern.replace(/ /g, '')
+      );
+    }
+    
+    // Remove duplicates and return
+    return [...new Set(variations)];
   }
 
   /**
@@ -131,7 +217,7 @@ export class RoomCodeManager {
     const normalizedCode = code.toLowerCase();
     
     // Store locally first
-    const mappings = this.getCodeMappings();
+    const mappings = this.getStoredCodeMappings();
     mappings[normalizedCode] = roomId;
     
     try {
@@ -186,9 +272,16 @@ export class RoomCodeManager {
   }
 
   /**
-   * Get stored room code mappings
+   * Get stored room code mappings (public for debugging)
    */
-  private static getCodeMappings(): Record<string, string> {
+  static getCodeMappings(): Record<string, string> {
+    return this.getStoredCodeMappings();
+  }
+
+  /**
+   * Get stored room code mappings (private implementation)
+   */
+  private static getStoredCodeMappings(): Record<string, string> {
     try {
       const stored = localStorage.getItem('peddlenet_room_codes');
       return stored ? JSON.parse(stored) : {};

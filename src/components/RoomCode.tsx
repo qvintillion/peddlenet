@@ -38,6 +38,7 @@ export function RoomCodeJoin({ className = '' }: RoomCodeJoinProps) {
       }
 
       console.log('🔍 Looking up room code:', roomCode);
+      console.log('🔍 Available cache mappings:', Object.keys(RoomCodeManager.getCodeMappings()));
       
       // Try to find room ID from code (now async with server lookup)
       const roomId = await RoomCodeManager.getRoomIdFromCode(roomCode);
@@ -92,8 +93,28 @@ export function RoomCodeJoin({ className = '' }: RoomCodeJoinProps) {
   const runDiagnostics = async () => {
     setError('Running diagnostics...');
     try {
+      console.log('🔍 Starting room code diagnostics...');
+      
+      // Test 1: Server connectivity
+      console.log('🔍 Step 1: Testing server connectivity...');
       const connectivity = await RoomCodeDiagnostics.testServerConnectivity();
+      console.log('Server connectivity result:', connectivity);
+      
+      // Test 2: Room code system
+      console.log('🔍 Step 2: Testing room code system...');
       const systemTest = await RoomCodeDiagnostics.testRoomCodeSystem();
+      console.log('System test result:', systemTest);
+      
+      // Test 3: Manual test with current room code if available
+      if (roomCode) {
+        console.log('🔍 Step 3: Testing current room code:', roomCode);
+        try {
+          const roomId = await RoomCodeManager.getRoomIdFromCode(roomCode);
+          console.log('Current room code lookup result:', roomId);
+        } catch (error) {
+          console.error('Current room code lookup failed:', error);
+        }
+      }
       
       console.log('🔍 Room Code Diagnostics Results:');
       console.log('Server Connectivity:', connectivity);
@@ -102,13 +123,19 @@ export function RoomCodeJoin({ className = '' }: RoomCodeJoinProps) {
       if (connectivity.serverReachable && systemTest.success) {
         setError('✅ All diagnostics passed! Room codes should work.');
       } else {
-        setError(`❌ Diagnostics failed. Server: ${connectivity.serverReachable ? 'OK' : 'OFFLINE'}, System: ${systemTest.success ? 'OK' : 'FAILED'}`);
+        const serverStatus = connectivity.serverReachable ? 'OK' : 'OFFLINE';
+        const systemStatus = systemTest.success ? 'OK' : 'FAILED';
+        const endpointsStatus = connectivity.roomCodeEndpoints ? 
+          `Register: ${connectivity.roomCodeEndpoints.register ? 'OK' : 'FAIL'}, Resolve: ${connectivity.roomCodeEndpoints.resolve ? 'OK' : 'FAIL'}` : 
+          'UNKNOWN';
+        setError(`❌ Diagnostics failed. Server: ${serverStatus}, System: ${systemStatus}, Endpoints: ${endpointsStatus}`);
       }
     } catch (error) {
+      console.error('Diagnostics error:', error);
       setError('❌ Diagnostics error: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
     
-    setTimeout(() => setError(''), 5000);
+    setTimeout(() => setError(''), 10000); // Show results longer
   };
 
   return (
@@ -216,11 +243,18 @@ export function RoomCodeDisplay({ roomId, className = '' }: RoomCodeDisplayProps
   const roomCode = RoomCodeManager.generateRoomCode(roomId);
   const [copied, setCopied] = useState(false);
 
-  // Store the mapping and add to recent rooms (now async)
+  // Store the mapping and add to recent rooms (now async with enhanced error handling)
   React.useEffect(() => {
     const registerCode = async () => {
-      await RoomCodeManager.storeCodeMapping(roomId, roomCode);
-      RoomCodeManager.addToRecentRooms(roomId, roomCode);
+      console.log('📋 RoomCodeDisplay: Registering room code:', roomCode, 'for room:', roomId);
+      try {
+        await RoomCodeManager.storeCodeMapping(roomId, roomCode);
+        console.log('✅ RoomCodeDisplay: Successfully registered room code');
+        RoomCodeManager.addToRecentRooms(roomId, roomCode);
+        console.log('✅ RoomCodeDisplay: Added to recent rooms');
+      } catch (error) {
+        console.error('❌ RoomCodeDisplay: Failed to register room code:', error);
+      }
     };
     registerCode();
   }, [roomId, roomCode]);

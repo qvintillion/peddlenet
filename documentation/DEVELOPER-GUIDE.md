@@ -366,6 +366,25 @@ curl -I http://localhost:3001/health
 ./mobile-dev.sh  # Provides HTTPS via ngrok
 ```
 
+**Issue**: "Room codes create new rooms instead of joining"
+```bash
+# Cause: getRoomIdFromCode returns null when room not found
+# Solution: Enhanced room code system with triple fallback
+# 1. Cache lookup (localStorage)
+# 2. Server lookup with proper timeout
+# 3. Reverse engineering with 28+ pattern variations
+# User confirmation dialog prevents accidental room creation
+```
+
+**Issue**: "Room codes not working across devices"
+```bash
+# Cause: Server endpoints not deployed or cache not syncing
+# Solution: Deploy updated server with room code endpoints
+npm run deploy:firebase:complete
+# Verify endpoints: /register-room-code and /resolve-room-code
+curl -X POST server/register-room-code -d '{"roomId":"test","roomCode":"blue-stage-42"}'
+```
+
 ## 🚢 Build & Deployment
 
 ### Local Build Testing
@@ -494,6 +513,9 @@ src/lib/types.ts
 2. **Test mobile-first** - always verify mobile compatibility
 3. **Add debug logging** - use consistent console.log patterns
 4. **Document new features** - update relevant documentation
+5. **Test room code system** - use built-in diagnostics (🔧 Test Room Code System button)
+6. **Verify cross-device sync** - test room codes work between different devices
+7. **Check error handling** - ensure graceful fallbacks and user feedback
 
 ### Production Deployment Checklist
 - [ ] Test production build locally (`npm run build && npm run start`)
