@@ -13,7 +13,7 @@ import { QRModal } from '@/components/QRModal';
 import { NetworkStatus, ConnectionError } from '@/components/NetworkStatus';
 import { RoomCodeDisplay } from '@/components/RoomCode';
 import { NotificationSettings } from '@/components/NotificationSettings';
-import { P2PDebugUtils } from '@/utils/p2p-debug';
+import { ConnectionTest } from '@/components/ConnectionTest';
 import { QRPeerUtils } from '@/utils/qr-peer-utils';
 
 export default function ChatRoomPage() {
@@ -74,14 +74,14 @@ export default function ChatRoomPage() {
     } else if (isSignalingConnected && connectionError?.type === 'server-disconnected') {
       setConnectionError(null);
     }
-  }, [isSignalingConnected, peerId, connectionError]);
+  }, [isSignalingConnected, peerId]); // Remove connectionError from deps to prevent infinite loop
 
   // Clear errors when successfully connected
   useEffect(() => {
-    if (status.connectedPeers > 0 && connectionError) {
+    if (status.connectedPeers > 0) {
       setConnectionError(null);
     }
-  }, [status.connectedPeers, connectionError]);
+  }, [status.connectedPeers]); // Remove connectionError from deps to prevent infinite loop
 
   // Check if this is a session restoration
   const [isSessionRestored, setIsSessionRestored] = useState(false);
@@ -135,47 +135,19 @@ export default function ChatRoomPage() {
     }
   }, [roomId]);
 
-  // Handle incoming messages (server provides message history)
+  // Handle incoming messages from the hook - simplified to avoid infinite loops
   useEffect(() => {
-    console.log('📨 Server messages updated:', serverMessages.length, serverMessages);
-    console.log('👤 Current display name:', displayName);
-    
-    // Always update messages, even if empty (for cleanup)
+    // Simply use the messages from the WebSocket hook directly
     setMessages(serverMessages);
-    
-    // Debug message senders
-    if (serverMessages.length > 0) {
-      console.log('📋 Message senders breakdown:');
-      const senderCounts = serverMessages.reduce((acc, msg) => {
-        acc[msg.sender] = (acc[msg.sender] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      console.log(senderCounts);
-      
-      console.log('👤 My messages:', serverMessages.filter(m => m.sender === displayName).length);
-      console.log('👥 Other messages:', serverMessages.filter(m => m.sender !== displayName).length);
-    }
-  }, [serverMessages, displayName]);
+  }, [serverMessages]);
 
-  // Also set up the onMessage handler for real-time updates
+  // Set up push notifications for real-time messages
   useEffect(() => {
     const cleanup = onMessage((message: Message) => {
       console.log('📨 Received real-time message:', message);
       
       // Trigger push notification if appropriate
       triggerNotification(message);
-      
-      // The WebSocket hook should already handle adding to serverMessages
-      // But let's also update local messages just in case
-      setMessages(prev => {
-        const isDuplicate = prev.some(m => m.id === message.id);
-        if (isDuplicate) {
-          console.log('⚠️ Duplicate message detected:', message.id);
-          return prev;
-        }
-        console.log('✅ Adding new message to UI:', message);
-        return [...prev, message].sort((a, b) => a.timestamp - b.timestamp);
-      });
     });
     return cleanup;
   }, [onMessage, triggerNotification]);
@@ -472,13 +444,6 @@ export default function ChatRoomPage() {
         
         {messages.map((message) => {
           const isMyMessage = message.sender === displayName;
-          console.log('💬 Rendering message:', {
-            id: message.id,
-            sender: message.sender,
-            content: message.content,
-            isMyMessage,
-            currentDisplayName: displayName
-          });
           
           return (
             <div
@@ -550,6 +515,9 @@ export default function ChatRoomPage() {
       {showDebug && (
         <div className="border-t border-gray-200 bg-gray-50">
           <div className="p-4">
+            {/* Connection Test Component */}
+            <ConnectionTest className="mb-4" />
+            
             <MobileDiagnostics
               peerId={peerId}
               roomId={roomId}
@@ -565,7 +533,7 @@ export default function ChatRoomPage() {
             
             {/* Enhanced Debug Information */}
             <div className="mt-4 p-3 bg-gray-100 rounded-lg">
-              <h4 className="font-semibold text-sm mb-2">🔍 Server Chat Debug</h4>
+              <h4 className="font-semibold text-sm mb-2">🔍 Connection Status</h4>
               <div className="text-xs space-y-1">
                 <div>Server Connected: {isSignalingConnected ? 'Yes' : 'No'}</div>
                 <div>Message Count: {messages.length}</div>

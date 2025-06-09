@@ -25,16 +25,24 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
   // Auto-detect IP when modal opens
   useEffect(() => {
     if (isOpen && roomId) {
-      // Use the current window location's IP instead of auto-detection
-      // This ensures we use the same IP that Next.js is serving on
       const currentHostname = window.location.hostname;
-      if (currentHostname !== 'localhost' && currentHostname !== '127.0.0.1') {
-        // We're already on a network IP (staging/production), use it directly
-        console.log('✅ Using current hostname from Next.js:', currentHostname);
+      
+      // Check if we have a pre-detected IP from dev script
+      const detectedIP = process.env.NEXT_PUBLIC_DETECTED_IP;
+      
+      if (detectedIP && detectedIP !== 'localhost') {
+        // Use the IP detected by dev script - this is the most reliable
+        console.log('✅ Using IP detected by dev script:', detectedIP);
+        setAutoDetectedIP(detectedIP);
+        generateInviteQR(detectedIP);
+      } else if (currentHostname !== 'localhost' && currentHostname !== '127.0.0.1') {
+        // We're already on a network IP, use it directly
+        console.log('✅ Using current hostname from dev-mobile setup:', currentHostname);
         setAutoDetectedIP(currentHostname);
         generateInviteQR(currentHostname);
       } else {
-        // Only auto-detect if we're on localhost (development)
+        // Fallback to browser-based auto-detection
+        console.log('🔍 Falling back to browser IP detection...');
         autoDetectAndGenerateQR();
       }
     }
@@ -276,6 +284,9 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
                   <span className="text-green-800">
                     ✅ Mobile-accessible at: {autoDetectedIP}
                   </span>
+                  <div className="mt-1 text-green-600">
+                    📡 Server: http://{autoDetectedIP}:3001
+                  </div>
                   {/* Only show change button in development */}
                   {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
                     <button 

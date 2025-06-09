@@ -1,254 +1,312 @@
-## 🎆 **Latest Success: Production Messaging Fixed!**
+# 🎪 Festival Chat - PeddleNet
 
-**🏆 BREAKTHROUGH:** Festival chat now works flawlessly in production! After identifying that the production server was missing the chat-message handler, we successfully deployed the complete messaging solution.
+A real-time chat application designed for festivals and events with instant QR code connections and mobile-first architecture.
 
-**✅ Confirmed Working:**
-- **Fast connections** (5-10 seconds) in production
-- **Instant bidirectional messaging** (sender ↔ receiver)
-- **Cross-device communication** (desktop ↔ mobile)
-- **Solo messaging** (start conversations when alone)
-- **Message persistence** (history for late joiners)
+## 🚀 Quick Start
 
-**📈 Performance:** Production now matches development perfectly!
+### For Mobile Development
+```bash
+npm install
+npm run dev:mobile
+```
 
----
+This automatically:
+- Detects your local network IP address
+- Starts both frontend (port 3000) and backend (port 3001)
+- Enables QR code scanning from mobile devices
+- Sets up real-time messaging with persistence
 
-# 🎵 PeddleNet
+### For Standard Development
+```bash
+npm install
+npm run dev
+```
 
-> **Instant P2P networking for festivals and events - Connect when WiFi doesn't**
+## 📱 Mobile Testing
 
-[![Live Demo](https://img.shields.io/badge/Live-Demo-purple?style=for-the-badge)](https://peddlenet.app)
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![WebRTC](https://img.shields.io/badge/WebRTC-P2P-green?style=for-the-badge)](https://webrtc.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+1. **Start servers:** `npm run dev:mobile`
+2. **Check IP detection:** Should show "✅ Detected local IP: 192.168.x.x"
+3. **Test on mobile:** Open `http://YOUR_IP:3000/diagnostics`
+4. **Join rooms:** Scan QR codes for instant connections
 
-## ⚠️ **Current Development Status**
+## ✨ Features
 
-**Architecture Evolution**: The project is transitioning from pure P2P to a hybrid WebSocket/P2P approach for better reliability in multi-user scenarios.
+- **🔗 Instant QR Connections:** Scan to join rooms in 5-10 seconds
+- **💬 Real-time Messaging:** WebSocket-based with polling fallback
+- **📱 Mobile Optimized:** Works seamlessly across devices
+- **🔄 Message Persistence:** Survives page refreshes and reconnections
+- **🌐 Network Discovery:** Automatic IP detection for mobile access
+- **🎯 Zero Configuration:** No signups, accounts, or complex setup
+- **🛡️ Privacy Focused:** Messages stored locally and in server memory only
+- **📋 Room Codes:** Memorable codes for easy room sharing (blue-stage-42)
 
-**Current Implementation** (Development Branch):
-- ✅ **WebSocket Server-Based Chat** - Persistent rooms and message history
-- ✅ **Multi-user Support** - No dependency on single "host" user
-- ✅ **Cross-platform Messaging** - Reliable desktop ↔ mobile communication
-- 🔄 **P2P Optimization** - Future enhancement for direct connections
+## 🏗️ Architecture
 
-**See**: [Development Session Summary](./documentation/DEVELOPMENT-SESSION-SUMMARY.md) for recent changes.
+### Frontend (Port 3000)
+- **Framework:** Next.js 15 with React 19
+- **Styling:** Tailwind CSS 4
+- **Real-time:** Socket.IO client
+- **QR Generation:** qrcode library
+- **Persistence:** localStorage + server sync
 
----
-
-## ⚡ Try It Now
-
-**Live Production App**: [peddlenet.app](https://peddlenet.app)
-
-1. Create a room and join automatically
-2. Share QR code to invite others  
-3. Instant P2P connections (5-10 seconds)
-4. Works offline once connected!
-
-## 🌟 Why PeddleNet?
-
-**The only festival chat that works when WiFi doesn't.**
-
-- **🚀 Instant Connection**: QR code to live chat in seconds
-- **📱 Cross-Platform**: Desktop ↔ Mobile seamlessly  
-- **🌐 Works Offline**: P2P connections survive network outages
-- **🔒 Privacy First**: No registration, no data collection, no servers storing messages
-- **🎪 Festival Ready**: Designed for crowded, low-connectivity environments
-
-## 🎯 Perfect for Events
-
-### Use Cases
-- **Music Festivals**: Coordinate with friends when cell towers are overloaded
-- **Camping Events**: Communication without internet infrastructure  
-- **Corporate Retreats**: Team coordination in remote locations
-- **Emergency Response**: Backup communication when networks fail
-- **Conferences**: Attendee networking and coordination
-
-### Why P2P?
-- **Resilient**: Works when centralized networks fail
-- **Fast**: Direct connections = minimal latency
-- **Private**: No data passes through servers
-- **Scalable**: Each connection adds capacity to the network
-
-## 🏗️ Tech Stack
-
-- **Frontend**: Next.js 15 + React 19 + TypeScript
-- **P2P Layer**: WebRTC with persistent peer management
-- **Styling**: Tailwind CSS
-- **Deployment**: Vercel + Cloudflare CDN
-- **Domain**: Custom domain with SSL
-
-## 📱 How It Works
-
-### P2P Architecture
-- Uses WebRTC for direct peer-to-peer connections
-- QR codes contain room info and peer connection details
-- No central server required after initial connection
-- Messages route directly between devices
+### Backend (Port 3001) 
+- **Server:** Node.js with Express
+- **WebSockets:** Socket.IO server
+- **Database:** SQLite with 24h retention
+- **CORS:** Configured for local network access
+- **Message Storage:** Persistent with room code mapping
+- **Health Endpoint:** `/health` for connection testing
+- **Room Codes:** `/register-room-code` and `/resolve-room-code` endpoints
 
 ### Connection Flow
-1. **Host** creates room → gets unique peer ID
-2. **QR Code** contains room ID + peer connection info
-3. **Guest** scans QR → establishes direct P2P connection
-4. **Mesh Network** allows multiple participants
+1. **Network Detection:** Auto-detect local IP for mobile access
+2. **Protocol Management:** ServerUtils handles HTTP vs WebSocket URLs automatically
+3. **WebSocket Connection:** Primary with polling fallback
+4. **Room Management:** Server-side room state and message history
+5. **QR Code Generation:** Include connection details for instant pairing
+6. **Message Sync:** Real-time broadcast with persistence
 
-## 🚀 Quick Development Setup
+## 🔧 Recent Fixes (June 2025)
 
-### Prerequisites
-- Node.js 18+
-- npm or yarn
+### **Protocol Issues Resolved**
+- ✅ **Fixed WSS/HTTPS URL confusion** - ServerUtils automatically converts protocols
+- ✅ **Fixed mixed content errors** - Proper HTTPS usage in production
+- ✅ **Fixed room code registration** - Added missing server endpoints
+- ✅ **Fixed JSON parse errors** - Proper error handling and responses
 
-### Get Started
+### **Build System Improvements**
+- ✅ **Fixed Firebase export build failures** - Resolved webpack chunk issues
+- ✅ **Fixed headers configuration** - Conditional headers for export mode
+- ✅ **Improved cache management** - Better build artifact cleanup
+- ✅ **Enhanced error recovery** - Graceful handling of build edge cases
+
+### **New ServerUtils System**
+- **Automatic Protocol Detection:** Converts `wss://` to `https://` for HTTP calls
+- **Environment Awareness:** Handles development vs production automatically  
+- **Centralized URL Management:** Single source of truth for server URLs
+- **Built-in Health Checks:** `ServerUtils.testHttpHealth()` for diagnostics
+
+## 🛠️ Build Troubleshooting
+
+### **If Build Fails:**
 ```bash
-git clone https://github.com/YOUR_USERNAME/peddlenet.git
-cd peddlenet
+# Clean build artifacts
+rm -rf .next out node_modules/.cache
+npm cache clean --force
+
+# Reinstall dependencies if needed
+rm -rf node_modules
 npm install
 
-# Mobile development (Recommended - with automatic IP detection)
-chmod +x tools/dev-mobile.sh
-./tools/dev-mobile.sh
-```
-
-This starts both servers with **automatic IP detection** and mobile network support - perfect for cross-device testing!
-
-### Development Commands
-```bash
-# Mobile development (MAIN SCRIPT - automatic IP detection)
-./tools/dev-mobile.sh
-
-# Verbose mode (shows detailed network info)
-./tools/dev-mobile.sh --verbose
-
-# Standard development (localhost only)
+# Try development first
 npm run dev
 
-# Production build
-npm run build && npm run start
+# Then attempt Firebase build
+npm run build:firebase
 ```
 
-## 🏆 Technical Achievements
+### **Common Build Issues:**
+- **Webpack chunk errors:** Clean .next directory and rebuild
+- **Headers with export:** Fixed in next.config.ts (conditional headers)
+- **Module not found:** Clear cache and reinstall dependencies
+- **Static export conflicts:** ServerUtils handles client-side only operations
 
-### Performance Metrics (Production Verified ✅)
-| Metric | Target | Achieved |
-|--------|--------|----------|
-| Connection Time | < 15 seconds | **5-10 seconds** ✅ |
-| Cross-Network Success | > 80% | **~95%** ✅ |
-| Mobile Compatibility | iOS + Android | **Full Support** ✅ |
-| **Message Display** | **Bidirectional** | **🎆 PERFECT** ✅ |
-| **Solo Messaging** | **When alone** | **🎆 WORKING** ✅ |
-| Offline Messaging | After connection | **Working** ✅ |
-| Duplicate Connections | 0 per device | **Eliminated** ✅ |
-| IP Change Handling | Manual restart | **Automatic** ✅ |
-
-### Key Innovations
-- **Automatic IP Detection**: Fresh IP detection every startup, handles network changes
-- **Global Peer Persistence**: Solved React + WebRTC lifecycle issues
-- **QR Code Direct Connection**: Revolutionary P2P discovery approach  
-- **Mobile WebRTC Optimization**: Enhanced configuration for mobile networks
-- **Cross-Network Reliability**: Desktop WiFi ↔ Mobile Cellular working
-- **Duplicate Connection Prevention**: Aggressive cleanup ensures 1 connection per device
-
-## 📊 Project Structure
+## 📁 Key Files
 
 ```
-peddlenet/
-├── src/                    # Next.js application
-│   ├── app/               # App router pages
-│   ├── components/        # Reusable React components
-│   ├── hooks/             # Custom React hooks (P2P logic)
-│   ├── utils/             # Helper functions
-│   └── lib/               # Types and constants
-├── tools/                  # Development scripts
-│   ├── dev-mobile.sh      # Main development script (auto IP detection)
-│   └── detect-ip.js       # Reliable IP detection utility
-├── documentation/         # Complete project documentation
-├── signaling-server.js    # WebSocket server for messaging
-└── vercel.json           # Production deployment config
+├── src/
+│   ├── app/
+│   │   ├── chat/[roomId]/page.tsx    # Main chat interface
+│   │   └── diagnostics/page.tsx      # Connection testing
+│   ├── components/
+│   │   ├── QRModal.tsx               # QR code generation
+│   │   ├── ConnectionTest.tsx        # Debug utilities (updated)
+│   │   └── NetworkStatus.tsx         # Connection indicators
+│   ├── hooks/
+│   │   └── use-websocket-chat.ts     # WebSocket connection logic (updated)
+│   └── utils/
+│       ├── server-utils.ts           # 🆕 HTTP/WebSocket URL management
+│       ├── room-codes.ts             # Room code utilities (updated)
+│       ├── network-utils.ts          # IP detection
+│       ├── message-persistence.ts    # Local storage
+│       └── peer-utils.ts             # Connection utilities
+├── scripts/
+│   └── dev-mobile.sh                 # Mobile development script
+├── signaling-server-sqlite.js        # WebSocket server (updated with room codes)
+├── next.config.ts                    # Build configuration (updated)
+└── package.json
 ```
 
-## 🚢 Deployment
+## 🛠️ Development Scripts
 
-### Production (Vercel)
 ```bash
-# Deploy to production
+# Mobile development (recommended)
+npm run dev:mobile        # Auto IP detection + dual server start
+
+# Standard development
+npm run dev               # Frontend only
+npm run server            # Backend only
+
+# Production
+npm run build             # Build for production
+npm run start             # Start production server
+
+# Deployment
+npm run deploy:firebase:complete    # Full stack deployment
+npm run deploy:firebase:quick      # Frontend-only deployment
+```
+
+## 🌐 Environment Variables
+
+### Development
+- `NEXT_PUBLIC_DETECTED_IP`: Local network IP (auto-set by dev:mobile)
+- `NEXT_PUBLIC_SIGNALING_SERVER`: Override server URL (optional)
+- `PORT`: Server port (default: 3001)
+
+### Production
+- `NEXT_PUBLIC_SIGNALING_SERVER`: Production server URL (WSS format)
+  - Example: `wss://peddlenet-websocket-server-padyxgyv5a-uc.a.run.app`
+  - ServerUtils automatically converts to HTTPS for API calls
+
+## 🔧 Network Requirements
+
+**Both devices must be on the same WiFi network:**
+- Router client isolation: **DISABLED**
+- Firewall ports 3000 & 3001: **ALLOWED**
+- Network type: **Private WiFi** (not guest networks)
+
+**✅ Compatible Networks:**
+- Home WiFi (WPA2/WPA3)
+- Mobile hotspot
+- Coffee shop WiFi (usually)
+
+**❌ Incompatible Networks:**
+- Corporate networks (firewall restrictions)
+- Hotel WiFi (client isolation)
+- Public WiFi with captive portals
+
+## 🐛 Troubleshooting
+
+### Quick Diagnosis
+```bash
+npm run dev:mobile
+# Open http://YOUR_IP:3000/diagnostics on mobile
+```
+
+### Connection Test Results
+The diagnostics page will show:
+- ✅ **Environment Badge:** Development/Production
+- ✅ **Frontend Access:** Basic connectivity
+- ✅ **Server Health (HTTP):** API endpoint connectivity  
+- ✅ **WebSocket Connection:** Real-time messaging capability
+
+### Common Issues
+
+**"Server Offline" on Mobile:**
+- Ensure both devices on same WiFi network
+- Check IP detection shows network IP (not localhost)
+- Test server health: `http://YOUR_IP:3001/health`
+- Disable firewall temporarily
+
+**"Mixed Content" or "Protocol" Errors:**
+- ✅ **Fixed with ServerUtils** - Automatically handles HTTPS/WSS conversion
+- The system now properly separates HTTP API calls from WebSocket connections
+- No manual intervention needed
+
+**QR Code Shows "localhost":**
+- Use `npm run dev:mobile` (not `npm run dev`)
+- Verify WiFi connection and IP detection
+
+**Room Code Registration Failing:**
+- Deploy updated server: `npm run deploy:firebase:complete`
+- The production server needs the latest endpoints
+
+**Messages Not Syncing:**
+- Check WebSocket connection in browser console
+- Restart servers: `npm run dev:mobile`
+- Test connection stability
+
+## 🚀 Deployment
+
+### Firebase (Full Stack)
+```bash
+npm run deploy:firebase:complete
+```
+Deploys both frontend and backend with all latest features.
+
+### Frontend Only (UI Changes)
+```bash
+npm run deploy:firebase:quick
+```
+
+### Custom Server
+```bash
 npm run build
-vercel --prod
+npm run start
+# Also deploy signaling-server-sqlite.js to your backend
 ```
 
-**Live at**: https://peddlenet.app
+## 📊 Performance
 
-### Custom Domain Setup
-1. Configure DNS to point to Vercel
-2. Add domain in Vercel dashboard  
-3. SSL automatically configured via Cloudflare
+- **Connection Time:** 5-10 seconds via QR scan
+- **Message Latency:** <100ms on local network
+- **Concurrent Users:** 50+ per room (memory permitting)
+- **Message History:** 100 messages per room
+- **Room Persistence:** 24 hours
+- **Local Storage:** 500 messages per room, 10 rooms max
 
-## 🔮 Roadmap
+## 🔒 Privacy & Security
 
-### ✅ Current (v1.0)
-- P2P chat with QR invitations
-- Cross-platform compatibility
-- Production deployment at peddlenet.app
+- **No Account Required:** Anonymous usage
+- **Local Data Only:** No cloud message storage (messages persist in SQLite for 24h)
+- **Temporary Rooms:** Automatic cleanup
+- **Network Isolation:** Local WiFi or secure WebSocket connections
+- **No Analytics:** No tracking or data collection
 
-### 🔄 Next (v1.1) 
-- Enhanced peer discovery
-- Room persistence
-- 10+ peer capacity
+## 🏷️ Room Codes
 
-### 🕸️ Future (v2.0)
-- True mesh networking with message routing
-- File sharing capabilities
-- Voice/video over P2P
-- Geolocation-based discovery
+Room codes provide memorable alternatives to QR scanning:
+- **Format:** `blue-stage-42` (adjective-noun-number)
+- **Generation:** Deterministic from room ID
+- **Sharing:** Registered with server for cross-device lookup
+- **Usage:** Enter manually when QR scanning isn't available
 
-## 📚 Documentation
+## 🧪 Testing Checklist
 
-### Quick Links
-- **[📚 Complete Documentation](./documentation/)** - Full developer and user guides
-- **[🚀 Quick Start](./documentation/QUICK-START.md)** - 5-minute setup
-- **[🛠️ Developer Guide](./documentation/DEVELOPER-GUIDE.md)** - Complete development workflow
-- **[🏗️ Architecture](./documentation/ARCHITECTURE.md)** - Technical system design
-- **[👥 User Guide](./documentation/USER-GUIDE.md)** - Feature walkthrough
+### Local Development
+- [ ] `npm run dev:mobile` starts successfully
+- [ ] IP detection shows network IP (not localhost)
+- [ ] Diagnostics page shows all green checkmarks
+- [ ] QR codes contain network IP
+- [ ] Cross-device messaging works
 
-### For Developers
-```bash
-# Essential reading order:
-1. documentation/QUICK-START.md      # Basic setup
-2. documentation/DEVELOPER-GUIDE.md  # Full development workflow  
-3. documentation/ARCHITECTURE.md     # Technical deep dive
-4. documentation/TROUBLESHOOTING.md  # Debug common issues
-```
+### Production Deployment
+- [ ] `npm run deploy:firebase:complete` succeeds
+- [ ] Frontend loads at Firebase URL
+- [ ] Server health check returns JSON
+- [ ] WebSocket connections establish
+- [ ] Room codes register successfully
+- [ ] No console errors in browser
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+This is an internal project for festival/event use. The codebase is optimized for:
+- Quick setup and deployment
+- Mobile-first experience  
+- Network resilience
+- Zero-configuration usage
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🎯 Vision
-
-**Make event communication bulletproof.**
-
-PeddleNet aims to become the standard for event communication, providing reliable P2P networking that works in any environment. From intimate gatherings to massive festivals, when traditional networks fail, PeddleNet connects.
+MIT License - See LICENSE file for details.
 
 ---
 
-## 🏆 Awards & Recognition
+**Built for festivals, events, and anywhere people need to connect instantly without internet infrastructure.**
 
-- **Innovation**: First web-based P2P platform with QR code direct connection
-- **Performance**: 5-10 second connection times (industry-leading)
-- **Mobile Excellence**: Full cross-platform mobile WebRTC optimization
-- **Privacy**: Zero-server message architecture
+## 📚 Additional Documentation
 
----
-
-**Live Demo**: [peddlenet.app](https://peddlenet.app)  
-**Status**: ✅ Production Ready  
-**Next**: 🕸️ Mesh Network Evolution
-
-*Scan a QR code → Instant peer-to-peer chat → No servers needed → Privacy preserved!*
+- [DEPLOYMENT.md](./DEPLOYMENT.md) - Complete deployment guide with scripts
+- [PROJECT_STATUS.md](./PROJECT_STATUS.md) - Current project status and features  
+- [documentation/TROUBLESHOOTING.md](./documentation/TROUBLESHOOTING.md) - Detailed troubleshooting guide
+- [documentation/DEVELOPER-GUIDE.md](./documentation/DEVELOPER-GUIDE.md) - Development workflow and patterns

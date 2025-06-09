@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Socket.IO Connection Test</title>
+</head>
+<body>
+    <h1>Festival Chat - Connection Test</h1>
+    <div id="status">Testing connection...</div>
+    <div id="logs"></div>
+    
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <script>
+        const statusDiv = document.getElementById('status');
+        const logsDiv = document.getElementById('logs');
+        
+        function log(message) {
+            console.log(message);
+            logsDiv.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${message}</div>`;
+        }
+        
+        // Try to connect to the server
+        const serverUrl = `http://${window.location.hostname}:3001`;
+        log(`Attempting connection to: ${serverUrl}`);
+        
+        const socket = io(serverUrl, {
+            transports: ['polling', 'websocket'],
+            timeout: 15000,
+            forceNew: true
+        });
+        
+        socket.on('connect', () => {
+            statusDiv.innerHTML = '✅ Connected successfully!';
+            statusDiv.style.color = 'green';
+            log(`Connected with ID: ${socket.id}`);
+            
+            // Test joining a room
+            socket.emit('join-room', {
+                roomId: 'test-room',
+                peerId: 'test-peer-id',
+                displayName: 'Test User'
+            });
+        });
+        
+        socket.on('connect_error', (error) => {
+            statusDiv.innerHTML = '❌ Connection failed';
+            statusDiv.style.color = 'red';
+            log(`Connection error: ${error.message}`);
+            log(`Error details: ${JSON.stringify(error, null, 2)}`);
+        });
+        
+        socket.on('disconnect', (reason) => {
+            statusDiv.innerHTML = '🔌 Disconnected';
+            statusDiv.style.color = 'orange';
+            log(`Disconnected: ${reason}`);
+        });
+        
+        socket.on('room-peers', (peers) => {
+            log(`Room peers: ${JSON.stringify(peers)}`);
+        });
+        
+        // Test server health endpoint
+        fetch(`${serverUrl}/health`)
+            .then(response => response.json())
+            .then(data => {
+                log(`Server health: ${JSON.stringify(data)}`);
+            })
+            .catch(error => {
+                log(`Health check failed: ${error.message}`);
+            });
+    </script>
+</body>
+</html>

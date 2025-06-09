@@ -118,6 +118,31 @@ curl -I https://your-ngrok-url.io
 
 ### Development Issues
 
+#### ❌ React infinite loops in development
+**Symptoms**: Console shows "Maximum update depth exceeded" errors
+```
+Maximum update depth exceeded. This can happen when...
+⚠️ Config 1 error: ERR_CONNECTION_REFUSED [infinite loop]
+```
+
+**Solutions**:
+```bash
+# 1. Stop all running processes
+pkill -f "next"
+pkill -f "node.*3001"
+
+# 2. Clear browser state (important!)
+# DevTools → Application → Clear Storage → Clear site data
+# OR hard refresh: Cmd+Shift+R (Mac) / Ctrl+Shift+R (Windows)
+
+# 3. Restart development
+npm run dev:mobile
+
+# 4. Check for useEffect dependency issues
+# Remove connectionError from useEffect deps that modify connectionError
+# Add connection cooldown to prevent retry spam
+```
+
 #### ❌ "crypto.randomUUID is not a function"
 **Symptoms**: App crashes during initialization
 ```
@@ -285,6 +310,37 @@ https://your-ngrok-url.io/test-room
 ```
 
 ### Production Issues
+
+#### ❌ Cloud Run container startup failures
+**Symptoms**: "Container failed to start and listen on port" error
+```
+Revision 'peddlenet-websocket-server-00009-f6p' is not ready...
+Container failed to start and listen on the port defined provided by the PORT=8080
+```
+
+**Solutions**:
+```bash
+# 1. Ensure server binds to process.env.PORT exactly
+# In signaling-server-sqlite.js:
+const PORT = process.env.PORT || 3001; // ✅ Correct
+server.listen(PORT, '0.0.0.0', callback); // ✅ Must bind to 0.0.0.0
+
+# 2. Don't use port fallback logic in containers
+# ❌ This breaks Cloud Run:
+const FALLBACK_PORTS = [3001, 3002, 3003];
+for (const port of FALLBACK_PORTS) { ... } // Cloud Run expects exact port
+
+# 3. Check Dockerfile PORT configuration
+ENV PORT=8080  # Must match Cloud Run expectations
+EXPOSE 8080    # Document the port
+
+# 4. Verify health check endpoint responds
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' }); // Must return 200 status
+});
+```
+
+#### ❌ Production Issues
 ```bash
 # If production deployment fails:
 # 1. Test build locally first

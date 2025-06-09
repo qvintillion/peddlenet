@@ -1,0 +1,11 @@
+rules_version = '2';
+
+// Basic Firebase Storage rules for Festival Chat
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow read/write access on all files
+    match /{allPaths=**} {
+      allow read, write: if true;
+    }
+  }
+}

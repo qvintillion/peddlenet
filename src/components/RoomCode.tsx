@@ -26,6 +26,7 @@ export function RoomCodeJoin({ className = '' }: RoomCodeJoinProps) {
       // Validate format
       if (!RoomCodeManager.isValidRoomCode(roomCode)) {
         setError('Invalid code format. Use format: blue-stage-42');
+        setIsJoining(false);
         return;
       }
 
@@ -36,12 +37,12 @@ export function RoomCodeJoin({ className = '' }: RoomCodeJoinProps) {
         localStorage.setItem('displayName', userName);
       }
 
-      // Try to find room ID from code
-      const roomId = RoomCodeManager.getRoomIdFromCode(roomCode);
+      // Try to find room ID from code (now async with server lookup)
+      const roomId = await RoomCodeManager.getRoomIdFromCode(roomCode);
       
       if (roomId) {
         // Found existing mapping, join directly
-        console.log('🎯 Joining room via code:', roomCode, '→', roomId);
+        console.log('🎯 Joining existing room via code:', roomCode, '→', roomId);
         router.push(`/chat/${roomId}`);
       } else {
         // No existing mapping, treat code as new room ID
@@ -52,7 +53,6 @@ export function RoomCodeJoin({ className = '' }: RoomCodeJoinProps) {
     } catch (error) {
       console.error('Failed to join room by code:', error);
       setError('Failed to join room. Please try again.');
-    } finally {
       setIsJoining(false);
     }
   };
@@ -160,10 +160,13 @@ export function RoomCodeDisplay({ roomId, className = '' }: RoomCodeDisplayProps
   const roomCode = RoomCodeManager.generateRoomCode(roomId);
   const [copied, setCopied] = useState(false);
 
-  // Store the mapping and add to recent rooms
+  // Store the mapping and add to recent rooms (now async)
   React.useEffect(() => {
-    RoomCodeManager.storeCodeMapping(roomId, roomCode);
-    RoomCodeManager.addToRecentRooms(roomId, roomCode);
+    const registerCode = async () => {
+      await RoomCodeManager.storeCodeMapping(roomId, roomCode);
+      RoomCodeManager.addToRecentRooms(roomId, roomCode);
+    };
+    registerCode();
   }, [roomId, roomCode]);
 
   const copyRoomCode = async () => {

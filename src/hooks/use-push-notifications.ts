@@ -26,11 +26,27 @@ const defaultSettings: PushNotificationSettings = {
   userLeft: false
 };
 
+// Global settings state - shared across all hook instances
+let globalSettings = { ...defaultSettings };
+let globalSettingsListeners: Set<(settings: PushNotificationSettings) => void> = new Set();
+
+// Load initial settings from localStorage
+if (typeof window !== 'undefined') {
+  try {
+    const saved = localStorage.getItem('festivalchat_notification_settings');
+    if (saved) {
+      globalSettings = { ...defaultSettings, ...JSON.parse(saved) };
+    }
+  } catch (error) {
+    console.warn('Failed to load initial notification settings:', error);
+  }
+}
+
 export function usePushNotifications(roomId?: string): UsePushNotificationsReturn {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [settings, setSettings] = useState<PushNotificationSettings>(defaultSettings);
+  const [settings, setSettings] = useState<PushNotificationSettings>(globalSettings);
 
   // Initialize support and permission
   useEffect(() => {
@@ -41,17 +57,21 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
 
     if (supported) {
       setPermission(Notification.permission);
-      
-      // Load saved settings
-      try {
-        const savedSettings = localStorage.getItem('festivalchat_notification_settings');
-        if (savedSettings) {
-          setSettings({ ...defaultSettings, ...JSON.parse(savedSettings) });
-        }
-      } catch (error) {
-        console.warn('Failed to load notification settings:', error);
-      }
     }
+  }, []);
+
+  // Subscribe to global settings changes
+  useEffect(() => {
+    const listener = (newSettings: PushNotificationSettings) => {
+      console.log('🔔 Settings updated from global state:', newSettings);
+      setSettings(newSettings);
+    };
+
+    globalSettingsListeners.add(listener);
+    
+    return () => {
+      globalSettingsListeners.delete(listener);
+    };
   }, []);
 
   // Check subscription status separately
@@ -71,17 +91,6 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
 
     checkStatus();
   }, [isSupported, permission]);
-
-  // Save settings to localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('festivalchat_notification_settings', JSON.stringify(settings));
-      } catch (error) {
-        console.warn('Failed to save notification settings:', error);
-      }
-    }
-  }, [settings]);
 
   const requestPermission = useCallback(async (): Promise<NotificationPermission> => {
     if (!isSupported) return 'denied';
@@ -103,10 +112,13 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
       let registration = await navigator.serviceWorker.getRegistration();
       if (!registration) {
         registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        console.log('🔔 Service worker registered for notifications');
       }
       
       await navigator.serviceWorker.ready;
       setIsSubscribed(true);
+      
+      console.log('✅ Successfully subscribed to notifications');
       return true;
     } catch (error) {
       console.error('Failed to subscribe to notifications:', error);
@@ -126,7 +138,29 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
   }, []);
 
   const updateSettings = useCallback((newSettings: Partial<PushNotificationSettings>) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
+    const updatedSettings = { ...globalSettings, ...newSettings };
+    
+    // Update global state
+    globalSettings = updatedSettings;
+    
+    // Save to localStorage
+    try {
+      localStorage.setItem('festivalchat_notification_settings', JSON.stringify(updatedSettings));
+      console.log('🔔 Settings saved to localStorage:', updatedSettings);
+    } catch (error) {
+      console.warn('Failed to save notification settings:', error);
+    }
+    
+    // Notify all listeners
+    globalSettingsListeners.forEach(listener => {
+      try {
+        listener(updatedSettings);
+      } catch (error) {
+        console.error('Error notifying settings listener:', error);
+      }
+    });
+    
+    console.log('🔔 Settings updated globally:', updatedSettings);
   }, []);
 
   const sendTestNotification = useCallback(() => {
@@ -164,31 +198,86 @@ export function useMessageNotifications(roomId: string, displayName: string) {
   const { permission, isSubscribed, settings } = usePushNotifications(roomId);
 
   const shouldNotify = useCallback((message: any): boolean => {
-    if (message.sender === displayName) return false;
-    if (!settings.enabled || !settings.newMessages) return false;
-    if (permission !== 'granted' || !isSubscribed) return false;
-    if (typeof document !== 'undefined' && !document.hidden) return false;
+    console.log('🔔 shouldNotify check:', {
+      sender: message.sender,
+      displayName,
+      senderMatch: message.sender === displayName,
+      settingsEnabled: settings.enabled,
+      newMessagesEnabled: settings.newMessages,
+      permission,
+      isSubscribed,
+      documentHidden: typeof document !== 'undefined' ? document.hidden : 'unknown',
+      documentVisibilityState: typeof document !== 'undefined' ? document.visibilityState : 'unknown'
+    });
+    
+    // Don't notify for our own messages
+    if (message.sender === displayName) {
+      console.log('🔔 Not notifying: own message');
+      return false;
+    }
+    
+    // Check if notifications are enabled
+    if (!settings.enabled || !settings.newMessages) {
+      console.log('🔔 Not notifying: settings disabled', { enabled: settings.enabled, newMessages: settings.newMessages });
+      return false;
+    }
+    
+    // Check if permission is granted and subscribed
+    if (permission !== 'granted' || !isSubscribed) {
+      console.log('🔔 Not notifying: permission/subscription issue', { permission, isSubscribed });
+      return false;
+    }
+    
+    // Check if document is hidden (user is not actively viewing)
+    // Use visibilityState as backup since document.hidden might not work in all browsers
+    const isHidden = typeof document !== 'undefined' && 
+      (document.hidden || document.visibilityState === 'hidden');
+    
+    if (!isHidden) {
+      console.log('🔔 Not notifying: document is visible', { 
+        hidden: document?.hidden, 
+        visibilityState: document?.visibilityState 
+      });
+      return false;
+    }
+    
+    console.log('✅ Should notify: all conditions met');
     return true;
   }, [displayName, settings, permission, isSubscribed]);
 
   const triggerNotification = useCallback((message: any) => {
-    if (!shouldNotify(message)) return;
+    console.log('🔔 triggerNotification called for message:', message);
+    
+    if (!shouldNotify(message)) {
+      console.log('🔔 shouldNotify returned false, not showing notification');
+      return;
+    }
 
+    console.log('✅ Attempting to show notification for message:', message);
+    
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then(registration => {
-        registration.showNotification(`New Message in "${roomId}"`, {
+        console.log('🔔 Service worker ready, showing notification');
+        
+        return registration.showNotification(`New Message in "${roomId}"`, {
           body: `${message.sender}: ${message.content}`,
           icon: '/favicon.ico',
           tag: 'festival-chat-message',
+          vibrate: [200, 100, 200],
+          requireInteraction: false,
           data: {
             url: `/chat/${roomId}`,
             roomId: roomId,
             messageId: message.id
           }
         });
+      }).then(() => {
+        console.log('✅ Notification shown successfully');
       }).catch(error => {
-        console.error('Failed to show notification:', error);
+        console.error('❌ Failed to show notification:', error);
       });
+    } else {
+      console.warn('⚠️ Service worker not available');
     }
   }, [shouldNotify, roomId]);
 

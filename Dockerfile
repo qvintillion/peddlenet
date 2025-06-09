@@ -1,29 +1,38 @@
-# Use Node.js 18 official image
 FROM node:18-alpine
 
-# Set working directory
+# Install system dependencies for SQLite
+RUN apk add --no-cache sqlite
+
 WORKDIR /app
 
 # Copy package files
-COPY package-server.json ./package.json
+COPY package*.json ./
 
-# Install production dependencies only
-RUN npm install --only=production
+# Install dependencies with better caching
+RUN npm ci --omit=dev --prefer-offline && npm cache clean --force
 
-# Copy source code
-COPY signaling-server-cloudrun.js ./
+# Copy the enhanced SQLite signaling server
+COPY signaling-server-sqlite.js ./
+COPY sqlite-persistence.js ./
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
-USER nodejs
+# Create data directory with proper permissions
+RUN mkdir -p /app/data && chown -R node:node /app
 
-# Expose port (Cloud Run will set PORT environment variable)
+# Create tmp directory for SQLite (fallback)
+RUN mkdir -p /tmp/festival-chat && chown -R node:node /tmp/festival-chat
+
+# Switch to non-root user
+USER node
+
+# Cloud Run uses PORT environment variable, default to 8080
+ENV PORT=8080
+ENV NODE_ENV=production
+ENV PLATFORM="Google Cloud Run"
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 8080) + '/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
+# Health check using the PORT environment variable
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 8080) + '/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
-# Start the Cloud Run server
-CMD ["node", "signaling-server-cloudrun.js"]
+# Start the SQLite server
+CMD ["node", "signaling-server-sqlite.js"]

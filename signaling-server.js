@@ -60,6 +60,7 @@ const io = new Server(server, {
 
 // Store room information AND messages
 const rooms = new Map(); // roomId -> { peers: Map, messages: Array, created: timestamp }
+const roomCodes = new Map(); // roomCode -> roomId mapping for server-side lookup
 const MESSAGE_HISTORY_LIMIT = 100; // Keep last 100 messages per room
 
 // Helper function to clean old rooms (optional)
@@ -68,6 +69,13 @@ function cleanupOldRooms() {
   rooms.forEach((room, roomId) => {
     if (room.created < oneDayAgo && room.peers.size === 0) {
       rooms.delete(roomId);
+      // Also clean up associated room codes
+      for (const [code, mappedRoomId] of roomCodes.entries()) {
+        if (mappedRoomId === roomId) {
+          roomCodes.delete(code);
+          console.log(`Cleaned up room code: ${code}`);
+        }
+      }
       console.log(`Cleaned up old room: ${roomId}`);
     }
   });
@@ -85,9 +93,45 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     rooms: rooms.size,
+    roomCodes: roomCodes.size,
     totalUsers: Array.from(rooms.values()).reduce((sum, room) => sum + room.peers.size, 0),
     timestamp: Date.now()
   });
+});
+
+// Room code resolution endpoint
+app.get('/resolve-room-code/:code', (req, res) => {
+  const code = req.params.code.toLowerCase();
+  const roomId = roomCodes.get(code);
+  
+  if (roomId) {
+    res.json({ success: true, roomId, code });
+  } else {
+    res.json({ success: false, error: 'Room code not found' });
+  }
+});
+
+// Register room code endpoint
+app.post('/register-room-code', (req, res) => {
+  const { roomId, roomCode } = req.body;
+  
+  if (!roomId || !roomCode) {
+    return res.status(400).json({ error: 'roomId and roomCode are required' });
+  }
+  
+  const normalizedCode = roomCode.toLowerCase();
+  
+  // Check if code is already taken by a different room
+  const existingRoomId = roomCodes.get(normalizedCode);
+  if (existingRoomId && existingRoomId !== roomId) {
+    return res.status(409).json({ error: 'Room code already taken by another room' });
+  }
+  
+  // Register the mapping
+  roomCodes.set(normalizedCode, roomId);
+  console.log(`📋 Registered room code: ${normalizedCode} -> ${roomId}`);
+  
+  res.json({ success: true, roomId, roomCode: normalizedCode });
 });
 
 // Socket.io connection handling

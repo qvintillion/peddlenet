@@ -1,23 +1,25 @@
-# Ignore everything by default
-*
-
-# Include only what we need
-!signaling-server-cloudrun.js
-!package-server.json
-
-# Exclude specific files/folders
 node_modules
-.git
 .next
-out
+.git
 .env*
+.DS_Store
+*.log
+coverage
+.nyc_output
+.cache
+dist
+build
+out
+README.md
+*.md
+.github
+.vscode
+Dockerfile*
+deploy*.sh
+test-*
+archive
+documentation
+deployment
+tools
 .vercel
 .firebase
-documentation
-tools
-archive
-src
-public
-*.md
-*.log
-.DS_Store

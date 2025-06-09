@@ -1,3 +1,5 @@
+import { ServerUtils } from './server-utils';
+
 /**
  * Room code utilities for easy reconnection at festivals
  * Generates memorable codes that allow manual room joining
@@ -29,29 +31,81 @@ export class RoomCodeManager {
   }
 
   /**
-   * Extract room ID from room code
+   * Extract room ID from room code (now with server lookup)
    */
-  static getRoomIdFromCode(code: string): string | null {
-    // For now, we'll need to search through possible room IDs
-    // In a real implementation, you'd want a lookup service
+  static async getRoomIdFromCode(code: string): Promise<string | null> {
     const normalizedCode = code.toLowerCase().trim();
     
-    // Store code mappings in localStorage for session
+    // First try localStorage cache for faster lookup
     const mappings = this.getCodeMappings();
-    return mappings[normalizedCode] || null;
+    const cachedRoomId = mappings[normalizedCode];
+    
+    if (cachedRoomId) {
+      console.log('🔍 Found room code in cache:', normalizedCode, '->', cachedRoomId);
+      return cachedRoomId;
+    }
+    
+    // Try server lookup for room codes created by other users
+    try {
+      const serverUrl = ServerUtils.getHttpServerUrl();
+      const response = await fetch(`${serverUrl}/resolve-room-code/${encodeURIComponent(normalizedCode)}`);
+      const data = await response.json();
+      
+      if (data.success && data.roomId) {
+        console.log('🌐 Found room code on server:', normalizedCode, '->', data.roomId);
+        // Cache it locally for future use
+        this.storeCodeMapping(data.roomId, normalizedCode);
+        return data.roomId;
+      } else {
+        console.log('❌ Room code not found on server:', normalizedCode);
+        return null;
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to resolve room code on server:', error);
+      // Fallback to local lookup only
+      return null;
+    }
   }
 
   /**
-   * Store room code mapping for session
+   * Store room code mapping for session AND register with server
    */
-  static storeCodeMapping(roomId: string, code: string): void {
+  static async storeCodeMapping(roomId: string, code: string): Promise<void> {
+    const normalizedCode = code.toLowerCase();
+    
+    // Store locally first
     const mappings = this.getCodeMappings();
-    mappings[code.toLowerCase()] = roomId;
+    mappings[normalizedCode] = roomId;
     
     try {
       localStorage.setItem('peddlenet_room_codes', JSON.stringify(mappings));
     } catch (error) {
-      console.warn('Failed to store room code mapping:', error);
+      console.warn('Failed to store room code mapping locally:', error);
+    }
+    
+    // Also register with server so others can find it
+    try {
+      const serverUrl = ServerUtils.getHttpServerUrl();
+      const response = await fetch(`${serverUrl}/register-room-code`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          roomId,
+          roomCode: normalizedCode
+        })
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        console.log('📋 Room code registered with server:', normalizedCode, '->', roomId);
+      } else {
+        console.warn('⚠️ Failed to register room code with server:', data.error);
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to register room code with server:', error);
+      // Continue anyway - local storage will work for this user
     }
   }
 
@@ -148,6 +202,8 @@ export class RoomCodeManager {
     }
   }
 
+
+  
   /**
    * Format timestamp for display in recent rooms
    */
