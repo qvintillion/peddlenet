@@ -84,20 +84,20 @@ export function MobileConnectionError({
   const errorInfo = getMobileErrorInfo();
 
   return (
-    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+    <div className="p-4 bg-red-900/30 border border-red-500/30 rounded-lg">
       <div className="flex items-start space-x-3">
         <div className="text-2xl">{errorInfo.emoji}</div>
         <div className="flex-1">
-          <h3 className="font-semibold text-red-900 mb-2">
+          <h3 className="font-semibold text-red-200 mb-2">
             {errorInfo.title}
           </h3>
-          <p className="text-red-700 text-sm mb-3">
+          <p className="text-red-300 text-sm mb-3">
             {errorInfo.message}
           </p>
           
           <div className="space-y-1 mb-4">
             {errorInfo.suggestions.map((suggestion, index) => (
-              <div key={index} className="text-xs text-red-600 flex items-center">
+              <div key={index} className="text-xs text-red-300 flex items-center">
                 <span className="mr-2">•</span>
                 {suggestion}
               </div>
@@ -132,7 +132,7 @@ interface MobileSignalingStatusProps {
 export function MobileSignalingStatus({ isConnected, reconnectAttempts }: MobileSignalingStatusProps) {
   if (isConnected) {
     return (
-      <div className="flex items-center space-x-2 text-xs text-green-600">
+      <div className="flex items-center space-x-2 text-xs text-green-400">
         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
         <span>📱 Mobile signaling connected</span>
       </div>
@@ -140,7 +140,7 @@ export function MobileSignalingStatus({ isConnected, reconnectAttempts }: Mobile
   }
 
   return (
-    <div className="flex items-center space-x-2 text-xs text-orange-600">
+    <div className="flex items-center space-x-2 text-xs text-orange-400">
       <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
       <span>
         📱 Reconnecting to server
@@ -206,10 +206,10 @@ export function MobileNetworkInfo({ className = '' }: MobileNetworkInfoProps) {
   const quality = getNetworkQuality();
 
   return (
-    <div className={`text-xs text-gray-600 ${className}`}>
+    <div className={`text-xs text-gray-400 ${className}`}>
       <div className="flex items-center space-x-2">
         <span>{quality.emoji}</span>
-        <span className={`text-${quality.color}-600`}>
+        <span className={`text-${quality.color}-400`}>
           {networkInfo.effectiveType?.toUpperCase()} • {networkInfo.downlink}Mbps • {networkInfo.rtt}ms
         </span>
       </div>

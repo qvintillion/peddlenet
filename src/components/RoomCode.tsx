@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RoomCodeManager, RoomCodeDiagnostics } from '@/utils/room-codes';
 
@@ -240,24 +240,63 @@ interface RoomCodeDisplayProps {
 }
 
 export function RoomCodeDisplay({ roomId, className = '' }: RoomCodeDisplayProps) {
-  const roomCode = RoomCodeManager.generateRoomCode(roomId);
+  const [roomCode, setRoomCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-
-  // Store the mapping and add to recent rooms (now async with enhanced error handling)
-  React.useEffect(() => {
+  const [isClient, setIsClient] = useState(false);
+  
+  // Only run on client side to prevent static generation issues
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
+  // Generate room code only on client side
+  useEffect(() => {
+    if (!isClient || !roomId || roomId === 'undefined' || roomId === 'null') {
+      return;
+    }
+    
+    const code = RoomCodeManager.generateRoomCode(roomId);
+    console.log('🏷️ RoomCodeDisplay: Generated code', code, 'for room', roomId);
+    setRoomCode(code);
+    
+    // Store the mapping and add to recent rooms (async)
     const registerCode = async () => {
-      console.log('📋 RoomCodeDisplay: Registering room code:', roomCode, 'for room:', roomId);
+      console.log('📋 RoomCodeDisplay: Registering room code:', code, 'for room:', roomId);
       try {
-        await RoomCodeManager.storeCodeMapping(roomId, roomCode);
+        await RoomCodeManager.storeCodeMapping(roomId, code);
         console.log('✅ RoomCodeDisplay: Successfully registered room code');
-        RoomCodeManager.addToRecentRooms(roomId, roomCode);
+        RoomCodeManager.addToRecentRooms(roomId, code);
         console.log('✅ RoomCodeDisplay: Added to recent rooms');
       } catch (error) {
         console.error('❌ RoomCodeDisplay: Failed to register room code:', error);
       }
     };
     registerCode();
-  }, [roomId, roomCode]);
+  }, [isClient, roomId]);
+  
+  // Show loading state during hydration
+  if (!isClient || !roomCode) {
+    return (
+      <div className={`p-3 bg-blue-900/30 rounded-lg border border-blue-500/30 ${className}`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium text-blue-200">
+              🎫 Room Code
+            </div>
+            <div className="font-mono text-xl font-bold text-blue-300">Loading...</div>
+            <div className="text-xs text-blue-400 mt-1">
+              <strong>Share this code</strong> for others to join instantly
+            </div>
+          </div>
+          <div className="flex flex-col space-y-2">
+            <button className="px-3 py-2 bg-gray-600 text-white rounded-lg text-sm font-medium" disabled>
+              📋 Copy
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const copyRoomCode = async () => {
     try {

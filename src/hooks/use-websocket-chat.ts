@@ -8,6 +8,98 @@ import { NetworkUtils } from '@/utils/network-utils';
 import { MessagePersistence } from '@/utils/message-persistence';
 import { ServerUtils } from '@/utils/server-utils';
 
+// Enhanced connection resilience utilities
+interface CircuitBreakerState {
+  isOpen: boolean;
+  failureCount: number;
+  lastFailureTime: number;
+  successCount: number;
+}
+
+class ConnectionResilience {
+  private static circuitBreaker: CircuitBreakerState = {
+    isOpen: false,
+    failureCount: 0,
+    lastFailureTime: 0,
+    successCount: 0
+  };
+  
+  private static readonly FAILURE_THRESHOLD = 3;
+  private static readonly RECOVERY_TIMEOUT = 30000; // 30 seconds
+  private static readonly SUCCESS_THRESHOLD = 2; // Successes needed to close circuit
+  
+  static shouldAllowConnection(): boolean {
+    const now = Date.now();
+    const timeSinceLastFailure = now - this.circuitBreaker.lastFailureTime;
+    
+    // If circuit is open, check if recovery timeout has passed
+    if (this.circuitBreaker.isOpen) {
+      if (timeSinceLastFailure > this.RECOVERY_TIMEOUT) {
+        console.log('🔄 Circuit breaker attempting recovery - allowing connection');
+        return true; // Allow one test connection
+      }
+      console.log('🚫 Circuit breaker open - blocking connection');
+      return false;
+    }
+    
+    return true;
+  }
+  
+  static recordSuccess(): void {
+    this.circuitBreaker.successCount++;
+    
+    // If we have enough successes, close the circuit completely
+    if (this.circuitBreaker.isOpen && this.circuitBreaker.successCount >= this.SUCCESS_THRESHOLD) {
+      this.circuitBreaker.isOpen = false;
+      this.circuitBreaker.failureCount = 0;
+      this.circuitBreaker.successCount = 0;
+      console.log('✅ Circuit breaker closed - connection stable');
+    }
+  }
+  
+  static recordFailure(): void {
+    this.circuitBreaker.failureCount++;
+    this.circuitBreaker.lastFailureTime = Date.now();
+    this.circuitBreaker.successCount = 0; // Reset success count on any failure
+    
+    if (this.circuitBreaker.failureCount >= this.FAILURE_THRESHOLD) {
+      this.circuitBreaker.isOpen = true;
+      console.log(`⚡ Circuit breaker opened after ${this.circuitBreaker.failureCount} failures`);
+    }
+  }
+  
+  static getExponentialBackoffDelay(attempt: number): number {
+    const baseDelay = 1000; // 1 second
+    const maxDelay = 30000; // 30 seconds
+    const jitter = Math.random() * 1000; // Add randomness to prevent thundering herd
+    
+    const delay = Math.min(baseDelay * Math.pow(2, attempt) + jitter, maxDelay);
+    console.log(`⏱️ Exponential backoff: attempt ${attempt}, delay ${Math.round(delay)}ms`);
+    return delay;
+  }
+  
+  static getState(): CircuitBreakerState {
+    return { ...this.circuitBreaker };
+  }
+  
+  // Reset circuit breaker for debugging/manual intervention
+  static reset(): void {
+    this.circuitBreaker = {
+      isOpen: false,
+      failureCount: 0,
+      lastFailureTime: 0,
+      successCount: 0
+    };
+    console.log('🔄 Circuit breaker manually reset');
+  }
+}
+
+// Global access for debugging
+if (typeof window !== 'undefined') {
+  (window as any).ConnectionResilience = ConnectionResilience;
+  console.log('🔧 Connection Resilience v1.0 loaded - Circuit breaker and exponential backoff enabled');
+}
+
 export function useWebSocketChat(roomId: string, displayName?: string) {
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -32,14 +124,21 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     signalStrength: isConnected ? 'strong' as const : 'none' as const,
   };
 
-  // Connect to server function - memoize to prevent infinite loops
+  // Enhanced connect to server function with circuit breaker and exponential backoff
   const connectToServer = useCallback(async () => {
+    // Check circuit breaker first
+    if (!ConnectionResilience.shouldAllowConnection()) {
+      console.log(`🚫 [${connectionId.current}] Circuit breaker blocking connection attempt`);
+      return;
+    }
+    
     if (!roomId || !effectiveDisplayName || isConnectingRef.current || connectionCooldown) {
       console.log(`⏸️ [${connectionId.current}] Skipping connection - missing requirements:`, {
         roomId: !!roomId,
         effectiveDisplayName: !!effectiveDisplayName,
         isConnecting: isConnectingRef.current,
-        cooldown: connectionCooldown
+        cooldown: connectionCooldown,
+        circuitBreaker: ConnectionResilience.getState()
       });
       return;
     }
@@ -90,22 +189,34 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     });
 
     const socket = io(serverUrl, {
-      transports: ['polling', 'websocket'], // Try polling first, then upgrade to websocket
-      timeout: 15000, // Longer timeout
+      // Phase 2: Optimized transport configuration matching server
+      transports: ['polling', 'websocket'], // Polling first for reliability, then upgrade
+      timeout: 10000,        // Reduced from 15s - faster failure detection
       forceNew: true,
       autoConnect: true,
+      
+      // Enhanced reconnection strategy
       reconnection: true,
-      reconnectionAttempts: 5, // Fewer attempts
-      reconnectionDelay: 2000, // Longer delay between attempts
-      reconnectionDelayMax: 10000,
-      maxReconnectionAttempts: 5,
+      reconnectionAttempts: 3,     // Reduced from 5 - faster circuit breaker activation
+      reconnectionDelay: 2000,     // 2s base delay
+      reconnectionDelayMax: 8000,  // Reduced from 10s - faster recovery
+      maxReconnectionAttempts: 3,  // Consistent with attempts
+      
+      // Transport upgrade settings
       upgrade: true,
-      rememberUpgrade: true, // Remember successful upgrades
-      pingTimeout: 60000,
-      pingInterval: 25000,
+      rememberUpgrade: true,       // Remember successful upgrades
+      
+      // Optimized timeouts matching server
+      pingTimeout: 30000,          // Match server: 30s
+      pingInterval: 10000,         // Match server: 10s
+      
+      // Connection efficiency
       withCredentials: false,
       closeOnBeforeunload: false,
-      forceBase64: false
+      forceBase64: false,
+      
+      // Phase 2: Enhanced error handling
+      parser: undefined // Use default parser for reliability
     });
 
     socketRef.current = socket;
@@ -117,6 +228,9 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       setRetryCount(0);
       isConnectingRef.current = false;
       roomConnectionRef.current = roomId;
+      
+      // Record successful connection for circuit breaker
+      ConnectionResilience.recordSuccess();
       
       socket.emit('join-room', {
         roomId,
@@ -146,6 +260,13 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       setIsConnected(false);
       isConnectingRef.current = false;
       roomConnectionRef.current = '';
+      
+      // Only record as failure if it was an unexpected disconnect
+      // (not user-initiated or normal cleanup)
+      if (reason !== 'client namespace disconnect' && reason !== 'transport close') {
+        console.log(`⚠️ [${connectionId.current}] Unexpected disconnect, recording as failure:`, reason);
+        ConnectionResilience.recordFailure();
+      }
     });
 
     socket.on('connect_error', (error) => {
@@ -160,9 +281,18 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       setIsRetrying(false);
       isConnectingRef.current = false;
       
-      // Add cooldown to prevent immediate retry spam
+      // Record failure for circuit breaker
+      ConnectionResilience.recordFailure();
+      
+      // Use exponential backoff for cooldown
+      const backoffDelay = ConnectionResilience.getExponentialBackoffDelay(retryCount);
       setConnectionCooldown(true);
-      setTimeout(() => setConnectionCooldown(false), 5000);
+      setRetryCount(prev => prev + 1);
+      
+      setTimeout(() => {
+        setConnectionCooldown(false);
+        console.log(`🔄 [${connectionId.current}] Cooldown ended, connection attempts allowed`);
+      }, backoffDelay);
     });
 
     // Handle message history - merge with persisted messages
@@ -251,7 +381,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       }
     });
 
-  }, [roomId, effectiveDisplayName, connectionCooldown]); // Only depend on stable values and cooldown
+  }, [roomId, effectiveDisplayName, connectionCooldown, retryCount]); // Only depend on stable values, cooldown, and retry count
 
   // Initialize connection and load persisted messages
   useEffect(() => {
@@ -331,12 +461,54 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     };
   }, []);
 
-  // Force reconnect
+  // Enhanced force reconnect with circuit breaker reset
   const forceReconnect = useCallback(async () => {
-    console.log('Force reconnecting - reloading page...');
-    window.location.reload();
+    console.log('🔄 Force reconnecting with circuit breaker reset...');
+    
+    // Reset circuit breaker state for fresh start
+    ConnectionResilience.recordSuccess();
+    ConnectionResilience.recordSuccess(); // Ensure circuit is fully closed
+    
+    // Reset local state
+    setRetryCount(0);
+    setConnectionCooldown(false);
+    
+    // Clean disconnect current socket
+    if (socketRef.current) {
+      socketRef.current.disconnect();
+      socketRef.current = null;
+    }
+    
+    isConnectingRef.current = false;
+    roomConnectionRef.current = '';
+    
+    // Attempt fresh connection
+    setTimeout(() => {
+      connectToServer();
+    }, 1000);
+    
     return true;
-  }, []);
+  }, [connectToServer]);
+  
+  // Connection diagnostics for debugging
+  const getConnectionDiagnostics = useCallback(() => {
+    return {
+      circuitBreaker: ConnectionResilience.getState(),
+      connection: {
+        isConnected,
+        isRetrying,
+        retryCount,
+        connectionCooldown,
+        roomId: roomConnectionRef.current,
+        peerId: myPeerId.current
+      },
+      socket: {
+        exists: !!socketRef.current,
+        connected: socketRef.current?.connected || false,
+        id: socketRef.current?.id || null
+      }
+    };
+  }, [isConnected, isRetrying, retryCount, connectionCooldown]);
 
   return {
     peerId: myPeerId.current,
@@ -349,6 +521,9 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     forceReconnect,
     connectToPeer: async () => true,
     getConnectedPeers: () => connectedPeers,
-    isSignalingConnected: isConnected
+    isSignalingConnected: isConnected,
+    // Enhanced debugging and resilience features
+    getConnectionDiagnostics,
+    circuitBreakerState: ConnectionResilience.getState()
   };
 }

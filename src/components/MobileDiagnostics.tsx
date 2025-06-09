@@ -128,21 +128,21 @@ export function MobileDiagnostics({
   }, []);
 
   return (
-    <div className="p-4 bg-gray-50 rounded-lg border">
+    <div className="p-4 bg-gray-800 rounded-lg border border-gray-600">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">📱 Mobile Diagnostics</h3>
+        <h3 className="font-semibold text-white">📱 Mobile Diagnostics</h3>
         <div className="flex space-x-2">
           <button
             onClick={runDiagnostics}
             disabled={isRunning}
-            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50"
+            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 transition"
           >
             {isRunning ? '🔄 Running...' : '🔍 Run Test'}
           </button>
           {diagnostics && (
             <button
               onClick={copyDiagnostics}
-              className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
+              className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition"
             >
               📋 Copy
             </button>
@@ -153,75 +153,75 @@ export function MobileDiagnostics({
       {isRunning && (
         <div className="text-center py-4">
           <div className="animate-spin text-2xl mb-2">🔄</div>
-          <p className="text-sm text-gray-800">Running mobile connection tests...</p>
+          <p className="text-sm text-gray-300">Running mobile connection tests...</p>
         </div>
       )}
 
       {diagnostics && !isRunning && (
         <div className="space-y-4">
           {diagnostics.error ? (
-            <div className="p-3 bg-red-50 border border-red-200 rounded">
-              <p className="text-red-800 text-sm font-medium">{diagnostics.error}</p>
+            <div className="p-3 bg-red-900/50 border border-red-500/30 rounded">
+              <p className="text-red-200 text-sm font-medium">{diagnostics.error}</p>
             </div>
           ) : (
             <>
               {/* Basic Mobile Tests */}
               <div>
-                <h4 className="font-medium text-gray-800 mb-2">📱 Device Info</h4>
-                <div className="bg-white p-3 rounded border text-sm space-y-1">
-                  <div><strong>Mobile:</strong> {diagnostics.basicTests.isMobile ? 'Yes' : 'No'}</div>
-                  <div><strong>WebRTC:</strong> {diagnostics.basicTests.webrtcSupport ? 'Supported' : 'Not Supported'}</div>
-                  <div><strong>PeerJS:</strong> {diagnostics.basicTests.peerJSLoaded ? 'Loaded' : 'Not Loaded'}</div>
-                  <div><strong>Protocol:</strong> {diagnostics.basicTests.protocol}</div>
+                <h4 className="font-medium text-gray-200 mb-2">📱 Device Info</h4>
+                <div className="bg-gray-700 p-3 rounded border border-gray-600 text-sm space-y-1">
+                  <div className="text-gray-300"><strong className="text-gray-200">Mobile:</strong> {diagnostics.basicTests.isMobile ? 'Yes' : 'No'}</div>
+                  <div className="text-gray-300"><strong className="text-gray-200">WebRTC:</strong> {diagnostics.basicTests.webrtcSupport ? 'Supported' : 'Not Supported'}</div>
+                  <div className="text-gray-300"><strong className="text-gray-200">PeerJS:</strong> {diagnostics.basicTests.peerJSLoaded ? 'Loaded' : 'Not Loaded'}</div>
+                  <div className="text-gray-300"><strong className="text-gray-200">Protocol:</strong> {diagnostics.basicTests.protocol}</div>
                 </div>
               </div>
 
               {/* Network Info */}
               <div>
-                <h4 className="font-medium text-gray-800 mb-2">🌐 Network</h4>
-                <div className="bg-white p-3 rounded border text-sm space-y-1">
+                <h4 className="font-medium text-gray-200 mb-2">🌐 Network</h4>
+                <div className="bg-gray-700 p-3 rounded border border-gray-600 text-sm space-y-1">
                   {diagnostics.networkInfo.effectiveType && (
-                    <div><strong>Type:</strong> {diagnostics.networkInfo.effectiveType}</div>
+                    <div className="text-gray-300"><strong className="text-gray-200">Type:</strong> {diagnostics.networkInfo.effectiveType}</div>
                   )}
                   {diagnostics.networkInfo.downlink && (
-                    <div><strong>Speed:</strong> {diagnostics.networkInfo.downlink} Mbps</div>
+                    <div className="text-gray-300"><strong className="text-gray-200">Speed:</strong> {diagnostics.networkInfo.downlink} Mbps</div>
                   )}
                   {diagnostics.networkInfo.rtt && (
-                    <div><strong>Latency:</strong> {diagnostics.networkInfo.rtt} ms</div>
+                    <div className="text-gray-300"><strong className="text-gray-200">Latency:</strong> {diagnostics.networkInfo.rtt} ms</div>
                   )}
-                  <div><strong>Online:</strong> {navigator.onLine ? 'Yes' : 'No'}</div>
+                  <div className="text-gray-300"><strong className="text-gray-200">Online:</strong> {navigator.onLine ? 'Yes' : 'No'}</div>
                 </div>
               </div>
 
               {/* Connection State */}
               <div>
-                <h4 className="font-medium text-gray-800 mb-2">🔗 Connection State</h4>
-                <div className="bg-white p-3 rounded border text-sm space-y-1">
-                  <div><strong>Peer ID:</strong> {diagnostics.connectionState.peerId || 'None'}</div>
-                  <div><strong>Signaling:</strong> {diagnostics.connectionState.isSignalingConnected ? 'Connected' : 'Disconnected'}</div>
-                  <div><strong>P2P Peers:</strong> {diagnostics.connectionState.connectedPeers}</div>
-                  <div><strong>Global Peer:</strong> {diagnostics.connectionState.globalPeerExists ? 'Exists' : 'Missing'}</div>
+                <h4 className="font-medium text-gray-200 mb-2">🔗 Connection State</h4>
+                <div className="bg-gray-700 p-3 rounded border border-gray-600 text-sm space-y-1">
+                  <div className="text-gray-300"><strong className="text-gray-200">Peer ID:</strong> {diagnostics.connectionState.peerId || 'None'}</div>
+                  <div className="text-gray-300"><strong className="text-gray-200">Signaling:</strong> {diagnostics.connectionState.isSignalingConnected ? 'Connected' : 'Disconnected'}</div>
+                  <div className="text-gray-300"><strong className="text-gray-200">P2P Peers:</strong> {diagnostics.connectionState.connectedPeers}</div>
+                  <div className="text-gray-300"><strong className="text-gray-200">Global Peer:</strong> {diagnostics.connectionState.globalPeerExists ? 'Exists' : 'Missing'}</div>
                 </div>
               </div>
 
               {/* WebRTC Test */}
               <div>
-                <h4 className="font-medium text-gray-800 mb-2">🚀 WebRTC Test</h4>
-                <div className="bg-white p-3 rounded border text-sm">
+                <h4 className="font-medium text-gray-200 mb-2">🚀 WebRTC Test</h4>
+                <div className="bg-gray-700 p-3 rounded border border-gray-600 text-sm">
                   {diagnostics.webrtcTest.supported ? (
                     <div className="space-y-1">
-                      <div className="text-green-700 font-semibold"><strong>✅ WebRTC Supported</strong></div>
+                      <div className="text-green-400 font-semibold"><strong>✅ WebRTC Supported</strong></div>
                       {diagnostics.webrtcTest.iceGathering && (
-                        <div>
-                          <strong>ICE Candidates:</strong> {diagnostics.webrtcTest.iceGathering.candidates?.length || 0}
+                        <div className="text-gray-300">
+                          <strong className="text-gray-200">ICE Candidates:</strong> {diagnostics.webrtcTest.iceGathering.candidates?.length || 0}
                           {diagnostics.webrtcTest.iceGathering.timeout && (
-                            <span className="text-orange-700 font-medium"> (timeout)</span>
+                            <span className="text-orange-400 font-medium"> (timeout)</span>
                           )}
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="text-red-700 font-semibold">
+                    <div className="text-red-400 font-semibold">
                       <strong>❌ WebRTC Issue:</strong> {diagnostics.webrtcTest.error}
                     </div>
                   )}
@@ -230,8 +230,8 @@ export function MobileDiagnostics({
 
               {/* Recommendations */}
               <div>
-                <h4 className="font-medium text-gray-800 mb-2">💡 Recommendations</h4>
-                <div className="bg-blue-50 p-3 rounded border text-sm space-y-1 text-gray-800">
+                <h4 className="font-medium text-gray-200 mb-2">💡 Recommendations</h4>
+                <div className="bg-blue-900/50 p-3 rounded border border-blue-500/30 text-sm space-y-1 text-blue-200">
                   {!diagnostics.connectionState.isSignalingConnected && (
                     <div>• Check internet connection and try refreshing</div>
                   )}

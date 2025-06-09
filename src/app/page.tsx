@@ -33,6 +33,7 @@ export default function HomePage() {
     if (!roomName.trim()) return;
 
     setIsCreating(true);
+    console.log('🚀 Creating room with name:', roomName);
 
     try {
       // Ensure user has a display name
@@ -41,16 +42,22 @@ export default function HomePage() {
         userName = prompt('Enter your display name:') || `Host_${Math.floor(Math.random() * 1000)}`;
         localStorage.setItem('displayName', userName);
         setDisplayName(userName);
+        console.log('📝 Set display name:', userName);
       }
 
       // Create room ID and auto-join
       const roomId = slugifyRoomName(roomName);
+      console.log('🏷️ Generated room ID:', roomId);
       
-      // Redirect directly to the chat room
-      router.push(`/chat/${roomId}`);
+      const targetUrl = `/chat/${roomId}`;
+      console.log('🗺️ Navigating to:', targetUrl);
+      
+      // Use Next.js router now that we have SSR
+      router.push(targetUrl);
+      console.log('✅ Navigation initiated');
       
     } catch (error) {
-      console.error('Error creating room:', error);
+      console.error('❌ Error creating room:', error);
       setIsCreating(false);
     }
   };

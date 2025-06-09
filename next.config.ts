@@ -11,9 +11,9 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Output for Firebase hosting (static export)
-  output: process.env.BUILD_TARGET === 'firebase' ? 'export' : undefined,
-  trailingSlash: process.env.BUILD_TARGET === 'firebase' ? true : false,
+  // No static export for Firebase Functions SSR
+  output: undefined,
+  trailingSlash: false,
   
   // Image optimization off for compatibility
   images: {

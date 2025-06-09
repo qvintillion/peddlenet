@@ -98,7 +98,11 @@ NEXT_PUBLIC_SIGNALING_SERVER=$WEBSOCKET_URL
 # Region: $REGION
 EOF
 
-echo "✅ Updated .env.firebase with Cloud Run WebSocket URL"
+# CRITICAL: Copy Firebase env to local env for Next.js build
+echo "📝 Copying Firebase environment to .env.local for Next.js build..."
+cp .env.firebase .env.local
+
+echo "✅ Updated .env.firebase and .env.local with Cloud Run WebSocket URL"
 
 echo ""
 echo "🔥 Step 3: Building and Deploying Firebase"

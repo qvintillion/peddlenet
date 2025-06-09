@@ -78,16 +78,15 @@ echo "🔧 Using server: $SERVER_FILE"
 # Create data directory if it doesn't exist
 mkdir -p data
 
-# Start both servers concurrently with auto-restart
+# Start both servers concurrently with optional auto-restart
 if command -v concurrently &> /dev/null; then
-# Use concurrently with auto-restart for server
+# Use concurrently - restart disabled for better development control
 concurrently \
 --names "Next,SQLite-Server" \
 --prefix-colors "blue,green" \
---restart-tries 5 \
---restart-after 2000 \
+--kill-others-on-fail \
             "NEXT_PUBLIC_DETECTED_IP=$LOCAL_IP npm run dev" \
-            "while true; do echo '🚀 Starting SQLite server...'; node $SERVER_FILE; echo '💥 Server stopped, restarting in 3 seconds...'; sleep 3; done"
+            "node $SERVER_FILE"
 else
     echo "💡 Installing concurrently for better development experience..."
     npm install --save-dev concurrently

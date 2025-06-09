@@ -63,18 +63,18 @@ export function NetworkStatus({ className = '', showDetails = false }: NetworkSt
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className={`w-2 h-2 rounded-full ${getStatusColor()}`} />
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-gray-300">
           {getStatusText()}
         </span>
         {showDetails && (
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-gray-500">
             {isExpanded ? '▼' : '▶'}
           </span>
         )}
       </div>
 
       {isExpanded && showDetails && (
-        <div className="mt-2 p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
+        <div className="mt-2 p-3 bg-gray-800 rounded-lg text-xs text-gray-300 border border-gray-600">
           <div className="space-y-1">
             <div>Status: {health.infrastructureStatus}</div>
             <div>Consecutive failures: {health.consecutiveFailures}</div>
@@ -106,14 +106,14 @@ export function ConnectionError({ onRetry, isRetrying, className = '' }: Connect
   const errorInfo = ConnectionHealthMonitor.getInstance().getErrorMessage();
 
   return (
-    <div className={`p-4 bg-red-50 border border-red-200 rounded-lg ${className}`}>
+    <div className={`p-4 bg-red-900/30 border border-red-500/30 rounded-lg ${className}`}>
       <div className="flex items-start space-x-3">
         <span className="text-xl">❌</span>
         <div className="flex-1">
-          <h3 className="font-medium text-red-900 mb-1">
+          <h3 className="font-medium text-red-200 mb-1">
             {errorInfo.title}
           </h3>
-          <p className="text-sm text-red-700 mb-3">
+          <p className="text-sm text-red-300 mb-3">
             {errorInfo.message}
           </p>
           
@@ -139,7 +139,7 @@ export function ConnectionError({ onRetry, isRetrying, className = '' }: Connect
           </div>
 
           {health.infrastructureStatus === 'outage' && (
-            <div className="mt-3 p-2 bg-blue-50 rounded text-xs text-blue-800">
+            <div className="mt-3 p-2 bg-blue-900/30 rounded text-xs text-blue-200 border border-blue-500/30">
               💡 <strong>Tip:</strong> This appears to be a temporary service issue. 
               These typically resolve automatically within 5-10 minutes.
             </div>

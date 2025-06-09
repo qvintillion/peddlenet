@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "out",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -8,18 +8,34 @@
     ],
     "rewrites": [
       {
-        "source": "/chat/**",
-        "destination": "/chat/main-stage/index.html"
+        "source": "**",
+        "function": "nextjsFunc"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/index.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
       },
       {
-        "source": "**",
-        "destination": "/index.html"
+        "source": "/_next/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
       }
     ]
   },
   "functions": {
-    "predeploy": "echo 'No functions to deploy'",
-    "source": "."
+    "runtime": "nodejs20",
+    "source": "functions"
   },
   "storage": {
     "rules": "storage.rules"

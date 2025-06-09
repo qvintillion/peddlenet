@@ -151,7 +151,7 @@ export function ConnectionTest({ className }: ConnectionTestProps) {
   const getEnvironmentBadge = () => {
     try {
       const envInfo = ServerUtils.getEnvironmentInfo();
-      const bgColor = envInfo.environment === 'production' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800';
+      const bgColor = envInfo.environment === 'production' ? 'bg-green-900 text-green-200' : 'bg-blue-900 text-blue-200';
       return (
         <span className={`inline-block px-2 py-1 text-xs rounded-full ${bgColor} font-medium`}>
           {envInfo.environment}
@@ -159,7 +159,7 @@ export function ConnectionTest({ className }: ConnectionTestProps) {
       );
     } catch (error) {
       return (
-        <span className="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800 font-medium">
+        <span className="inline-block px-2 py-1 text-xs rounded-full bg-gray-700 text-gray-300 font-medium">
           unknown
         </span>
       );
@@ -169,38 +169,38 @@ export function ConnectionTest({ className }: ConnectionTestProps) {
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Environment Info */}
-      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-        <span className="text-sm font-medium text-gray-700">Environment:</span>
+      <div className="flex items-center justify-between p-3 bg-gray-800 rounded-lg border border-gray-600">
+        <span className="text-sm font-medium text-gray-200">Environment:</span>
         {getEnvironmentBadge()}
       </div>
 
       {/* Connection Tests */}
-      <div className="p-4 bg-gray-50 rounded-lg">
-        <h4 className="font-semibold text-sm mb-3">🔧 Connection Test</h4>
+      <div className="p-4 bg-gray-800 rounded-lg border border-gray-600">
+        <h4 className="font-semibold text-sm mb-3 text-white">🔧 Connection Test</h4>
         
         <div className="space-y-2 text-xs">
           <div className="flex items-center space-x-2">
             <span>{getStatusIcon(testResults.frontend)}</span>
-            <span>Frontend Access</span>
+            <span className="text-gray-300">Frontend Access</span>
           </div>
           
           <div className="flex items-center space-x-2">
             <span>{getStatusIcon(testResults.server)}</span>
-            <span>Server Health (HTTP)</span>
+            <span className="text-gray-300">Server Health (HTTP)</span>
           </div>
           
           <div className="flex items-center space-x-2">
             <span>{getStatusIcon(testResults.websocket)}</span>
-            <span>WebSocket Connection</span>
+            <span className="text-gray-300">WebSocket Connection</span>
           </div>
         </div>
         
         {testResults.details.length > 0 && (
           <details className="mt-3">
-            <summary className="text-xs text-gray-600 cursor-pointer">Show Technical Details</summary>
-            <div className="mt-2 p-2 bg-white rounded text-xs font-mono max-h-64 overflow-y-auto">
+            <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-300">Show Technical Details</summary>
+            <div className="mt-2 p-3 bg-gray-900 rounded text-xs font-mono max-h-64 overflow-y-auto border border-gray-700">
               {testResults.details.map((detail, i) => (
-                <div key={i} className="text-gray-700 break-all">{detail}</div>
+                <div key={i} className="text-gray-300 break-all">{detail}</div>
               ))}
             </div>
           </details>
@@ -208,7 +208,7 @@ export function ConnectionTest({ className }: ConnectionTestProps) {
         
         <button
           onClick={runConnectionTests}
-          className="mt-3 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+          className="mt-3 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition"
         >
           🔄 Test Again
         </button>
@@ -216,29 +216,29 @@ export function ConnectionTest({ className }: ConnectionTestProps) {
 
       {/* Protocol Fix Notice */}
       {testResults.server === 'error' && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-          <h4 className="font-semibold text-sm text-amber-900 mb-2">🔧 Common Fix</h4>
-          <p className="text-xs text-amber-800 mb-2">
+        <div className="p-4 bg-amber-900/50 border border-amber-500/30 rounded-lg">
+          <h4 className="font-semibold text-sm text-amber-200 mb-2">🔧 Common Fix</h4>
+          <p className="text-xs text-amber-300 mb-2">
             If you see "mixed content" or "protocol" errors, this is usually because:
           </p>
-          <ul className="text-xs text-amber-800 space-y-1 ml-4">
+          <ul className="text-xs text-amber-300 space-y-1 ml-4">
             <li>• HTTPS site trying to connect to HTTP server</li>
             <li>• WSS URL being used for HTTP requests</li>
             <li>• CORS policy blocking requests</li>
           </ul>
-          <p className="text-xs text-amber-800 mt-2">
+          <p className="text-xs text-amber-300 mt-2">
             ✅ <strong>ServerUtils</strong> should fix these automatically by using the correct protocols.
           </p>
         </div>
       )}
 
       {/* Cache Management */}
-      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+      <div className="p-4 bg-gray-800 rounded-lg border border-gray-600">
         <div className="flex items-center justify-between mb-3">
-          <h4 className="font-semibold text-sm text-blue-900">🗂️ Cache Management</h4>
+          <h4 className="font-semibold text-sm text-white">🗂️ Cache Management</h4>
           <button
             onClick={() => setShowStorage(!showStorage)}
-            className="text-xs text-blue-600 hover:text-blue-700"
+            className="text-xs text-blue-400 hover:text-blue-300 transition"
           >
             {showStorage ? 'Hide' : 'Show'} Details
           </button>
@@ -247,13 +247,13 @@ export function ConnectionTest({ className }: ConnectionTestProps) {
         <div className="flex space-x-2 mb-3">
           <button
             onClick={clearBrowserCache}
-            className="px-3 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition"
+            className="px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition"
           >
             🗑️ Clear Browser Cache
           </button>
           <button
             onClick={() => window.location.reload()}
-            className="px-3 py-2 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition"
+            className="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition"
           >
             🔄 Reload Page
           </button>
@@ -262,26 +262,26 @@ export function ConnectionTest({ className }: ConnectionTestProps) {
         {showStorage && storageStats && (
           <div className="mt-3 space-y-2 text-xs">
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-white p-2 rounded">
-                <div className="font-medium text-gray-900">Stored Messages</div>
-                <div className="text-gray-600">Rooms: {storageStats.totalRooms}</div>
-                <div className="text-gray-600">Messages: {storageStats.totalMessages}</div>
-                <div className="text-gray-600">Size: {Math.round(storageStats.storageSize / 1024)}KB</div>
+              <div className="bg-gray-700 p-2 rounded border border-gray-600">
+                <div className="font-medium text-gray-200">Stored Messages</div>
+                <div className="text-gray-300">Rooms: {storageStats.totalRooms}</div>
+                <div className="text-gray-300">Messages: {storageStats.totalMessages}</div>
+                <div className="text-gray-300">Size: {Math.round(storageStats.storageSize / 1024)}KB</div>
               </div>
               
-              <div className="bg-white p-2 rounded">
-                <div className="font-medium text-gray-900">Recent Activity</div>
-                <div className="text-gray-600">
+              <div className="bg-gray-700 p-2 rounded border border-gray-600">
+                <div className="font-medium text-gray-200">Recent Activity</div>
+                <div className="text-gray-300">
                   Newest: {storageStats.newestRoom ? storageStats.newestRoom.substring(0, 8) + '...' : 'None'}
                 </div>
-                <div className="text-gray-600">
+                <div className="text-gray-300">
                   Oldest: {storageStats.oldestRoom ? storageStats.oldestRoom.substring(0, 8) + '...' : 'None'}
                 </div>
               </div>
             </div>
 
-            <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-              <strong>Cache Test Instructions:</strong><br/>
+            <div className="text-xs text-gray-400 bg-gray-900/50 p-2 rounded border border-gray-700">
+              <strong className="text-gray-300">Cache Test Instructions:</strong><br/>
               1. Join a chat room and send some messages<br/>
               2. Click "Clear Browser Cache" button<br/>
               3. Refresh the page or re-scan QR code<br/>

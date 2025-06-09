@@ -18,6 +18,27 @@ export const ServerUtils = {
     console.log('  - Current hostname:', currentHostname);
     console.log('  - Current protocol:', currentProtocol);
     
+    // PRIORITY: If we're on localhost, always use local server
+    if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
+      const localUrl = 'http://localhost:3001';
+      console.log('🏠 Using localhost (development mode):', localUrl);
+      return localUrl;
+    }
+    
+    // Development: Use detected IP for local network (mobile testing)
+    if (detectedIP && detectedIP !== 'localhost' && currentHostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+      const httpUrl = `http://${detectedIP}:3001`;
+      console.log('📱 Using detected IP for mobile testing:', httpUrl);
+      return httpUrl;
+    }
+    
+    // Development: Use current hostname if accessing via IP
+    if (currentHostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+      const httpUrl = `http://${currentHostname}:3001`;
+      console.log('🌐 Using current IP for HTTP:', httpUrl);
+      return httpUrl;
+    }
+    
     // Production: Convert WSS to HTTPS for HTTP calls
     if (envUrl && envUrl.startsWith('wss://')) {
       const httpUrl = envUrl.replace('wss://', 'https://');
@@ -35,27 +56,6 @@ export const ServerUtils = {
     if (envUrl && envUrl.startsWith('http://')) {
       console.log('🌐 Using production HTTP URL:', envUrl);
       return envUrl;
-    }
-    
-    // Development: Use detected IP for local network
-    if (detectedIP && detectedIP !== 'localhost') {
-      const httpUrl = `http://${detectedIP}:3001`;
-      console.log('🌐 Using detected IP for HTTP:', httpUrl);
-      return httpUrl;
-    }
-    
-    // Development: Use current hostname if accessing via IP
-    if (currentHostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
-      const httpUrl = `http://${currentHostname}:3001`;
-      console.log('🌐 Using current hostname for HTTP:', httpUrl);
-      return httpUrl;
-    }
-    
-    // Development: Use HTTPS if we're on HTTPS
-    if (currentProtocol === 'https:' && currentHostname !== 'localhost') {
-      const httpsUrl = `https://${currentHostname}:3001`;
-      console.log('🌐 Using HTTPS for secure context:', httpsUrl);
-      return httpsUrl;
     }
     
     // Fallback: localhost
@@ -81,6 +81,27 @@ export const ServerUtils = {
     console.log('  - Current hostname:', currentHostname);
     console.log('  - Current protocol:', currentProtocol);
     
+    // PRIORITY: If we're on localhost, always use local server
+    if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
+      const localUrl = 'http://localhost:3001';
+      console.log('🏠 Using localhost (development mode):', localUrl);
+      return localUrl;
+    }
+    
+    // Development: Use detected IP for local network (mobile testing)
+    if (detectedIP && detectedIP !== 'localhost' && currentHostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+      const httpUrl = `http://${detectedIP}:3001`;
+      console.log('📱 Using detected IP for mobile testing:', httpUrl);
+      return httpUrl;
+    }
+    
+    // Development: Use current hostname if accessing via IP
+    if (currentHostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+      const httpUrl = `http://${currentHostname}:3001`;
+      console.log('🌐 Using current IP for WebSocket:', httpUrl);
+      return httpUrl;
+    }
+    
     // Production: Use WSS URL directly for WebSocket connections
     if (envUrl && envUrl.startsWith('wss://')) {
       console.log('🌐 Using production WSS URL:', envUrl);
@@ -98,27 +119,6 @@ export const ServerUtils = {
     if (envUrl && envUrl.startsWith('http://')) {
       console.log('🌐 Using production HTTP URL for WebSocket:', envUrl);
       return envUrl;
-    }
-    
-    // Development: Use detected IP for local network
-    if (detectedIP && detectedIP !== 'localhost') {
-      const httpUrl = `http://${detectedIP}:3001`;
-      console.log('🌐 Using detected IP for WebSocket:', httpUrl);
-      return httpUrl;
-    }
-    
-    // Development: Use current hostname if accessing via IP
-    if (currentHostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
-      const httpUrl = `http://${currentHostname}:3001`;
-      console.log('🌐 Using current hostname for WebSocket:', httpUrl);
-      return httpUrl;
-    }
-    
-    // Development: Use HTTP even if we're on HTTPS (Socket.IO will upgrade)
-    if (currentProtocol === 'https:' && currentHostname !== 'localhost') {
-      const httpUrl = `http://${currentHostname}:3001`;
-      console.log('🌐 Using HTTP for WebSocket (will upgrade to WSS):', httpUrl);
-      return httpUrl;
     }
     
     // Fallback: localhost

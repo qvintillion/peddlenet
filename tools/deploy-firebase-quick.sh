@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# Quick Firebase Update Script
-# Just rebuilds and deploys Firebase with existing Cloud Run URL
+# Quick Firebase Functions Update Script
+# Rebuilds and deploys Firebase Functions with SSR
 
 set -e
 
-echo "⚡ Quick Firebase Update"
-echo "======================"
+echo "⚡ Quick Firebase Functions Update"
+echo "================================="
 
 PROJECT_ID="peddlenet-1749130439"
 SERVICE_NAME="peddlenet-websocket-server"
 REGION="us-central1"
 
-# Get the existing Cloud Run service URL
+# Get the existing Cloud Run service URL (optional, for display)
 echo "📡 Getting existing Cloud Run WebSocket server URL..."
 SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
   --region=$REGION \
@@ -20,17 +20,15 @@ SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
   --format="value(status.url)" 2>/dev/null)
 
 if [ -z "$SERVICE_URL" ]; then
-    echo "❌ Cloud Run service not found. Please deploy it first:"
-    echo "   ./tools/deploy-complete.sh"
-    exit 1
+    echo "⚠️ Cloud Run service not found, but continuing with Functions deployment..."
+    WEBSOCKET_URL="wss://peddlenet-websocket-server-padyxgyv5a-uc.a.run.app"
+else
+    # Convert HTTP to WSS for WebSocket
+    WEBSOCKET_URL="wss://${SERVICE_URL#https://}"
+    echo "✅ Using existing Cloud Run service: $SERVICE_URL"
 fi
 
-# Convert HTTP to WSS for WebSocket
-WEBSOCKET_URL="wss://${SERVICE_URL#https://}"
-
-echo "✅ Using existing Cloud Run service: $SERVICE_URL"
-
-# Update Firebase environment (in case it's missing)
+# Update Firebase environment
 echo "📝 Updating Firebase environment..."
 cat > .env.firebase << EOF
 # Environment variables for Firebase deployment
@@ -40,19 +38,28 @@ cat > .env.firebase << EOF
 NEXT_PUBLIC_SIGNALING_SERVER=$WEBSOCKET_URL
 EOF
 
-# Rebuild and deploy Firebase
-echo "🏗️  Rebuilding Firebase..."
-npm run build:firebase
+# Copy env for Next.js build
+cp .env.firebase .env.local
 
-echo "🚀 Deploying to Firebase..."
-firebase deploy --only hosting
+# Rebuild and deploy Firebase Functions
+echo "🏗️ Rebuilding Next.js..."
+npm run build
+
+echo "🔧 Building Functions..."
+cd functions
+npm run build
+cd ..
+
+echo "🚀 Deploying Functions to Firebase..."
+firebase deploy --only functions
 
 FIREBASE_URL="https://festival-chat-peddlenet.web.app"
 
 echo ""
-echo "✅ Firebase Updated Successfully!"
-echo "================================"
+echo "✅ Firebase Functions Updated Successfully!"
+echo "=========================================="
 echo "🔥 Firebase URL: $FIREBASE_URL"
 echo "🔌 WebSocket Server: $WEBSOCKET_URL"
+echo "⚡ SSR Functions: Deployed"
 echo ""
 echo "📱 Ready for testing!"

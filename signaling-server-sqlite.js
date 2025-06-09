@@ -14,6 +14,7 @@ console.log('🎪 Festival Chat Server Starting...');
 console.log('Environment:', process.env.NODE_ENV || 'development');
 console.log('Platform:', process.env.PLATFORM || 'local');
 console.log('Port:', process.env.PORT || 3001);
+console.log('🔧 Phase 2 Optimizations: Transport tuning + Connection throttling enabled');
 
 // Get all local IP addresses for CORS
 function getLocalIPs() {
@@ -61,16 +62,98 @@ const io = new Server(server, {
     credentials: true,
     allowedHeaders: ["*"]
   },
-  pingTimeout: 60000,
-  pingInterval: 25000,
-  upgradeTimeout: 30000,
-  allowUpgrades: true,
-  transports: ['websocket', 'polling'],
-  allowEIO3: true
+  
+  // Phase 2: Optimized transport configuration for better reliability
+  transports: ['polling', 'websocket'], // Polling first for reliability
+  upgradeTimeout: 5000,     // Reduced from 30s - faster failure detection
+  pingTimeout: 30000,       // Reduced from 60s - quicker disconnect detection 
+  pingInterval: 10000,      // Reduced from 25s - more frequent health checks
+  
+  // Enhanced connection handling
+  allowUpgrades: true,      // Allow transport upgrades
+  perMessageDeflate: false, // Disable compression for lower latency
+  httpCompression: false,   // Disable HTTP compression for speed
+  
+  // Connection quality improvements  
+  maxHttpBufferSize: 1e6,   // 1MB buffer for message bursts
+  connectTimeout: 10000,    // 10s connection timeout
+  
+  // Enhanced polling configuration for mobile reliability
+  polling: {
+    maxHttpBufferSize: 1e6  // 1MB polling buffer
+  },
+  
+  // WebSocket-specific optimizations
+  websocket: {
+    compression: false,     // Disable compression for speed
+    perMessageDeflate: false
+  }
 });
 
 // Store room information (peers only, messages in database)
 const rooms = new Map(); // roomId -> { peers: Map, created: timestamp }
+
+// Phase 2: Connection throttling to prevent rapid attempts
+const connectionAttempts = new Map(); // IP -> { count: number, lastAttempt: number, blocked: boolean }
+const CONNECTION_LIMIT = 5; // Max attempts per minute
+const CONNECTION_WINDOW = 60000; // 1 minute window
+const THROTTLE_DURATION = 30000; // 30 second throttle when limit exceeded
+
+// Connection throttling middleware
+function connectionThrottleMiddleware(req, res, next) {
+  const clientIP = req.headers['x-forwarded-for'] || 
+                   req.headers['x-real-ip'] || 
+                   req.connection.remoteAddress || 
+                   req.socket.remoteAddress || 
+                   'unknown';
+  
+  const now = Date.now();
+  const attempts = connectionAttempts.get(clientIP) || { count: 0, lastAttempt: 0, blocked: false };
+  
+  // Reset counter if window expired
+  if (now - attempts.lastAttempt > CONNECTION_WINDOW) {
+    attempts.count = 0;
+    attempts.blocked = false;
+  }
+  
+  // Check if currently throttled
+  if (attempts.blocked && (now - attempts.lastAttempt) < THROTTLE_DURATION) {
+    console.log(`🚫 Connection throttled for IP: ${clientIP} (${attempts.count} attempts)`);
+    return res.status(429).json({ 
+      error: 'Too many connection attempts', 
+      retryAfter: Math.ceil((THROTTLE_DURATION - (now - attempts.lastAttempt)) / 1000)
+    });
+  }
+  
+  // Increment counter
+  attempts.count++;
+  attempts.lastAttempt = now;
+  
+  // Block if limit exceeded
+  if (attempts.count > CONNECTION_LIMIT) {
+    attempts.blocked = true;
+    console.log(`⚠️ IP ${clientIP} exceeded connection limit (${attempts.count}/${CONNECTION_LIMIT})`);
+    connectionAttempts.set(clientIP, attempts);
+    return res.status(429).json({ 
+      error: 'Connection rate limit exceeded', 
+      retryAfter: Math.ceil(THROTTLE_DURATION / 1000)
+    });
+  }
+  
+  connectionAttempts.set(clientIP, attempts);
+  
+  // Clean up old entries periodically
+  if (Math.random() < 0.01) { // 1% chance to clean up
+    const cutoff = now - CONNECTION_WINDOW * 2;
+    for (const [ip, data] of connectionAttempts.entries()) {
+      if (data.lastAttempt < cutoff) {
+        connectionAttempts.delete(ip);
+      }
+    }
+  }
+  
+  next();
+}
 
 // Initialize database
 async function initializeDatabase() {
@@ -97,6 +180,9 @@ async function initializeDatabase() {
 app.use(cors());
 app.use(express.json());
 
+// Phase 2: Apply connection throttling via Socket.IO middleware instead of Express
+// (This avoids path-to-regexp conflicts with wildcard patterns)
+
 // Root endpoint for service info
 app.get('/', (req, res) => {
   res.json({
@@ -117,7 +203,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// Enhanced health check endpoint with database stats
+// Enhanced health check endpoint with database stats and Phase 2 metrics
 app.get('/health', async (req, res) => {
   let dbStats = null;
   try {
@@ -126,21 +212,54 @@ app.get('/health', async (req, res) => {
     console.warn('Could not fetch database stats:', err);
   }
 
+  const memUsage = process.memoryUsage();
+  const uptime = process.uptime();
+  
   res.json({ 
     status: 'ok',
     timestamp: Date.now(),
-    memory: {
+    uptime: Math.round(uptime),
+    version: '2.1.0', // Updated for Phase 2
+    
+    // Connection and room metrics
+    connections: {
       rooms: rooms.size,
-      totalUsers: Array.from(rooms.values()).reduce((sum, room) => sum + room.peers.size, 0)
+      totalUsers: Array.from(rooms.values()).reduce((sum, room) => sum + room.peers.size, 0),
+      socketIOConnections: io.engine.clientsCount || 0
     },
+    
+    // Phase 2: Connection throttling metrics
+    throttling: {
+      activeIPs: connectionAttempts.size,
+      blockedIPs: Array.from(connectionAttempts.values()).filter(a => a.blocked).length,
+      totalAttempts: Array.from(connectionAttempts.values()).reduce((sum, a) => sum + a.count, 0)
+    },
+    
+    // Memory and performance
+    memory: {
+      heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + 'MB',
+      heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + 'MB',
+      rss: Math.round(memUsage.rss / 1024 / 1024) + 'MB'
+    },
+    
+    // Phase 2: Transport configuration info
+    transport: {
+      transports: ['polling', 'websocket'],
+      upgradeTimeout: '5s',
+      pingInterval: '10s',
+      pingTimeout: '30s',
+      compression: false
+    },
+    
     database: dbStats || { error: 'Database unavailable' }
   });
 });
 
-// Store room codes (in memory for now, could be moved to database)
-const roomCodes = new Map(); // code -> roomId
+// Enhanced room code storage with better persistence and automatic registration
+const roomCodes = new Map(); // code -> { roomId, timestamp, hits }
+const roomCodesByRoomId = new Map(); // roomId -> Set of codes for faster lookup
 
-// Register room code endpoint
+// Enhanced room code registration with better tracking
 app.post('/register-room-code', async (req, res) => {
   try {
     const { roomId, roomCode } = req.body;
@@ -149,8 +268,23 @@ app.post('/register-room-code', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Missing roomId or roomCode' });
     }
     
-    // Store the mapping
-    roomCodes.set(roomCode.toLowerCase(), roomId);
+    const normalizedCode = roomCode.toLowerCase();
+    
+    // Store the enhanced mapping
+    const codeData = {
+      roomId,
+      timestamp: Date.now(),
+      hits: 0,
+      auto: false // Manually registered
+    };
+    
+    roomCodes.set(normalizedCode, codeData);
+    
+    // Update reverse mapping
+    if (!roomCodesByRoomId.has(roomId)) {
+      roomCodesByRoomId.set(roomId, new Set());
+    }
+    roomCodesByRoomId.get(roomId).add(normalizedCode);
     
     console.log(`📋 Room code registered: ${roomCode} -> ${roomId}`);
     
@@ -161,26 +295,132 @@ app.post('/register-room-code', async (req, res) => {
   }
 });
 
-// Resolve room code endpoint
+// Enhanced room code resolution with automatic registration and smart fallback
 app.get('/resolve-room-code/:code', async (req, res) => {
   try {
     const code = req.params.code.toLowerCase();
-    const roomId = roomCodes.get(code);
+    const codeData = roomCodes.get(code);
     
-    if (roomId) {
-      console.log(`🔍 Room code resolved: ${code} -> ${roomId}`);
-      res.json({ success: true, roomId, roomCode: code });
-    } else {
-      console.log(`❌ Room code not found: ${code}`);
-      res.status(404).json({ success: false, error: 'Room code not found' });
+    if (codeData) {
+      // Update hit counter
+      codeData.hits++;
+      codeData.lastAccessed = Date.now();
+      
+      console.log(`🔍 Room code resolved: ${code} -> ${codeData.roomId} (${codeData.hits} hits)`);
+      res.json({ success: true, roomId: codeData.roomId, roomCode: code });
+      return;
     }
+    
+    // Enhanced fallback: Try to auto-generate deterministic room codes
+    console.log(`❌ Room code not found in memory: ${code}`);
+    console.log(`🧮 Server has ${roomCodes.size} room codes in memory`);
+    
+    // Try common room ID patterns that could generate this code
+    const possibleRoomIds = generatePossibleRoomIds(code);
+    console.log(`🔎 Trying ${possibleRoomIds.length} possible room IDs for code: ${code}`);
+    
+    for (const possibleRoomId of possibleRoomIds) {
+      try {
+        const testCode = generateRoomCodeOnServer(possibleRoomId);
+        if (testCode && testCode.toLowerCase() === code) {
+          console.log(`✨ Auto-resolved room code: ${code} -> ${possibleRoomId}`);
+          
+          // Auto-register this mapping for future use
+          const autoCodeData = {
+            roomId: possibleRoomId,
+            timestamp: Date.now(),
+            hits: 1,
+            auto: true // Auto-generated
+          };
+          
+          roomCodes.set(code, autoCodeData);
+          
+          if (!roomCodesByRoomId.has(possibleRoomId)) {
+            roomCodesByRoomId.set(possibleRoomId, new Set());
+          }
+          roomCodesByRoomId.get(possibleRoomId).add(code);
+          
+          res.json({ success: true, roomId: possibleRoomId, roomCode: code, autoResolved: true });
+          return;
+        }
+      } catch (error) {
+        // Skip this possibility
+        continue;
+      }
+    }
+    
+    // Still not found - return 404 with helpful context
+    res.status(404).json({ 
+      success: false, 
+      error: 'Room code not found', 
+      code,
+      serverMemory: {
+        totalCodes: roomCodes.size,
+        sampleCodes: Array.from(roomCodes.keys()).slice(0, 3),
+        triedPatterns: possibleRoomIds.length
+      }
+    });
+    
   } catch (error) {
     console.error('Error resolving room code:', error);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 
-// Debug endpoint to view rooms
+// Helper function to generate room codes on server (simplified version)
+function generateRoomCodeOnServer(roomId) {
+  if (!roomId || typeof roomId !== 'string') return null;
+  
+  const adjectives = [
+    'blue', 'red', 'gold', 'green', 'bright', 'magic', 'cosmic', 'electric',
+    'neon', 'disco', 'wild', 'epic', 'mega', 'super', 'ultra', 'hyper'
+  ];
+  
+  const nouns = [
+    'stage', 'beat', 'vibe', 'party', 'crew', 'squad', 'tribe', 'gang',
+    'fest', 'wave', 'zone', 'spot', 'camp', 'den', 'base', 'hub'
+  ];
+  
+  // Simple hash function (matching client-side)
+  let hash = 0;
+  for (let i = 0; i < roomId.length; i++) {
+    const char = roomId.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  
+  const adjIndex = Math.abs(hash) % adjectives.length;
+  const nounIndex = Math.abs(hash >> 8) % nouns.length;
+  const number = (Math.abs(hash >> 16) % 99) + 1;
+  
+  return `${adjectives[adjIndex]}-${nouns[nounIndex]}-${number}`;
+}
+
+// Helper function to generate possible room IDs (simplified version)
+function generatePossibleRoomIds(roomCode) {
+  const parts = roomCode.split('-');
+  if (parts.length !== 3) return [];
+  
+  const [adjective, noun, numberStr] = parts;
+  
+  return [
+    roomCode,
+    parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('-'),
+    parts.join(' '),
+    parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' '),
+    `${adjective}-${noun}`,
+    `${adjective} ${noun}`,
+    noun,
+    `${adjective}-${noun}-room`,
+    `${adjective}-${noun}-chat`,
+    `${noun}-${numberStr}`,
+    `main-${noun}`,
+    `${noun}-main`,
+    roomCode.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  ].filter(id => id && id.length > 0);
+}
+
+// Enhanced debug endpoint to view rooms and room codes
 app.get('/debug/rooms', async (req, res) => {
   try {
     const dbRooms = await persistence.getAllRooms();
@@ -190,16 +430,89 @@ app.get('/debug/rooms', async (req, res) => {
       created: room.created
     }));
     
+    // Room code debugging info
+    const roomCodeStats = {
+      totalCodes: roomCodes.size,
+      codes: Array.from(roomCodes.entries()).map(([code, data]) => ({
+        code,
+        roomId: data.roomId,
+        hits: data.hits,
+        auto: data.auto,
+        age: Math.round((Date.now() - data.timestamp) / 1000 / 60) + 'm'
+      })),
+      roomsWithCodes: roomCodesByRoomId.size,
+      roomMappings: Array.from(roomCodesByRoomId.entries()).map(([roomId, codes]) => ({
+        roomId,
+        codes: Array.from(codes)
+      }))
+    };
+    
     res.json({
       database: dbRooms,
-      memory: memoryRooms
+      memory: memoryRooms,
+      roomCodes: roomCodeStats
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Socket.io connection handling
+// Debug endpoint to test room code generation
+app.get('/debug/test-code/:roomId', (req, res) => {
+  try {
+    const roomId = req.params.roomId;
+    const generatedCode = generateRoomCodeOnServer(roomId);
+    
+    res.json({
+      roomId,
+      generatedCode,
+      isRegistered: roomCodes.has(generatedCode?.toLowerCase()),
+      hasRoomMapping: roomCodesByRoomId.has(roomId)
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Socket.io connection handling with Phase 2 throttling
+io.use((socket, next) => {
+  // Phase 2: Apply connection throttling at Socket.IO level
+  const clientIP = socket.handshake.headers['x-forwarded-for'] || 
+                   socket.handshake.headers['x-real-ip'] || 
+                   socket.handshake.address || 
+                   'unknown';
+  
+  const now = Date.now();
+  const attempts = connectionAttempts.get(clientIP) || { count: 0, lastAttempt: 0, blocked: false };
+  
+  // Reset counter if window expired
+  if (now - attempts.lastAttempt > CONNECTION_WINDOW) {
+    attempts.count = 0;
+    attempts.blocked = false;
+  }
+  
+  // Check if currently throttled
+  if (attempts.blocked && (now - attempts.lastAttempt) < THROTTLE_DURATION) {
+    console.log(`🚫 Socket.IO connection throttled for IP: ${clientIP} (${attempts.count} attempts)`);
+    return next(new Error('Connection rate limit exceeded'));
+  }
+  
+  // Increment counter
+  attempts.count++;
+  attempts.lastAttempt = now;
+  
+  // Block if limit exceeded
+  if (attempts.count > CONNECTION_LIMIT) {
+    attempts.blocked = true;
+    console.log(`⚠️ Socket.IO IP ${clientIP} exceeded connection limit (${attempts.count}/${CONNECTION_LIMIT})`);
+    connectionAttempts.set(clientIP, attempts);
+    return next(new Error('Connection rate limit exceeded'));
+  }
+  
+  connectionAttempts.set(clientIP, attempts);
+  next(); // Allow connection
+});
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
@@ -238,6 +551,28 @@ io.on('connection', (socket) => {
   // Join room for both peer discovery AND messaging
   socket.on('join-room', async ({ roomId, peerId, displayName }) => {
     console.log(`${displayName} (${peerId}) joining room: ${roomId}`);
+    
+    // Auto-register deterministic room code if not already registered
+    if (roomId && !roomCodesByRoomId.has(roomId)) {
+      try {
+        const autoCode = generateRoomCodeOnServer(roomId);
+        if (autoCode) {
+          const autoCodeData = {
+            roomId,
+            timestamp: Date.now(),
+            hits: 0,
+            auto: true // Auto-generated on join
+          };
+          
+          roomCodes.set(autoCode.toLowerCase(), autoCodeData);
+          roomCodesByRoomId.set(roomId, new Set([autoCode.toLowerCase()]));
+          
+          console.log(`🤖 Auto-registered room code on join: ${autoCode} -> ${roomId}`);
+        }
+      } catch (error) {
+        console.warn('Failed to auto-register room code for', roomId, error);
+      }
+    }
     
     try {
       // Leave any existing rooms first

@@ -8,13 +8,13 @@ import { MobileConnectionError, MobileSignalingStatus, MobileNetworkInfo } from 
 import MobileDiagnostics from '@/components/MobileDiagnostics';
 import { MobileConnectionDebug } from '@/components/MobileConnectionDebug';
 import type { Message } from '@/lib/types';
-import { DebugPanel } from '@/components/DebugPanel';
 import { QRModal } from '@/components/QRModal';
 import { NetworkStatus, ConnectionError } from '@/components/NetworkStatus';
 import { RoomCodeDisplay } from '@/components/RoomCode';
 import { NotificationSettings } from '@/components/NotificationSettings';
 import { ConnectionTest } from '@/components/ConnectionTest';
 import { QRPeerUtils } from '@/utils/qr-peer-utils';
+import { RoomCodeDiagnosticPanel } from '@/components/RoomCodeDiagnostics';
 
 export default function ChatRoomPage() {
   const params = useParams();
@@ -320,40 +320,69 @@ export default function ChatRoomPage() {
           </div>
         )}
         
-        <div className="flex items-center mb-2">
-          <div className="flex-shrink-0">
+        <div className="flex items-center justify-between mb-2">
+          <button
+            onClick={() => router.push('/')}
+            className="text-purple-400 hover:text-purple-300 text-xs sm:text-sm flex items-center"
+          >
+            ← Home
+          </button>
+          <p className="text-sm text-purple-300">PeddleNet Room</p>
+          {process.env.NODE_ENV === 'development' && (
             <button
-              onClick={() => router.push('/')}
-              className="text-purple-400 hover:text-purple-300 text-xs sm:text-sm flex items-center"
+              onClick={() => setShowDebug(!showDebug)}
+              className="text-xs sm:text-sm text-gray-400 hover:text-white"
             >
-              ← Home
+              {showDebug ? 'Hide' : 'Show'} Debug
             </button>
-          </div>
-          <div className="flex-1 text-center">
-            <h1 className="text-lg sm:text-xl font-bold text-white">🎪 {roomId}</h1>
-            <p className="text-xs text-purple-300">PeddleNet Room</p>
-          </div>
-          <div className="flex flex-wrap gap-2 flex-shrink-0">
+          )}
+        </div>
+
+        {/* Room Title Row with Actions */}
+        <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-700/50">
+          <h1 className="text-xl sm:text-2xl font-bold text-white">🎪 {roomId}</h1>
+          <div className="flex gap-2">
             <button
               onClick={() => setShowQRModal(true)}
-              className="px-2 sm:px-3 py-2 bg-purple-600 text-white text-xs sm:text-sm rounded-lg hover:bg-purple-700 transition font-medium"
+              className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+              title="Invite Others"
             >
-              📱 Invite
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">
+                <rect x="0" y="0" width="2" height="2"/>
+                <rect x="3" y="0" width="2" height="2"/>
+                <rect x="6" y="0" width="2" height="2"/>
+                <rect x="11" y="0" width="2" height="2"/>
+                <rect x="14" y="0" width="2" height="2"/>
+                <rect x="0" y="3" width="2" height="2"/>
+                <rect x="6" y="3" width="2" height="2"/>
+                <rect x="11" y="3" width="2" height="2"/>
+                <rect x="0" y="6" width="2" height="2"/>
+                <rect x="3" y="6" width="2" height="2"/>
+                <rect x="6" y="6" width="2" height="2"/>
+                <rect x="9" y="6" width="2" height="2"/>
+                <rect x="14" y="6" width="2" height="2"/>
+                <rect x="3" y="9" width="2" height="2"/>
+                <rect x="6" y="9" width="2" height="2"/>
+                <rect x="11" y="9" width="2" height="2"/>
+                <rect x="14" y="9" width="2" height="2"/>
+                <rect x="0" y="11" width="2" height="2"/>
+                <rect x="6" y="11" width="2" height="2"/>
+                <rect x="9" y="11" width="2" height="2"/>
+                <rect x="0" y="14" width="2" height="2"/>
+                <rect x="3" y="14" width="2" height="2"/>
+                <rect x="6" y="14" width="2" height="2"/>
+                <rect x="9" y="14" width="2" height="2"/>
+                <rect x="11" y="14" width="2" height="2"/>
+                <rect x="14" y="14" width="2" height="2"/>
+              </svg>
             </button>
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="px-2 sm:px-3 py-2 bg-gray-600 text-white text-xs sm:text-sm rounded-lg hover:bg-gray-700 transition font-medium"
+              className="p-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+              title="Notification Settings"
             >
-              🔔 Alerts
+              🔔
             </button>
-            {process.env.NODE_ENV === 'development' && (
-              <button
-                onClick={() => setShowDebug(!showDebug)}
-                className="text-xs sm:text-sm text-gray-400 hover:text-white"
-              >
-                {showDebug ? 'Hide' : 'Show'} Debug
-              </button>
-            )}
           </div>
         </div>
 
@@ -521,10 +550,24 @@ export default function ChatRoomPage() {
 
       {/* Debug Panel - Development & Mobile Diagnostics */}
       {showDebug && (
-        <div className="border-t border-gray-700 bg-gray-900/80">
-          <div className="p-4">
+        <div className="border-t border-gray-700 bg-gray-900/80 max-h-[50vh] overflow-y-auto">
+          <div className="p-4 space-y-4">
             {/* Connection Test Component */}
-            <ConnectionTest className="mb-4" />
+            <ConnectionTest className="" />
+            
+            {/* Room Code Diagnostics */}
+            <RoomCodeDiagnosticPanel p2pHook={{
+              peerId,
+              status,
+              isRetrying,
+              retryCount,
+              isSignalingConnected,
+              connectToPeer,
+              sendMessage,
+              onMessage,
+              getConnectedPeers,
+              forceReconnect,
+            }} />
             
             <MobileDiagnostics
               peerId={peerId}
@@ -536,43 +579,31 @@ export default function ChatRoomPage() {
             {/* Mobile Network Debug */}
             <MobileConnectionDebug 
               serverUrl={`http://localhost:3001`} // Will be auto-detected
-              className="mt-4"
+              className=""
             />
             
             {/* Enhanced Debug Information */}
-            <div className="mt-4 p-3 bg-gray-800 rounded-lg border border-gray-600">
+            <div className="p-3 bg-gray-800 rounded-lg border border-gray-600">
               <h4 className="font-semibold text-sm mb-2 text-white">🔍 Connection Status</h4>
               <div className="text-xs space-y-1 text-gray-300">
+                <div>Environment: {(() => {
+                  const isDev = process.env.NODE_ENV === 'development' || 
+                               (typeof window !== 'undefined' && (
+                                 window.location.hostname === 'localhost' ||
+                                 window.location.hostname === '127.0.0.1' ||
+                                 window.location.port === '3000'
+                               ));
+                  return isDev ? 'development' : 'production';
+                })()} {typeof window !== 'undefined' && window.location.port === '3000' ? '(localhost:3000)' : ''}</div>
                 <div>Server Connected: {isSignalingConnected ? 'Yes' : 'No'}</div>
                 <div>Message Count: {messages.length}</div>
                 <div>Online Users: {status.connectedPeers}</div>
                 <div>Connection Mode: WebSocket Server</div>
                 <div>Room Persistence: ✅ Yes (survives refreshes)</div>
+                <div>Peer ID: {peerId ? `${peerId.substring(0, 12)}...` : 'None'}</div>
+                <div>Room ID: {roomId}</div>
               </div>
             </div>
-            
-            {process.env.NODE_ENV === 'development' && (
-              <div className="mt-4">
-                <DebugPanel
-                  peerId={peerId}
-                  connectedPeers={getConnectedPeers()}
-                  status={status}
-                  roomId={roomId}
-                  p2pHook={{
-                    peerId,
-                    status,
-                    isRetrying,
-                    retryCount,
-                    isSignalingConnected,
-                    connectToPeer,
-                    sendMessage,
-                    onMessage,
-                    getConnectedPeers,
-                    forceReconnect,
-                  }}
-                />
-              </div>
-            )}
           </div>
         </div>
       )}

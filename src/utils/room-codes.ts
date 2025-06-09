@@ -16,10 +16,23 @@ export class RoomCodeManager {
     'fest', 'wave', 'zone', 'spot', 'camp', 'den', 'base', 'hub'
   ];
 
+  // Static cache for generated room codes to prevent redundant calculations
+  private static readonly roomCodeCache = new Map<string, string>();
+
   /**
-   * Generate a memorable room code from room ID
+   * Generate a memorable room code from room ID (with caching to prevent loops)
    */
   static generateRoomCode(roomId: string): string {
+    // Check cache first to prevent redundant generation
+    if (this.roomCodeCache.has(roomId)) {
+      const cachedCode = this.roomCodeCache.get(roomId)!;
+      // Only log cache hits in debug mode to reduce noise
+      if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
+        console.log('💾 Using cached room code:', cachedCode, 'for room ID:', roomId);
+      }
+      return cachedCode;
+    }
+    
     // Use room ID as seed for consistent codes
     const hash = this.hashString(roomId);
     
@@ -29,7 +42,11 @@ export class RoomCodeManager {
     
     const code = `${this.ADJECTIVES[adjIndex]}-${this.NOUNS[nounIndex]}-${number}`;
     
-    console.log('🏷️ Generated room code:', code, 'for room ID:', roomId, 'hash:', hash);
+    // Cache the result to prevent future recalculation
+    this.roomCodeCache.set(roomId, code);
+    
+    // Only log on actual generation, not cache hits
+    console.log('🏷️ Generated NEW room code:', code, 'for room ID:', roomId, 'hash:', hash);
     
     return code;
   }
@@ -88,7 +105,7 @@ export class RoomCodeManager {
         headers: {
           'Accept': 'application/json',
         },
-        signal: AbortSignal.timeout(8000), // 8 second timeout for server lookup
+        signal: AbortSignal.timeout(5000), // Reduced from 8 to 5 seconds
         mode: 'cors'
       });
       
@@ -107,18 +124,17 @@ export class RoomCodeManager {
           return data.roomId;
         }
       } else if (response.status === 404) {
-        console.log('🚫 Room code not found on server (404):', normalizedCode);
-        // Don't fall through to reverse engineering yet - let's see if server is just missing the endpoints
+        console.log('💬 Room code not found on server (using cached/fallback):', normalizedCode);
+        // This is expected behavior - server doesn't have all room codes
+        // Continue to reverse engineering without treating this as an error
       } else {
         console.warn('⚠️ Server response not OK:', response.status, response.statusText);
       }
     } catch (error) {
-      console.error('❌ Failed to resolve room code on server:', error);
-      console.error('Error details:', {
-        code: normalizedCode,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
-      });
+      // Only log network errors, not 404s which are expected
+      if (error instanceof Error && !error.message.includes('404')) {
+        console.warn('⚠️ Network error resolving room code:', error.message);
+      }
     }
     
     // FALLBACK: Try reverse engineering common room ID patterns
@@ -143,7 +159,7 @@ export class RoomCodeManager {
 
   /**
    * Generate possible room IDs that could produce this room code
-   * This is a reverse engineering approach for when server lookup fails
+   * Enhanced to check against ALL possible hash combinations for deterministic mapping
    */
   private static generatePossibleRoomIds(roomCode: string): string[] {
     const possibleIds: string[] = [];
@@ -156,7 +172,10 @@ export class RoomCodeManager {
     
     const [adjective, noun, numberStr] = parts;
     
-    // Common room ID patterns based on the code components
+    // Enhanced: Try brute force reverse engineering for deterministic room codes
+    // Since our hash function is deterministic, we can try common room ID patterns
+    // and see which one produces the target room code
+    
     const commonPatterns = [
       // Direct conversion: "blue-stage-42" -> "blue-stage-42"
       roomCode,
@@ -188,7 +207,26 @@ export class RoomCodeManager {
       `${adjective}-${noun}-fest`,
       `${adjective}-${noun}-party`,
       `${noun}-${adjective}`,
-      `${noun}-${adjective}-${numberStr}`
+      `${noun}-${adjective}-${numberStr}`,
+      
+      // Enhanced: More permutations based on common room naming
+      `main-${noun}`, // Very common pattern
+      `${noun}-main`,
+      `${adjective}-main`,
+      `main-${adjective}`,
+      `${noun}-stage`, // Festival specific
+      `${adjective}-stage`,
+      `stage-${noun}`,
+      `stage-${adjective}`,
+      
+      // Common words people might use
+      `${adjective} ${noun} chat`,
+      `${adjective} ${noun} room`,
+      `${noun} ${adjective}`,
+      `${noun} chat`,
+      `${adjective} chat`,
+      `${noun} room`,
+      `${adjective} room`
     ];
     
     // Add variations with different cases and separators
@@ -202,12 +240,16 @@ export class RoomCodeManager {
         pattern.replace(/-/g, ''),
         pattern.replace(/ /g, '-'),
         pattern.replace(/ /g, '_'),
-        pattern.replace(/ /g, '')
+        pattern.replace(/ /g, ''),
+        // Add slugified versions (most common)
+        pattern.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
+        pattern.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''),
+        pattern.trim().toLowerCase().replace(/[^a-z0-9]+/g, '')
       );
     }
     
-    // Remove duplicates and return
-    return [...new Set(variations)];
+    // Remove duplicates, filter empty strings, and return
+    return [...new Set(variations)].filter(id => id.length > 0);
   }
 
   /**
