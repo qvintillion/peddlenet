@@ -64,17 +64,40 @@ export default function ChatRoomPage() {
     }
   }, []);
 
-  // Enhanced connection error detection
+  // Track if we've ever been connected to avoid showing errors on initial load
+  const [hasBeenConnected, setHasBeenConnected] = useState(false);
+  
+  // Track connection state changes
   useEffect(() => {
-    if (!isSignalingConnected && peerId) {
-      setConnectionError({
-        type: 'server-disconnected',
-        message: 'Server offline - messages will sync when reconnected'
-      });
+    if (isSignalingConnected && !hasBeenConnected) {
+      setHasBeenConnected(true);
+    }
+  }, [isSignalingConnected, hasBeenConnected]);
+
+  // Enhanced connection error detection with better logic
+  useEffect(() => {
+    // Only show server disconnected if:
+    // 1. We have a valid display name (meaning we should be connected)
+    // 2. We have been connected before (not initial load)
+    // 3. We're currently not connected
+    // 4. We have a peer ID (meaning initialization is complete)
+    if (displayName && displayName.trim() && hasBeenConnected && !isSignalingConnected && peerId) {
+      // Add a delay to avoid showing errors during normal reconnection process
+      const timer = setTimeout(() => {
+        // Double-check the connection state after delay
+        if (!isSignalingConnected && displayName && displayName.trim() && hasBeenConnected) {
+          setConnectionError({
+            type: 'server-disconnected',
+            message: 'Server offline - messages will sync when reconnected'
+          });
+        }
+      }, 8000); // Wait 8 seconds before showing error (longer for mobile networks)
+      
+      return () => clearTimeout(timer);
     } else if (isSignalingConnected && connectionError?.type === 'server-disconnected') {
       setConnectionError(null);
     }
-  }, [isSignalingConnected, peerId]); // Remove connectionError from deps to prevent infinite loop
+  }, [isSignalingConnected, peerId, displayName, hasBeenConnected]); // Add hasBeenConnected to deps
 
   // Clear errors when successfully connected
   useEffect(() => {
@@ -391,22 +414,26 @@ export default function ChatRoomPage() {
           <div className="flex items-center justify-between mb-2">
             {/* Main Status - Clean tag style */}
             <div className="flex items-center space-x-2">
-              <span className={`w-3 h-3 rounded-full ${status.isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-              {status.connectedPeers > 0 ? (
-                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                  {status.connectedPeers} online
-                </span>
-              ) : (
-                <span className="text-sm font-medium text-gray-200">
-                  Waiting for connections...
-                </span>
-              )}
-              {isRetrying && (
+            <span className={`w-3 h-3 rounded-full ${status.isConnected ? 'bg-green-500' : (isRetrying ? 'bg-yellow-500 animate-pulse' : 'bg-red-500')}`} />
+            {status.connectedPeers > 0 ? (
+            <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+            {status.connectedPeers} online
+            </span>
+            ) : isRetrying ? (
+            <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium animate-pulse">
+            Reconnecting...
+            </span>
+            ) : (
+              <span className="text-sm font-medium text-gray-200">
+              Waiting for connections...
+            </span>
+            )}
+            {isRetrying && (
                 <span className="text-xs text-blue-400">
-                  (Attempt {retryCount})
-                </span>
-              )}
-            </div>
+                (Attempt {retryCount})
+              </span>
+            )}
+          </div>
             
             {/* Network Info Dropdown */}
             <div className="relative network-info-dropdown">
@@ -528,23 +555,15 @@ export default function ChatRoomPage() {
           </button>
         </div>
         
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 text-xs text-gray-400 space-y-1 sm:space-y-0">
-          <span className="truncate">
-            {isSignalingConnected 
-              ? (status.connectedPeers > 0 
-                  ? `Connected to ${status.connectedPeers} other ${status.connectedPeers === 1 ? 'person' : 'people'}` 
-                  : 'Connected to server - ready to chat')
-              : 'Connecting to server...'
-            }
-          </span>
-          {status.connectedPeers === 0 && isSignalingConnected && (
-            <button
-              onClick={() => setShowQRModal(true)}
-              className="text-purple-400 hover:text-purple-300 font-medium text-left sm:text-right"
-            >
-              📱 Invite Friends
-            </button>
-          )}
+        <div className="mt-2 text-xs text-gray-400">
+        <span className="truncate">
+        {isSignalingConnected 
+        ? (status.connectedPeers > 0 
+        ? `Connected to ${status.connectedPeers} other ${status.connectedPeers === 1 ? 'person' : 'people'}` 
+        : 'Connected to server - ready to chat')
+        : 'Connecting to server...' 
+        }
+        </span>
         </div>
       </form>
 

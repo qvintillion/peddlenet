@@ -113,6 +113,8 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
   const [isRetrying, setIsRetrying] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [connectionCooldown, setConnectionCooldown] = useState(false);
+  const [shouldAutoReconnect, setShouldAutoReconnect] = useState(true);
+  const autoReconnectTimer = useRef<NodeJS.Timeout | null>(null);
   
   const socketRef = useRef<Socket | null>(null);
   const messageHandlersRef = useRef<Set<(message: Message) => void>>(new Set());
@@ -278,6 +280,15 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       if (reason !== 'client namespace disconnect' && reason !== 'transport close') {
         console.log(`⚠️ [${connectionId.current}] Unexpected disconnect, recording as failure:`, reason);
         ConnectionResilience.recordFailure();
+        
+        // Auto-reconnect for unexpected disconnections
+        if (shouldAutoReconnect && effectiveDisplayName) {
+          console.log(`🔄 [${connectionId.current}] Scheduling auto-reconnect in 3 seconds...`);
+          autoReconnectTimer.current = setTimeout(() => {
+            console.log(`🔄 [${connectionId.current}] Attempting auto-reconnect...`);
+            connectToServer();
+          }, 3000);
+        }
       }
     });
 
@@ -312,6 +323,12 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       setTimeout(() => {
         setConnectionCooldown(false);
         console.log(`🔄 [${connectionId.current}] Cooldown ended, connection attempts allowed`);
+        
+        // Auto-retry connection after cooldown if should reconnect
+        if (shouldAutoReconnect && effectiveDisplayName) {
+          console.log(`🔄 [${connectionId.current}] Auto-retrying connection after error...`);
+          connectToServer();
+        }
       }, backoffDelay);
     });
 
@@ -403,6 +420,28 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
 
   }, [roomId, effectiveDisplayName, connectionCooldown, retryCount]); // Only depend on stable values, cooldown, and retry count
 
+  // Auto-reconnect health monitor
+  useEffect(() => {
+    let healthCheckInterval: NodeJS.Timeout;
+    
+    if (isConnected && effectiveDisplayName) {
+      // Set up periodic health check when connected
+      healthCheckInterval = setInterval(() => {
+        const socket = socketRef.current;
+        if (socket && !socket.connected) {
+          console.log('🏥 Health check: Socket disconnected, attempting reconnect...');
+          forceReconnect();
+        }
+      }, 30000); // Check every 30 seconds
+    }
+    
+    return () => {
+      if (healthCheckInterval) {
+        clearInterval(healthCheckInterval);
+      }
+    };
+  }, [isConnected, effectiveDisplayName, forceReconnect]);
+
   // Initialize connection and load persisted messages
   useEffect(() => {
     // Load persisted messages first
@@ -431,6 +470,13 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     }
 
     return () => {
+      setShouldAutoReconnect(false); // Disable auto-reconnect during cleanup
+      
+      if (autoReconnectTimer.current) {
+        clearTimeout(autoReconnectTimer.current);
+        autoReconnectTimer.current = null;
+      }
+      
       if (socketRef.current) {
         console.log(`🛑 [${connectionId.current}] Disconnecting from chat server - cleanup`);
         const socket = socketRef.current;
@@ -481,9 +527,15 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     };
   }, []);
 
-  // Enhanced force reconnect with circuit breaker reset
+  // Enhanced force reconnect with auto-reconnect control
   const forceReconnect = useCallback(async () => {
     console.log('🔄 Force reconnecting with circuit breaker reset...');
+    
+    // Clear any pending auto-reconnect timers
+    if (autoReconnectTimer.current) {
+      clearTimeout(autoReconnectTimer.current);
+      autoReconnectTimer.current = null;
+    }
     
     // Reset circuit breaker state for fresh start
     ConnectionResilience.recordSuccess();
@@ -492,6 +544,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     // Reset local state
     setRetryCount(0);
     setConnectionCooldown(false);
+    setShouldAutoReconnect(true); // Re-enable auto-reconnect
     
     // Clean disconnect current socket
     if (socketRef.current) {
