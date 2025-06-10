@@ -97,13 +97,20 @@ class ConnectionResilience {
 
 // Global access for debugging
 if (typeof window !== 'undefined') {
-  (window as any).ConnectionResilience = ConnectionResilience;
-  console.log('🔧 Connection Resilience v1.0 loaded - Circuit breaker and exponential backoff enabled');
+  // Ensure ConnectionResilience is properly initialized before assignment
+  if (typeof ConnectionResilience !== 'undefined') {
+    (window as any).ConnectionResilience = ConnectionResilience;
+    console.log('🔧 Connection Resilience v1.0 loaded - Circuit breaker and exponential backoff enabled');
+  }
   
-  // Load mobile connection debug utility
-  const mobileDebug = new MobileConnectionDebug();
-  (window as any).MobileConnectionDebug = mobileDebug;
-  console.log('📱 Mobile Connection Debug available as window.MobileConnectionDebug');
+  // Load mobile connection debug utility with proper initialization
+  try {
+    const mobileDebug = new MobileConnectionDebug();
+    (window as any).MobileConnectionDebug = mobileDebug;
+    console.log('📱 Mobile Connection Debug available as window.MobileConnectionDebug');
+  } catch (error) {
+    console.warn('Mobile Connection Debug initialization failed:', error);
+  }
 }
 
 export function useWebSocketChat(roomId: string, displayName?: string) {
