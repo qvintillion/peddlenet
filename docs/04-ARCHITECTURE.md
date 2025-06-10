@@ -112,7 +112,27 @@ interface ConnectionStatus {
 
 ### **Client-Side Optimizations**
 
-**1. Circuit Breaker Pattern**
+**1. JavaScript Initialization Safety** 🎯
+```typescript
+// CRITICAL FIX: Safe global variable assignment
+// Prevents Temporal Dead Zone (TDZ) errors in production bundles
+setTimeout(() => {
+  try {
+    window.ConnectionResilience = ConnectionResilience;
+    window.ServerUtils = ServerUtils;
+    window.MobileConnectionDebug = MobileConnectionDebug;
+    console.log('🔧 All utilities loaded safely');
+  } catch (error) {
+    console.warn('⚠️ Global assignment failed:', error);
+  }
+}, 0);
+
+// Fixed module loading order prevents initialization crashes
+// Eliminated "Cannot access 'E' before initialization" errors
+// Production JavaScript bundles now load cleanly
+```
+
+**2. Circuit Breaker Pattern**
 ```typescript
 class ConnectionResilience {
   // Prevents connection spam when server unavailable

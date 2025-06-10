@@ -13,7 +13,8 @@ import { NetworkStatus, ConnectionError } from '@/components/NetworkStatus';
 import { RoomCodeDisplay } from '@/components/RoomCode';
 import { NotificationSettings } from '@/components/NotificationSettings';
 import { ConnectionTest } from '@/components/ConnectionTest';
-import { QRPeerUtils } from '@/utils/qr-peer-utils';
+// Import QRPeerUtils dynamically to avoid initialization issues
+// import { QRPeerUtils } from '@/utils/qr-peer-utils';
 import { RoomCodeDiagnosticPanel } from '@/components/RoomCodeDiagnostics';
 
 export default function ChatRoomPage() {
@@ -112,50 +113,71 @@ export default function ChatRoomPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    const { SessionPersistence } = require('@/utils/connection-resilience');
-    const session = SessionPersistence.getSession();
-    
-    if (session && session.roomId === roomId && session.displayName && !displayName) {
-      setIsSessionRestored(true);
-      // Hide the notification after 5 seconds
-      setTimeout(() => setIsSessionRestored(false), 5000);
-    }
+    // Import will be dynamically loaded to avoid initialization issues
+    // const { SessionPersistence } = require('@/utils/connection-resilience');
+    import('@/utils/connection-resilience').then(({ SessionPersistence }) => {
+      const session = SessionPersistence.getSession();
+      
+      if (session && session.roomId === roomId && session.displayName && !displayName) {
+        setIsSessionRestored(true);
+        // Hide the notification after 5 seconds
+        setTimeout(() => setIsSessionRestored(false), 5000);
+      }
+    }).catch(error => {
+      console.warn('Failed to load SessionPersistence:', error);
+    });
   }, [roomId, displayName]);
 
   // Get/set display name and restore session
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    // Clean up stale peer data first
+    // Clean up stale peer data first using dynamic import
     console.log('🧠 Cleaning up stale peer data for room:', roomId);
-    QRPeerUtils.cleanupOldHostData(roomId);
+    import('@/utils/qr-peer-utils').then(({ QRPeerUtils }) => {
+      QRPeerUtils.cleanupOldHostData(roomId);
+    }).catch(error => {
+      console.warn('Failed to load QRPeerUtils for cleanup:', error);
+    });
     
-    // Try to restore session first
-    const { SessionPersistence } = require('@/utils/connection-resilience');
-    const session = SessionPersistence.getSession();
-    
-    // Only restore session if it's recent (less than 5 minutes old)
-    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-    const sessionIsRecent = session && session.timestamp && session.timestamp > fiveMinutesAgo;
-    
-    if (session && session.roomId === roomId && session.displayName && sessionIsRecent) {
-      console.log('📝 Restoring recent session for:', session.displayName);
-      setDisplayName(session.displayName);
-      return;
-    } else if (session && !sessionIsRecent) {
-      console.log('🕰️ Session is stale, clearing it');
-      SessionPersistence.clearSession();
-    }
-    
-    // Set display name normally if no valid session
-    const storedName = localStorage.getItem('displayName');
-    if (storedName) {
-      setDisplayName(storedName);
-    } else {
-      const name = prompt('Enter your display name:') || `User_${Math.floor(Math.random() * 1000)}`;
-      setDisplayName(name);
-      localStorage.setItem('displayName', name);
-    }
+    // Try to restore session first using dynamic import
+    import('@/utils/connection-resilience').then(({ SessionPersistence }) => {
+      const session = SessionPersistence.getSession();
+      
+      // Only restore session if it's recent (less than 5 minutes old)
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+      const sessionIsRecent = session && session.timestamp && session.timestamp > fiveMinutesAgo;
+      
+      if (session && session.roomId === roomId && session.displayName && sessionIsRecent) {
+        console.log('📝 Restoring recent session for:', session.displayName);
+        setDisplayName(session.displayName);
+        return;
+      } else if (session && !sessionIsRecent) {
+        console.log('🕰️ Session is stale, clearing it');
+        SessionPersistence.clearSession();
+      }
+      
+      // Set display name normally if no valid session
+      const storedName = localStorage.getItem('displayName');
+      if (storedName) {
+        setDisplayName(storedName);
+      } else {
+        const name = prompt('Enter your display name:') || `User_${Math.floor(Math.random() * 1000)}`;
+        setDisplayName(name);
+        localStorage.setItem('displayName', name);
+      }
+    }).catch(error => {
+      console.warn('Failed to load SessionPersistence:', error);
+      // Fallback: Set display name normally
+      const storedName = localStorage.getItem('displayName');
+      if (storedName) {
+        setDisplayName(storedName);
+      } else {
+        const name = prompt('Enter your display name:') || `User_${Math.floor(Math.random() * 1000)}`;
+        setDisplayName(name);
+        localStorage.setItem('displayName', name);
+      }
+    });
   }, [roomId]);
 
   // Handle incoming messages from the hook - simplified to avoid infinite loops
@@ -205,35 +227,41 @@ export default function ChatRoomPage() {
         return;
       }
       
-      QRPeerUtils.storeHostPeerInfo({
-        roomId,
-        hostPeerId,
-        hostName
-      }, roomId);
-      
-      // Try to connect to host peer after a delay
-      console.log('📱 Will attempt connection to host peer in 3 seconds...');
-      setTimeout(() => {
-        // Double-check that we're not trying to connect to ourselves
-        const currentPeerId = window.globalPeer?.id;
-        if (hostPeerId === currentPeerId) {
-          console.log('🙅 Aborting connection - would be self-connection');
-          return;
-        }
+      // Use dynamic import for QRPeerUtils to avoid initialization issues
+      import('@/utils/qr-peer-utils').then(({ QRPeerUtils }) => {
+        QRPeerUtils.storeHostPeerInfo({
+          roomId,
+          hostPeerId,
+          hostName
+        }, roomId);
         
-        QRPeerUtils.connectToHostPeer(roomId, {
-          peerId,
-          status,
-          isRetrying,
-          retryCount,
-          isSignalingConnected,
-          connectToPeer,
-          sendMessage,
-          onMessage,
-          getConnectedPeers,
-          forceReconnect,
-        });
-      }, 3000);
+        // Try to connect to host peer after a delay
+        console.log('📱 Will attempt connection to host peer in 3 seconds...');
+        setTimeout(() => {
+          // Double-check that we're not trying to connect to ourselves
+          // Use dynamic peer ID check to avoid initialization issues
+          const currentPeerId = (window as any).globalPeer?.id || peerId;
+          if (hostPeerId === currentPeerId) {
+            console.log('🙅 Aborting connection - would be self-connection');
+            return;
+          }
+          
+          QRPeerUtils.connectToHostPeer(roomId, {
+            peerId,
+            status,
+            isRetrying,
+            retryCount,
+            isSignalingConnected,
+            connectToPeer,
+            sendMessage,
+            onMessage,
+            getConnectedPeers,
+            forceReconnect,
+          });
+        }, 3000);
+      }).catch(error => {
+        console.warn('Failed to load QRPeerUtils for host connection:', error);
+      });
     }
   }, [peerId, roomId, connectToPeer, getConnectedPeers, sendMessage, onMessage, forceReconnect]);
 

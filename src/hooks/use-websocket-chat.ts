@@ -7,98 +7,91 @@ import { generateCompatibleUUID } from '@/utils/peer-utils';
 import { NetworkUtils } from '@/utils/network-utils';
 import { MessagePersistence } from '@/utils/message-persistence';
 import { ServerUtils } from '@/utils/server-utils';
-// Import will be handled at runtime to avoid circular dependencies
-// import MobileConnectionDebug from '@/utils/mobile-connection-debug';
 
-// Enhanced connection resilience utilities
-interface CircuitBreakerState {
-  isOpen: boolean;
-  failureCount: number;
-  lastFailureTime: number;
-  successCount: number;
-}
-
-class ConnectionResilience {
-  private static circuitBreaker: CircuitBreakerState = {
+// Simplified connection resilience - avoid class to prevent TDZ issues
+const createConnectionResilience = () => {
+  let circuitBreaker = {
     isOpen: false,
     failureCount: 0,
     lastFailureTime: 0,
     successCount: 0
   };
   
-  private static readonly FAILURE_THRESHOLD = 5; // Increased from 3 to 5 for mobile
-  private static readonly RECOVERY_TIMEOUT = 15000; // Reduced from 30s to 15s for faster recovery
-  private static readonly SUCCESS_THRESHOLD = 1; // Reduced from 2 to 1 for faster recovery
+  const FAILURE_THRESHOLD = 5;
+  const RECOVERY_TIMEOUT = 15000;
+  const SUCCESS_THRESHOLD = 1;
   
-  static shouldAllowConnection(): boolean {
-    const now = Date.now();
-    const timeSinceLastFailure = now - this.circuitBreaker.lastFailureTime;
-    
-    // If circuit is open, check if recovery timeout has passed
-    if (this.circuitBreaker.isOpen) {
-      if (timeSinceLastFailure > this.RECOVERY_TIMEOUT) {
-        console.log('🔄 Circuit breaker attempting recovery - allowing connection');
-        return true; // Allow one test connection
+  return {
+    shouldAllowConnection(): boolean {
+      const now = Date.now();
+      const timeSinceLastFailure = now - circuitBreaker.lastFailureTime;
+      
+      if (circuitBreaker.isOpen) {
+        if (timeSinceLastFailure > RECOVERY_TIMEOUT) {
+          console.log('🔄 Circuit breaker attempting recovery - allowing connection');
+          return true;
+        }
+        console.log('🚫 Circuit breaker open - blocking connection');
+        return false;
       }
-      console.log('🚫 Circuit breaker open - blocking connection');
-      return false;
+      
+      return true;
+    },
+    
+    recordSuccess(): void {
+      circuitBreaker.successCount++;
+      
+      if (circuitBreaker.isOpen && circuitBreaker.successCount >= SUCCESS_THRESHOLD) {
+        circuitBreaker.isOpen = false;
+        circuitBreaker.failureCount = 0;
+        circuitBreaker.successCount = 0;
+        console.log('✅ Circuit breaker closed - connection stable');
+      }
+    },
+    
+    recordFailure(): void {
+      circuitBreaker.failureCount++;
+      circuitBreaker.lastFailureTime = Date.now();
+      circuitBreaker.successCount = 0;
+      
+      if (circuitBreaker.failureCount >= FAILURE_THRESHOLD) {
+        circuitBreaker.isOpen = true;
+        console.log(`⚡ Circuit breaker opened after ${circuitBreaker.failureCount} failures`);
+      }
+    },
+    
+    getExponentialBackoffDelay(attempt: number): number {
+      const baseDelay = 500;
+      const maxDelay = 8000;
+      const jitter = Math.random() * 500;
+      
+      const delay = Math.min(baseDelay * Math.pow(1.5, attempt) + jitter, maxDelay);
+      console.log(`⏱️ Exponential backoff: attempt ${attempt}, delay ${Math.round(delay)}ms`);
+      return delay;
+    },
+    
+    getState() {
+      return { ...circuitBreaker };
+    },
+    
+    reset(): void {
+      circuitBreaker = {
+        isOpen: false,
+        failureCount: 0,
+        lastFailureTime: 0,
+        successCount: 0
+      };
+      console.log('🔄 Circuit breaker manually reset');
     }
-    
-    return true;
-  }
-  
-  static recordSuccess(): void {
-    this.circuitBreaker.successCount++;
-    
-    // If we have enough successes, close the circuit completely
-    if (this.circuitBreaker.isOpen && this.circuitBreaker.successCount >= this.SUCCESS_THRESHOLD) {
-      this.circuitBreaker.isOpen = false;
-      this.circuitBreaker.failureCount = 0;
-      this.circuitBreaker.successCount = 0;
-      console.log('✅ Circuit breaker closed - connection stable');
-    }
-  }
-  
-  static recordFailure(): void {
-    this.circuitBreaker.failureCount++;
-    this.circuitBreaker.lastFailureTime = Date.now();
-    this.circuitBreaker.successCount = 0; // Reset success count on any failure
-    
-    if (this.circuitBreaker.failureCount >= this.FAILURE_THRESHOLD) {
-      this.circuitBreaker.isOpen = true;
-      console.log(`⚡ Circuit breaker opened after ${this.circuitBreaker.failureCount} failures`);
-    }
-  }
-  
-  static getExponentialBackoffDelay(attempt: number): number {
-    const baseDelay = 500; // Reduced from 1s to 500ms for faster recovery
-    const maxDelay = 8000; // Reduced from 30s to 8s for mobile
-    const jitter = Math.random() * 500; // Reduced jitter
-    
-    const delay = Math.min(baseDelay * Math.pow(1.5, attempt) + jitter, maxDelay); // Gentler exponential curve
-    console.log(`⏱️ Exponential backoff: attempt ${attempt}, delay ${Math.round(delay)}ms`);
-    return delay;
-  }
-  
-  static getState(): CircuitBreakerState {
-    return { ...this.circuitBreaker };
-  }
-  
-  // Reset circuit breaker for debugging/manual intervention
-  static reset(): void {
-    this.circuitBreaker = {
-      isOpen: false,
-      failureCount: 0,
-      lastFailureTime: 0,
-      successCount: 0
-    };
-    console.log('🔄 Circuit breaker manually reset');
-  }
-}
+  };
+};
+
+// Create instance without class declaration
+const ConnectionResilience = createConnectionResilience();
 
 // Global access for debugging - moved to separate initialization to avoid temporal dead zone issues
 if (typeof window !== 'undefined') {
-  // Use setTimeout to ensure class is fully initialized before global assignment
+  // Use setTimeout to ensure all modules are fully initialized before global assignment
   setTimeout(() => {
     try {
       (window as any).ConnectionResilience = ConnectionResilience;
@@ -106,9 +99,6 @@ if (typeof window !== 'undefined') {
     } catch (error) {
       console.warn('ConnectionResilience initialization failed:', error);
     }
-    
-    // Mobile connection debug will be loaded separately to avoid circular dependencies
-    // The mobile-connection-debug.ts file will handle its own global assignment
   }, 0);
 }
 
@@ -446,7 +436,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
         clearInterval(healthCheckInterval);
       }
     };
-  }, [isConnected, effectiveDisplayName, forceReconnect]);
+  }, [isConnected, effectiveDisplayName]);
 
   // Initialize connection and load persisted messages
   useEffect(() => {

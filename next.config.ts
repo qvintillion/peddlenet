@@ -20,6 +20,21 @@ const nextConfig = {
     unoptimized: true,
   },
   
+  // Simplified webpack configuration to fix TDZ issues
+  webpack: (config, { isServer, dev }) => {
+    // Only apply optimizations in production
+    if (!dev) {
+      // Disable aggressive optimizations that can cause TDZ issues
+      config.optimization = {
+        ...config.optimization,
+        moduleIds: 'named', // Use named module IDs instead of numbers
+        chunkIds: 'named', // Use named chunk IDs
+      };
+    }
+    
+    return config;
+  },
+  
   // Only add headers for non-export builds
   ...(!process.env.BUILD_TARGET && {
     // Headers for CORS support (only for dev/server mode)
