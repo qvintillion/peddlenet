@@ -7,6 +7,7 @@ import { generateCompatibleUUID } from '@/utils/peer-utils';
 import { NetworkUtils } from '@/utils/network-utils';
 import { MessagePersistence } from '@/utils/message-persistence';
 import { ServerUtils } from '@/utils/server-utils';
+import MobileConnectionDebug from '@/utils/mobile-connection-debug';
 
 // Enhanced connection resilience utilities
 interface CircuitBreakerState {
@@ -24,9 +25,9 @@ class ConnectionResilience {
     successCount: 0
   };
   
-  private static readonly FAILURE_THRESHOLD = 3;
-  private static readonly RECOVERY_TIMEOUT = 30000; // 30 seconds
-  private static readonly SUCCESS_THRESHOLD = 2; // Successes needed to close circuit
+  private static readonly FAILURE_THRESHOLD = 5; // Increased from 3 to 5 for mobile
+  private static readonly RECOVERY_TIMEOUT = 15000; // Reduced from 30s to 15s for faster recovery
+  private static readonly SUCCESS_THRESHOLD = 1; // Reduced from 2 to 1 for faster recovery
   
   static shouldAllowConnection(): boolean {
     const now = Date.now();
@@ -69,11 +70,11 @@ class ConnectionResilience {
   }
   
   static getExponentialBackoffDelay(attempt: number): number {
-    const baseDelay = 1000; // 1 second
-    const maxDelay = 30000; // 30 seconds
-    const jitter = Math.random() * 1000; // Add randomness to prevent thundering herd
+    const baseDelay = 500; // Reduced from 1s to 500ms for faster recovery
+    const maxDelay = 8000; // Reduced from 30s to 8s for mobile
+    const jitter = Math.random() * 500; // Reduced jitter
     
-    const delay = Math.min(baseDelay * Math.pow(2, attempt) + jitter, maxDelay);
+    const delay = Math.min(baseDelay * Math.pow(1.5, attempt) + jitter, maxDelay); // Gentler exponential curve
     console.log(`⏱️ Exponential backoff: attempt ${attempt}, delay ${Math.round(delay)}ms`);
     return delay;
   }
@@ -98,6 +99,11 @@ class ConnectionResilience {
 if (typeof window !== 'undefined') {
   (window as any).ConnectionResilience = ConnectionResilience;
   console.log('🔧 Connection Resilience v1.0 loaded - Circuit breaker and exponential backoff enabled');
+  
+  // Load mobile connection debug utility
+  const mobileDebug = new MobileConnectionDebug();
+  (window as any).MobileConnectionDebug = mobileDebug;
+  console.log('📱 Mobile Connection Debug available as window.MobileConnectionDebug');
 }
 
 export function useWebSocketChat(roomId: string, displayName?: string) {
@@ -132,7 +138,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       return;
     }
     
-    if (!roomId || !effectiveDisplayName || isConnectingRef.current || connectionCooldown) {
+    if (!roomId || !effectiveDisplayName || isConnectingRef.current) {
       console.log(`⏸️ [${connectionId.current}] Skipping connection - missing requirements:`, {
         roomId: !!roomId,
         effectiveDisplayName: !!effectiveDisplayName,
@@ -140,6 +146,12 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
         cooldown: connectionCooldown,
         circuitBreaker: ConnectionResilience.getState()
       });
+      return;
+    }
+    
+    // Allow room switching but add slight delay to prevent rapid switching
+    if (connectionCooldown && roomConnectionRef.current === roomId) {
+      console.log(`⏳ [${connectionId.current}] In cooldown for same room, waiting...`);
       return;
     }
     
@@ -189,18 +201,18 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     });
 
     const socket = io(serverUrl, {
-      // Phase 2: Optimized transport configuration matching server
+      // Phase 2: Mobile-optimized transport configuration
       transports: ['polling', 'websocket'], // Polling first for reliability, then upgrade
-      timeout: 10000,        // Reduced from 15s - faster failure detection
+      timeout: 8000,         // Reduced from 10s for mobile responsiveness
       forceNew: true,
       autoConnect: true,
       
-      // Enhanced reconnection strategy
-      reconnection: true,
-      reconnectionAttempts: 3,     // Reduced from 5 - faster circuit breaker activation
-      reconnectionDelay: 2000,     // 2s base delay
-      reconnectionDelayMax: 8000,  // Reduced from 10s - faster recovery
-      maxReconnectionAttempts: 3,  // Consistent with attempts
+      // Mobile-friendly reconnection strategy
+      reconnection: false,   // Disable automatic reconnection to prevent conflicts with our circuit breaker
+      reconnectionAttempts: 0,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      maxReconnectionAttempts: 0,
       
       // Transport upgrade settings
       upgrade: true,
@@ -281,11 +293,19 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       setIsRetrying(false);
       isConnectingRef.current = false;
       
-      // Record failure for circuit breaker
-      ConnectionResilience.recordFailure();
+      // Only record certain errors as failures (not rate limits)
+      if (!error.message.includes('rate limit') && !error.message.includes('throttle')) {
+        ConnectionResilience.recordFailure();
+      } else {
+        console.log('🕰️ Rate limit detected, not counting as circuit breaker failure');
+      }
       
-      // Use exponential backoff for cooldown
-      const backoffDelay = ConnectionResilience.getExponentialBackoffDelay(retryCount);
+      // Use exponential backoff for cooldown with shorter delays for rate limits
+      const isRateLimit = error.message.includes('rate limit') || error.message.includes('throttle');
+      const backoffDelay = isRateLimit ? 
+        Math.min(2000 + Math.random() * 3000, 5000) : // 2-5s for rate limits
+        ConnectionResilience.getExponentialBackoffDelay(retryCount);
+        
       setConnectionCooldown(true);
       setRetryCount(prev => prev + 1);
       

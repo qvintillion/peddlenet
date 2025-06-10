@@ -93,11 +93,11 @@ const io = new Server(server, {
 // Store room information (peers only, messages in database)
 const rooms = new Map(); // roomId -> { peers: Map, created: timestamp }
 
-// Phase 2: Connection throttling to prevent rapid attempts
+// Phase 2: Connection throttling to prevent rapid attempts (Mobile-optimized)
 const connectionAttempts = new Map(); // IP -> { count: number, lastAttempt: number, blocked: boolean }
-const CONNECTION_LIMIT = 5; // Max attempts per minute
+const CONNECTION_LIMIT = 15; // Increased from 5 to 15 for mobile compatibility
 const CONNECTION_WINDOW = 60000; // 1 minute window
-const THROTTLE_DURATION = 30000; // 30 second throttle when limit exceeded
+const THROTTLE_DURATION = 10000; // Reduced from 30s to 10s for faster recovery
 
 // Connection throttling middleware
 function connectionThrottleMiddleware(req, res, next) {
