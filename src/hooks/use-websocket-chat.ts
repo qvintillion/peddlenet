@@ -7,7 +7,8 @@ import { generateCompatibleUUID } from '@/utils/peer-utils';
 import { NetworkUtils } from '@/utils/network-utils';
 import { MessagePersistence } from '@/utils/message-persistence';
 import { ServerUtils } from '@/utils/server-utils';
-import MobileConnectionDebug from '@/utils/mobile-connection-debug';
+// Import will be handled at runtime to avoid circular dependencies
+// import MobileConnectionDebug from '@/utils/mobile-connection-debug';
 
 // Enhanced connection resilience utilities
 interface CircuitBreakerState {
@@ -95,22 +96,20 @@ class ConnectionResilience {
   }
 }
 
-// Global access for debugging
+// Global access for debugging - moved to separate initialization to avoid temporal dead zone issues
 if (typeof window !== 'undefined') {
-  // Ensure ConnectionResilience is properly initialized before assignment
-  if (typeof ConnectionResilience !== 'undefined') {
-    (window as any).ConnectionResilience = ConnectionResilience;
-    console.log('🔧 Connection Resilience v1.0 loaded - Circuit breaker and exponential backoff enabled');
-  }
-  
-  // Load mobile connection debug utility with proper initialization
-  try {
-    const mobileDebug = new MobileConnectionDebug();
-    (window as any).MobileConnectionDebug = mobileDebug;
-    console.log('📱 Mobile Connection Debug available as window.MobileConnectionDebug');
-  } catch (error) {
-    console.warn('Mobile Connection Debug initialization failed:', error);
-  }
+  // Use setTimeout to ensure class is fully initialized before global assignment
+  setTimeout(() => {
+    try {
+      (window as any).ConnectionResilience = ConnectionResilience;
+      console.log('🔧 Connection Resilience v1.0 loaded - Circuit breaker and exponential backoff enabled');
+    } catch (error) {
+      console.warn('ConnectionResilience initialization failed:', error);
+    }
+    
+    // Mobile connection debug will be loaded separately to avoid circular dependencies
+    // The mobile-connection-debug.ts file will handle its own global assignment
+  }, 0);
 }
 
 export function useWebSocketChat(roomId: string, displayName?: string) {

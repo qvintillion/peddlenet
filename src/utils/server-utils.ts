@@ -179,8 +179,14 @@ export const ServerUtils = {
   }
 };
 
-// Global access for debugging
+// Global access for debugging - use setTimeout to avoid initialization issues
 if (typeof window !== 'undefined') {
-  (window as any).ServerUtils = ServerUtils;
-  console.log('🔧 Server Utils loaded - separate HTTP/WebSocket URL management');
+  setTimeout(() => {
+    try {
+      (window as any).ServerUtils = ServerUtils;
+      console.log('🔧 Server Utils loaded - separate HTTP/WebSocket URL management');
+    } catch (error) {
+      console.warn('ServerUtils initialization failed:', error);
+    }
+  }, 0);
 }

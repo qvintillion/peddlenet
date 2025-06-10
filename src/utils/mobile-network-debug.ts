@@ -158,8 +158,14 @@ export const MobileNetworkDebug = {
   }
 };
 
-// Global access for debugging
+// Global access for debugging - use setTimeout to avoid initialization issues
 if (typeof window !== 'undefined') {
-  (window as any).MobileNetworkDebug = MobileNetworkDebug;
-  console.log('🔍 Mobile Network Debug available as window.MobileNetworkDebug');
+  setTimeout(() => {
+    try {
+      (window as any).MobileNetworkDebug = MobileNetworkDebug;
+      console.log('🔍 Mobile Network Debug available as window.MobileNetworkDebug');
+    } catch (error) {
+      console.warn('MobileNetworkDebug initialization failed:', error);
+    }
+  }, 0);
 }

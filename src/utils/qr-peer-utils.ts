@@ -220,8 +220,14 @@ export const QRPeerUtils = {
   }
 };
 
-// Global access for debugging
+// Global access for debugging - use setTimeout to avoid initialization issues
 if (typeof window !== 'undefined') {
-  (window as any).QRPeerUtils = QRPeerUtils;
-  console.log('📱 QR Peer Utils v3.0 available as window.QRPeerUtils');
+  setTimeout(() => {
+    try {
+      (window as any).QRPeerUtils = QRPeerUtils;
+      console.log('📱 QR Peer Utils v3.0 available as window.QRPeerUtils');
+    } catch (error) {
+      console.warn('QRPeerUtils initialization failed:', error);
+    }
+  }, 0);
 }

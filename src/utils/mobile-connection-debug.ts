@@ -232,11 +232,17 @@ window.ServerUtils.getEnvironmentInfo()           - Server environment
   }
 }
 
-// Make globally available
+// Make globally available - use setTimeout to avoid initialization issues
 if (typeof window !== 'undefined') {
-  window.MobileConnectionDebug = new MobileConnectionDebug();
-  console.log('📱 Mobile Connection Debug available as window.MobileConnectionDebug');
-  console.log('📱 Type window.MobileConnectionDebug.help() for commands');
+  setTimeout(() => {
+    try {
+      (window as any).MobileConnectionDebug = new MobileConnectionDebug();
+      console.log('📱 Mobile Connection Debug available as window.MobileConnectionDebug');
+      console.log('📱 Type window.MobileConnectionDebug.help() for commands');
+    } catch (error) {
+      console.warn('MobileConnectionDebug initialization failed:', error);
+    }
+  }, 0);
 }
 
 export default MobileConnectionDebug;

@@ -273,8 +273,14 @@ export const NetworkUtils = {
   }
 };
 
-// Global access for debugging (no auto-initialization)
+// Global access for debugging - use setTimeout to avoid initialization issues
 if (typeof window !== 'undefined') {
-  (window as any).NetworkUtils = NetworkUtils;
-  console.log('🌐 Enhanced Network Utils loaded - ready for fresh IP detection');
+  setTimeout(() => {
+    try {
+      (window as any).NetworkUtils = NetworkUtils;
+      console.log('🌐 Enhanced Network Utils loaded - ready for fresh IP detection');
+    } catch (error) {
+      console.warn('NetworkUtils initialization failed:', error);
+    }
+  }, 0);
 }
