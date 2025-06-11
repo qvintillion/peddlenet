@@ -335,7 +335,10 @@ export default function ChatRoomPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-purple-900 via-black to-purple-900 text-white fixed inset-0 overflow-hidden supports-[height:100svh]:h-[100svh]">
+    <div 
+      className="flex flex-col h-screen bg-gradient-to-br from-purple-900 via-black to-purple-900 text-white fixed inset-0 overflow-hidden supports-[height:100svh]:h-[100svh]"
+      data-chat-active={roomId && displayName ? "true" : "false"}
+    >
       {/* Ensure proper mobile viewport */}
       <style jsx global>{`
         html, body {
@@ -418,9 +421,9 @@ export default function ChatRoomPage() {
         </div>
 
         {/* Room Title Row with Actions */}
-        <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-700/50">
-          <h1 className="text-xl sm:text-2xl font-bold text-white">🎪 {roomId}</h1>
-          <div className="flex gap-2">
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white truncate mr-3 min-w-0">🎪 {roomId}</h1>
+          <div className="flex gap-2 shrink-0">
             <button
               onClick={() => setShowQRModal(true)}
               className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
@@ -469,42 +472,40 @@ export default function ChatRoomPage() {
           </div>
         </div>
 
-        {/* Simplified Connection Status */}
-        <div className="mb-3 p-3 bg-gray-800/50 rounded-lg border border-gray-600">
-          <div className="flex items-center justify-between mb-2">
-            {/* Main Status - Clean tag style */}
-            <div className="flex items-center space-x-2">
+        {/* Connection Status - moved here */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-2">
             <span className={`w-3 h-3 rounded-full ${status.isConnected ? 'bg-green-500' : (isRetrying ? 'bg-yellow-500 animate-pulse' : 'bg-red-500')}`} />
             {status.connectedPeers > 0 ? (
-            <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-            {status.connectedPeers} online
-            </span>
+              <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                {status.connectedPeers} online
+              </span>
             ) : isRetrying ? (
-            <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium animate-pulse">
-            Reconnecting...
-            </span>
+              <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs font-medium animate-pulse">
+                Reconnecting...
+              </span>
             ) : (
-              <span className="text-sm font-medium text-gray-200">
-              Waiting for connections...
-            </span>
+              <span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                0 online
+              </span>
             )}
             {isRetrying && (
-                <span className="text-xs text-blue-400">
+              <span className="text-xs text-blue-400">
                 (Attempt {retryCount})
               </span>
             )}
-          </div>
             
-            {/* Network Info Dropdown */}
+            {/* Network Info - bigger and bold */}
             <div className="relative network-info-dropdown">
               <button
                 onClick={() => setShowNetworkInfo(!showNetworkInfo)}
-                className="text-xs px-2 py-1 bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition"
+                className="text-sm font-bold text-gray-400 hover:text-white transition-colors px-1"
+                title="Network info"
               >
-                ℹ️
+                i
               </button>
               {showNetworkInfo && (
-                <div className="absolute right-0 top-8 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-lg p-3 z-10">
+                <div className="absolute left-0 top-6 w-64 bg-gray-800 border border-gray-600 rounded-lg shadow-lg p-3 z-10">
                   <div className="text-xs space-y-2 text-white">
                     <div className="flex items-center space-x-2">
                       <span className={`w-2 h-2 rounded-full ${
@@ -522,9 +523,6 @@ export default function ChatRoomPage() {
               )}
             </div>
           </div>
-          
-          {/* Room Code Display */}
-          <RoomCodeDisplay roomId={roomId} className="mb-2" />
         </div>
 
         {/* Room Settings Panel */}
@@ -540,6 +538,11 @@ export default function ChatRoomPage() {
 
       </div>
 
+      {/* Room Code Card - floating above messages */}
+      <div className="px-3 sm:px-4 pt-2 pb-3">
+        <RoomCodeDisplay roomId={roomId} className="" />
+      </div>
+
       {/* Enhanced Messages */}
       <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
         {messages.length === 0 && (
@@ -550,12 +553,42 @@ export default function ChatRoomPage() {
                 <h3 className="text-xl font-semibold text-white">Welcome to {roomId}!</h3>
                 <p className="text-gray-400">You're the first person here.</p>
                 <div className="bg-purple-900/30 border border-purple-500/30 p-4 rounded-lg max-w-md mx-auto">
-                  <p className="text-sm text-purple-200 font-medium mb-2">🚀 Get started:</p>
+                  <p className="text-sm text-purple-200 font-medium mb-2 flex items-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">
+                      <rect x="0" y="0" width="2" height="2"/>
+                      <rect x="3" y="0" width="2" height="2"/>
+                      <rect x="6" y="0" width="2" height="2"/>
+                      <rect x="11" y="0" width="2" height="2"/>
+                      <rect x="14" y="0" width="2" height="2"/>
+                      <rect x="0" y="3" width="2" height="2"/>
+                      <rect x="6" y="3" width="2" height="2"/>
+                      <rect x="11" y="3" width="2" height="2"/>
+                      <rect x="0" y="6" width="2" height="2"/>
+                      <rect x="3" y="6" width="2" height="2"/>
+                      <rect x="6" y="6" width="2" height="2"/>
+                      <rect x="9" y="6" width="2" height="2"/>
+                      <rect x="14" y="6" width="2" height="2"/>
+                      <rect x="3" y="9" width="2" height="2"/>
+                      <rect x="6" y="9" width="2" height="2"/>
+                      <rect x="11" y="9" width="2" height="2"/>
+                      <rect x="14" y="9" width="2" height="2"/>
+                      <rect x="0" y="11" width="2" height="2"/>
+                      <rect x="6" y="11" width="2" height="2"/>
+                      <rect x="9" y="11" width="2" height="2"/>
+                      <rect x="0" y="14" width="2" height="2"/>
+                      <rect x="3" y="14" width="2" height="2"/>
+                      <rect x="6" y="14" width="2" height="2"/>
+                      <rect x="9" y="14" width="2" height="2"/>
+                      <rect x="11" y="14" width="2" height="2"/>
+                      <rect x="14" y="14" width="2" height="2"/>
+                    </svg>
+                    Get started:
+                  </p>
                   <ol className="text-xs text-purple-300 text-left space-y-1">
-                    <li>1. Tap the "📱 Invite" button above</li>
+                    <li>1. Tap the QR code icon next to the room name</li>
                     <li>2. Share the QR code with friends</li>
-                    <li>3. They'll connect in 5-10 seconds!</li>
-                    <li>4. Start chatting instantly</li>
+                    <li>3. They'll connect instantly!</li>
+                    <li>4. Start chatting</li>
                   </ol>
                 </div>
               </div>

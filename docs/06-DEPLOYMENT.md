@@ -126,21 +126,22 @@ npm run dev:mobile
 # 💾 SQLite persistence enabled!
 ```
 
-### **🆕 Background Notifications Stability (June 10, 2025)**
+### **🆕 Critical Stability Fixes (June 11, 2025)**
 
-The app now includes a critical fix for background notification connection loops:
+**✅ Infinite Reconnection Loop Fix**: 
+- **Issue**: Background notifications causing infinite connection loops when rooms removed from favorites
+- **Solution**: Smart conflict detection between background manager and WebSocket chat hook
+- **Impact**: Eliminated "Connection rate limit exceeded" errors, improved mobile battery life
+- **Files**: `src/hooks/use-background-notifications.ts`, `src/app/chat/[roomId]/page.tsx`
 
-**What Was Fixed:**
-- Eliminated infinite reconnection loops when notifications disabled
-- Smart connection management only connects when notifications enabled
-- Rate limiting with exponential backoff prevents server overload
-- Enhanced error handling for "Connection rate limit exceeded" errors
+**✅ UI Streamlining**:
+- **Compact header** with connection status integrated below room name
+- **Floating room code card** positioned above messages for better accessibility
+- **Responsive room name** with truncation on small screens
+- **More chat space** due to streamlined header design
 
-**Deployment Impact:**
-- Use `npm run deploy:firebase:quick` - frontend-only fix
-- No backend changes required
-- Safe deployment with zero breaking changes
-- Immediate stability improvement for all users
+**Deployment Type**: Frontend-only (use `npm run deploy:firebase:quick`)
+**Status**: Ready for immediate production deployment
 
 ### **🧹 Clean Signaling Server Architecture**
 
@@ -168,6 +169,33 @@ festival-chat/
 **Server Selection Logic**:
 - **Development**: `npm run server` → Uses `signaling-server.js` (in-memory)
 - **Production**: Dockerfile → Uses `signaling-server-sqlite-enhanced.js` (SQLite + optimizations)
+
+### **🆕 SQLite Persistence with Smart Fallback (June 11, 2025)**
+
+**✅ Production Database Optimization**: 
+- **Primary**: `better-sqlite3` for production (faster, synchronous, no deprecation warnings)
+- **Fallback**: `sqlite3` for development compatibility (Node.js v24 support)
+- **Smart Detection**: Automatically uses best available SQLite library
+- **Cross-Platform**: Works on all deployment environments
+
+**Technical Implementation**:
+```javascript
+// Automatic fallback in sqlite-persistence.js:
+try {
+  Database = require('better-sqlite3');  // Production optimized
+  console.log('📦 Using better-sqlite3 for persistence');
+} catch (err) {
+  // Development fallback for Node.js compatibility
+  Database = createSqlite3Wrapper();  // Compatible wrapper
+  console.log('⚠️ Using sqlite3 fallback');
+}
+```
+
+**Benefits**:
+- ✅ **Production**: No Firebase deployment warnings, faster performance
+- ✅ **Development**: Compatible with Node.js v18-24, easy local setup
+- ✅ **Deployment**: Robust across all environments without manual configuration
+- ✅ **Maintenance**: Single codebase works everywhere
 
 ### **Testing Before Deploy**
 ```bash

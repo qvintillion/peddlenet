@@ -130,12 +130,6 @@ export function JoinedRooms({ className = '' }: FavoritesProps) {
     <div className={`${className}`} key={favoritesKey}>
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-lg font-semibold text-white">Favorites</h4>
-        <button
-          onClick={clearAllRooms}
-          className="text-sm px-3 py-1 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition"
-        >
-          Clear
-        </button>
       </div>
       
       {/* Horizontal Scrolling Cards */}

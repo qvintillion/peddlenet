@@ -5,11 +5,14 @@ RUN apk add --no-cache sqlite
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy server-specific package.json with overrides to eliminate deprecation warnings
+COPY package-server.json ./package.json
 
-# Install dependencies with better caching
-RUN npm ci --omit=dev --prefer-offline && npm cache clean --force
+# Create package-lock.json from the server package.json
+RUN npm install --package-lock-only
+
+# Install dependencies with overrides applied (eliminates deprecation warnings)
+RUN npm ci --omit=dev --prefer-offline --no-fund --no-audit && npm cache clean --force
 
 # Copy the enhanced SQLite signaling server with stability improvements
 COPY signaling-server-sqlite-enhanced.js ./

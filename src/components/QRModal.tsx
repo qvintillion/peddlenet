@@ -278,26 +278,7 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
                   </span>
                 </div>
               )}
-              {/* Only show mobile access status if we have a detected IP and it's useful */}
-              {autoDetectedIP && autoDetectedIP !== 'localhost' && autoDetectedIP !== '127.0.0.1' && (
-                <div className="mt-2 p-2 bg-green-50 rounded text-xs">
-                  <span className="text-green-800">
-                    ✅ Mobile-accessible at: {autoDetectedIP}
-                  </span>
-                  <div className="mt-1 text-green-600">
-                    📡 Server: http://{autoDetectedIP}:3001
-                  </div>
-                  {/* Only show change button in development */}
-                  {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
-                    <button 
-                      onClick={() => setShowNetworkSetup(true)}
-                      className="ml-2 text-green-600 underline"
-                    >
-                      Change
-                    </button>
-                  )}
-                </div>
-              )}
+
             </div>
 
             {/* QR Code */}
@@ -318,23 +299,7 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
               </div>
             ) : null}
 
-            {/* Instructions */}
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800 font-medium mb-1">
-                📸 Scan with camera to join instantly!
-              </p>
-              <p className="text-xs text-blue-600">
-                {peerId 
-                  ? "QR includes your connection info for 5-10 second connections"
-                  : "Others will join your room when they scan"
-                }
-              </p>
-              {autoDetectedIP && autoDetectedIP !== 'localhost' && (
-                <p className="text-xs text-green-600 mt-1">
-                  ✅ Mobile devices can scan this QR code
-                </p>
-              )}
-            </div>
+
 
             {/* Action Buttons */}
             <div className="space-y-2">
@@ -367,8 +332,6 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
               <ul className="text-xs text-yellow-700 space-y-1">
                 <li>• Works offline once connected</li>
                 <li>• Save screenshot of QR for later sharing</li>
-                <li>• Room stays active as long as someone's connected</li>
-                <li>• Both devices must be on the same WiFi network</li>
               </ul>
             </div>
           </>

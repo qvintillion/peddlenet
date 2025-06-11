@@ -138,6 +138,13 @@ class BackgroundNotificationManager {
       return;
     }
 
+    // CRITICAL FIX: Check for active chat connections to prevent conflicts
+    if (this.isActiveWebSocketChatConnected()) {
+      console.log('🚫 Active WebSocket chat connection detected - deferring background notifications');
+      this.scheduleConflictAvoidanceReconnection();
+      return;
+    }
+
     this.isConnecting = true;
     this.connectionAttempts++;
     this.lastConnectionAttempt = Date.now();
@@ -269,6 +276,56 @@ class BackgroundNotificationManager {
     }, delay);
   }
 
+  // CRITICAL FIX: Detect active WebSocket chat connections to prevent conflicts
+  private isActiveWebSocketChatConnected(): boolean {
+    try {
+      // Check if there's an active WebSocket connection in the global window
+      // This is a heuristic to detect if the main chat WebSocket is already connected
+      if (typeof window === 'undefined') return false;
+      
+      // Look for active socket.io connections that might be from the chat hook
+      const globalSocketIO = (window as any).io;
+      if (globalSocketIO && globalSocketIO.managers) {
+        for (const [url, manager] of Object.entries(globalSocketIO.managers as any)) {
+          if (manager && manager.engine && manager.engine.readyState === 'open') {
+            console.log('🔍 Detected active WebSocket manager:', url);
+            return true;
+          }
+        }
+      }
+      
+      // Additional check: Look for DOM elements that might indicate active chat
+      const chatContainer = document.querySelector('[data-chat-active]');
+      if (chatContainer) {
+        console.log('🔍 Detected active chat container');
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.warn('Error checking for active WebSocket connections:', error);
+      return false;
+    }
+  }
+
+  // CRITICAL FIX: Schedule reconnection with conflict avoidance
+  private scheduleConflictAvoidanceReconnection() {
+    // Clear any existing timer
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    // Wait longer when avoiding conflicts (30 seconds)
+    const conflictAvoidanceDelay = 30000;
+    console.log(`🔔 Scheduling conflict-avoidance reconnection in ${conflictAvoidanceDelay/1000}s`);
+    
+    this.reconnectTimer = setTimeout(() => {
+      console.log('🔔 Attempting conflict-avoidance background notification reconnection...');
+      this.connect();
+    }, conflictAvoidanceDelay);
+  }
+
   subscribeToRoom(roomId: string, displayName: string, save: boolean = true) {
     if (!roomId || !displayName) return;
 
@@ -343,6 +400,17 @@ class BackgroundNotificationManager {
       console.log('🔔 No more active subscriptions - disconnecting background service');
       this.disconnect();
     }
+    
+    // IMPORTANT: Clear any reconnection attempts to prevent conflicts
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+      console.log('🔔 Cleared reconnection timer to prevent conflicts');
+    }
+    
+    // Reset connection state to prevent interference with main chat connections
+    this.connectionAttempts = 0;
+    this.isConnecting = false;
   }
 
   private disconnect() {

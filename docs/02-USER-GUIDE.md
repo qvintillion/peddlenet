@@ -76,23 +76,33 @@ Festival Chat is designed for instant, no-setup messaging at festivals, events, 
 └─────────────────────────────────┘
 ```
 
-### **Chat Screen Elements**
+### **Chat Screen Elements** 🆕 *Updated June 2025*
 
 ```
 ┌─────────────────────────────────┐
-│  [🎨 Logo] bright-stage-42        │  ← Interactive logo + Room info
+│  [🎨 Logo] bright-stage-42      │  ← Interactive logo + Room name (responsive)
+│  ⚡ Connected • 3 people    [i] │  ← Connection status + Info button
 ├─────────────────────────────────┤
-│  🎫 Room Code: bright-stage-42  │  ← Share info
-│  [📋 Copy] [🔗 QR Code]         │
+│  🎫 Room Code: bright-stage-42  │  ← Floating room code card
+│  [📋 Copy] [🔗 QR Code]         │    (moved above messages)
 ├─────────────────────────────────┤
-│  Alice: Hey everyone! 👋         │  ← Messages
+│  Alice: Hey everyone! 👋         │  ← Messages area (more space)
 │  Bob: Great set from the DJ     │
 │  You: Amazing sound quality!    │
-│  ⚡ Connected • 3 people         │  ← Connection status
+│  Charlie: This is amazing! 🎶   │
+│  Dana: See you at the afterparty│
 ├─────────────────────────────────┤
 │  Type a message... [Send]       │  ← Message input
 └─────────────────────────────────┘
 ```
+
+**🆕 June 2025 UI Improvements:**
+- **Compact header** with connection status integrated below room name
+- **Responsive room name** that truncates on small screens (`text-lg sm:text-xl lg:text-2xl`)
+- **Floating room code card** positioned above messages for better accessibility
+- **More chat space** due to streamlined header design
+- **Simplified info button** (bold "i") for accessing room settings
+- **Consistent pill styling** for connection status indicators
 
 ## 🔗 Sharing & Inviting
 

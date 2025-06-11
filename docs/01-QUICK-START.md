@@ -6,7 +6,7 @@ Festival Chat is a production-ready real-time messaging platform. This guide wil
 
 ## ⚡ Prerequisites
 
-- **Node.js 18+** installed
+- **Node.js 18-24** installed (v24.1.0 currently supported)
 - **Git** for cloning
 - **Two devices** on same WiFi (desktop + mobile for testing)
 - **Basic terminal usage** knowledge
@@ -36,6 +36,7 @@ npm run dev:mobile
 # 🔧 Connection Resilience loaded
 # 🎵 Festival Chat Server running on port 3001
 # 💾 SQLite persistence enabled!
+# 📦 Using better-sqlite3 for persistence
 ```
 
 ### 3. Test Cross-Device Messaging

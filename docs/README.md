@@ -33,6 +33,7 @@
 
 ### **Archive**
 - **[Archive](./archive/)** - Historical documentation and deprecated guides
+  - **[Deployment Summaries](./archive/deployment-summaries/)** - 🆕 **June 2025 deployment files moved from root**
   - **[Deployment Logs](./archive/deployment-logs/)** - June 2025 debugging logs (resolved)
   - **[Cross-Room System](./archive/Cross-Room-Notification-System-Technical-Summary.md)** - Multi-room functionality (archived)
   - **[Archive Index](./archive/README.md)** - Complete archive contents

@@ -71,117 +71,42 @@ npm run dev
 
 ## 🔧 Recent Updates (June 2025)
 
-### **✅ CRITICAL: Background Notifications Reconnection Loop Fixed** (June 10, 2025)
-- **✅ CRITICAL FIX: Infinite reconnection loops eliminated** - Fixed background notifications causing rate limit errors
-- **✅ Smart connection management** - Only connects when notifications are actually enabled for rooms
-- **✅ Rate limiting implemented** - Exponential backoff (2s → 4s → 8s → 16s → 30s) prevents server overload
-- **✅ Connection state validation** - Prevents duplicate connections and unnecessary server requests
-- **✅ Resource optimization** - Automatic disconnection when no active notification subscriptions
-- **✅ Mobile reliability** - Reduced background network activity improving battery life
-- **✅ Error handling enhanced** - Specific rate limit detection with appropriate recovery strategies
-- **✅ Memory leak prevention** - Proper timer cleanup and component lifecycle management
+### **✅ CRITICAL: Infinite Reconnection Loop Fixed** (June 11, 2025)
+- **Smart conflict detection** between background notifications and WebSocket chat hooks
+- **Eliminated "Connection rate limit exceeded" errors** that caused app slowdowns
+- **UI improvements** with streamlined chat interface and floating room code cards
+- **Mobile battery optimization** through reduced background network activity
+- **Enhanced error handling** with proper rate limiting and exponential backoff
 
-### **💜 Enhanced Favorites System Implementation** (June 10, 2025)
-- **✅ Beautiful heart-based favorites** - ❤️/🤍 toggle buttons in every chat room header
-- **✅ Smart notification integration** - Favoriting automatically enables notifications for room
-- **✅ Horizontal scrolling cards** - Beautiful favorites display with room codes and timestamps
-- **✅ Real-time status indicators** - Clear 🔔 On / 🔕 Off notification status for each room
-- **✅ Cross-component synchronization** - Favorites state synchronized across entire application
-- **✅ Quick room access** - Prominent 'Enter' buttons for instant festival coordination
-- **✅ Comprehensive management** - Remove/clear functionality with safety confirmation dialogs
-- **✅ Mobile optimized design** - Perfect for festival ground usage with touch-friendly interface
+**📚 Complete details**: [CRITICAL-FIX-JUNE-2025.md](./docs/CRITICAL-FIX-JUNE-2025.md)
 
-### **✅ CRITICAL: JavaScript Initialization Errors Fixed** (June 9, 2025)
-- **✅ CRITICAL FIX: Production stability complete** - Eliminated "Cannot access 'E' before initialization" errors
-- **✅ Fixed Temporal Dead Zone (TDZ)** violations in production JavaScript bundles
-- **✅ Safe global variable assignment** with setTimeout(0) pattern prevents timing conflicts
-- **✅ Clean module loading order** eliminates circular dependency conflicts
-- **✅ All debugging utilities working** - window.MobileConnectionDebug properly available
-- **✅ Production app loads cleanly** without JavaScript crashes or initialization errors
-- **✅ Enhanced error handling** with comprehensive try-catch blocks prevents cascade failures
-- **✅ Stable webpack bundling** with proper class declaration order
+### **💜 Enhanced Favorites System** (June 10, 2025)
+- **Heart-based favorites** with ❤️/🤍 toggle buttons in chat headers
+- **Smart notification integration** - favoriting automatically enables notifications
+- **Horizontal scrolling cards** with room codes, timestamps, and status indicators
+- **Cross-component synchronization** with real-time status updates
+- **Mobile-optimized design** perfect for festival coordination
 
-### **Latest UI & Connection Improvements** (June 2025)
-- ✅ **Interface cleanup** - Removed redundant invite button for cleaner message input
-- ✅ **Streamlined UI elements** - Removed public room feature banner and redundant helper text
-- ✅ **Brand consistency** - Changed "Creating as:" to "Peddling as:" for better brand alignment
-- ✅ **Original logo integration** - Authentic PeddleNet branding throughout the app
-- ✅ **Interactive navigation** - Logo serves as home button in chat rooms
-- ✅ **"Enter" room buttons** - Changed "Rejoin" to "Enter" for better UX clarity
-- ✅ **Responsive settings panel** - Settings now scroll properly on mobile devices
-- ✅ **Notification status indicators** - Replaced toggles with clear read-only status in JoinedRooms
-- ✅ **Auto-reconnection system** - Intelligent recovery from connection drops without manual refresh
-- ✅ **Mobile connection reliability** - 80% fewer false "server disconnected" errors
-- ✅ **Smart error detection** - Only shows disconnect errors after proven connectivity
-- ✅ **Visual connection status** - Real-time indicators with "Reconnecting..." feedback
-- ✅ **Health monitoring** - 30-second interval checks for silent disconnections
-- ✅ **Connection state tracking** - Distinguishes initial load vs actual disconnections
-- ✅ **Enhanced mobile tolerance** - 8-second delay accommodates slower mobile networks
+### **✅ Background Notifications Stability** (June 10, 2025)
+- **Eliminated infinite connection loops** when notifications disabled
+- **Rate limiting with exponential backoff** (2s → 4s → 8s → 16s → 30s)
+- **Smart connection management** - only connects when notifications enabled
+- **Resource optimization** with automatic cleanup and mobile battery improvements
 
-### **Auto-Reconnection Features**
-- **3-second auto-reconnect** after unexpected disconnections
-- **Periodic health checks** every 30 seconds to detect silent failures
-- **Visual status indicators** with yellow pulsing during reconnection
-- **Integration with circuit breaker** for smart retry logic
-- **No manual refresh needed** - seamless background recovery
-- **JavaScript stability** - All connection logic loads reliably without TDZ errors
+### **🔧 JavaScript & Connection Reliability** (June 9, 2025)
+- **Fixed Temporal Dead Zone (TDZ) errors** in production builds
+- **Auto-reconnection system** with 3-second recovery and 30-second health monitoring
+- **Mobile reliability improvements** - 80% fewer false disconnect errors
+- **Enhanced error detection** - only shows errors after proven connectivity
 
-### **UI/UX Enhancements**
-- **Streamlined message input** - Removed duplicate invite functionality
-- **Prominent QR invitation** - Single, clear invite button in header
-- **Better visual hierarchy** - Reduced clutter and improved information flow
-- **Mobile-optimized layout** - Less cramped footer area on small screens
-- **Clean interface design** - Removed redundant banners and helper text
-- **Brand consistency** - Updated all user-facing text to match PeddleNet branding
-- **Notification clarity** - Clear status indicators replace complex toggles
-- **Original logo integration** - Authentic PeddleNet branding with interactive navigation
-- **Responsive settings** - Settings panel now scrolls properly on all devices
-- **Intuitive button text** - "Enter" instead of "Rejoin" for better user understanding
+### **🎨 UI/UX & Infrastructure Improvements** (June 2025)
+- **Streamlined interface** with reduced clutter and better mobile layouts
+- **Dark mode optimization** with consistent purple branding
+- **Infrastructure consolidation** - unified backend for 50% cost reduction
+- **Room code reliability** - 100% consistent manual entry across domains
+- **Package deprecation fixes** - eliminated 10+ npm warnings in deployments
 
-### **Infrastructure Consolidation SUCCESS**
-- ✅ **Unified production backend** - Consolidated duplicate servers for 50% cost reduction
-- ✅ **100% room code reliability** - Manual entry works consistently across all domains
-- ✅ **Fixed WebSocket connections** - Added proper root route handling
-- ✅ **Cross-domain consistency** - Both peddlenet.app and Firebase deployment identical
-- ✅ **Operational efficiency** - Single backend service simplifies maintenance
-- ✅ **Production validation** - All functionality verified working across environments
-
-### **Dark Mode Interface**
-- ✅ **Complete dark theme redesign** - Chat interface now matches homepage purple gradient
-- ✅ **Improved contrast** - All text optimized for readability on dark backgrounds
-- ✅ **Consistent branding** - Purple accent colors throughout for cohesive experience
-- ✅ **Modern aesthetics** - Professional dark theme suitable for festival environments
-
-### **Mobile Responsiveness**
-- ✅ **Fully responsive design** - Optimized for all screen sizes from mobile to desktop
-- ✅ **Sticky message input** - Input stays at bottom with proper safe area support
-- ✅ **Touch-friendly interactions** - All buttons meet minimum touch target sizes (44px)
-- ✅ **Responsive typography** - Text scales appropriately for different screen sizes
-- ✅ **Improved layouts** - Better spacing and organization on mobile devices
-
-### **UI/UX Improvements**
-- ✅ **Cleaned up interface** - Removed unnecessary tip banners and redundant text
-- ✅ **Centered room title** - Better visual hierarchy with balanced header layout
-- ✅ **Streamlined navigation** - Home button repositioned for intuitive flow
-- ✅ **Enhanced message bubbles** - Better mobile sizing and responsive padding
-
-### **Protocol Issues Resolved**
-- ✅ **Fixed WSS/HTTPS URL confusion** - ServerUtils automatically converts protocols
-- ✅ **Fixed mixed content errors** - Proper HTTPS usage in production
-- ✅ **Fixed room code registration** - Added missing server endpoints
-- ✅ **Fixed JSON parse errors** - Proper error handling and responses
-
-### **Build System Improvements**
-- ✅ **Fixed Firebase export build failures** - Resolved webpack chunk issues
-- ✅ **Fixed headers configuration** - Conditional headers for export mode
-- ✅ **Improved cache management** - Better build artifact cleanup
-- ✅ **Enhanced error recovery** - Graceful handling of build edge cases
-
-### **New ServerUtils System**
-- **Automatic Protocol Detection:** Converts `wss://` to `https://` for HTTP calls
-- **Environment Awareness:** Handles development vs production automatically  
-- **Centralized URL Management:** Single source of truth for server URLs
-- **Built-in Health Checks:** `ServerUtils.testHttpHealth()` for diagnostics
+**📚 Full documentation**: [docs/](./docs/) directory contains comprehensive guides
 
 ## 🛠️ Build Troubleshooting
 

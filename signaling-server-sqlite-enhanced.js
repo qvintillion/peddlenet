@@ -612,20 +612,45 @@ app.get('/debug/rooms', async (req, res) => {
   }
 });
 
-// Debug endpoint for room code testing (keep SQLite version)
-app.get('/debug/test-code/:roomId', (req, res) => {
+// ** NEW: Room stats endpoint for active user counts **
+app.get('/room-stats/:roomId', (req, res) => {
   try {
     const roomId = req.params.roomId;
-    const generatedCode = generateRoomCodeOnServer(roomId);
+    const room = rooms.get(roomId);
+    
+    if (!room) {
+      return res.json({ 
+        roomId, 
+        activeUsers: 0, 
+        exists: false, 
+        timestamp: Date.now() 
+      });
+    }
+    
+    // Count unique users (by peerId to avoid duplicates)
+    const uniquePeerIds = new Set();
+    room.peers.forEach(peer => {
+      uniquePeerIds.add(peer.peerId);
+    });
+    
+    const activeUsers = uniquePeerIds.size;
     
     res.json({
       roomId,
-      generatedCode,
-      isRegistered: roomCodes.has(generatedCode?.toLowerCase()),
-      hasRoomMapping: roomCodesByRoomId.has(roomId)
+      activeUsers,
+      totalConnections: room.peers.size,
+      exists: true,
+      created: room.created,
+      timestamp: Date.now()
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    
+    console.log(`📊 Room stats requested for ${roomId}: ${activeUsers} active users`);
+  } catch (error) {
+    console.error('Error getting room stats:', error);
+    res.status(500).json({ 
+      error: 'Failed to get room stats', 
+      roomId: req.params.roomId 
+    });
   }
 });
 

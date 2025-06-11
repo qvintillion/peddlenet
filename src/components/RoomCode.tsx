@@ -228,22 +228,17 @@ export function RoomCodeDisplay({ roomId, className = '' }: RoomCodeDisplayProps
   // Show loading state during hydration
   if (!isClient || !roomCode) {
     return (
-      <div className={`p-3 bg-blue-900/30 rounded-lg border border-blue-500/30 ${className}`}>
+      <div className={`p-2 bg-blue-900/30 rounded-lg border border-blue-500/30 ${className}`}>
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm font-medium text-blue-200">
+            <div className="text-xs font-medium text-blue-200">
               🎫 Room Code
             </div>
-            <div className="font-mono text-xl font-bold text-blue-300">Loading...</div>
-            <div className="text-xs text-blue-400 mt-1">
-              <strong>Share this code</strong> for others to join instantly
-            </div>
+            <div className="font-mono text-sm font-bold text-blue-300">Loading...</div>
           </div>
-          <div className="flex flex-col space-y-2">
-            <button className="px-3 py-2 bg-gray-600 text-white rounded-lg text-sm font-medium" disabled>
-              📋 Copy
-            </button>
-          </div>
+          <button className="p-2 text-gray-400" disabled title="Copy room code">
+            📋
+          </button>
         </div>
       </div>
     );
@@ -268,25 +263,21 @@ export function RoomCodeDisplay({ roomId, className = '' }: RoomCodeDisplayProps
   };
 
   return (
-    <div className={`p-3 bg-blue-900/30 rounded-lg border border-blue-500/30 ${className}`}>
+    <div className={`p-2 bg-blue-900/30 rounded-lg border border-blue-500/30 ${className}`}>
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm font-medium text-blue-200">
+          <div className="text-xs font-medium text-blue-200">
             🎫 Room Code
           </div>
-          <div className="font-mono text-xl font-bold text-blue-300">{roomCode}</div>
-          <div className="text-xs text-blue-400 mt-1">
-            <strong>Share this code</strong> for others to join instantly
-          </div>
+          <div className="font-mono text-sm font-bold text-blue-300">{roomCode}</div>
         </div>
-        <div className="flex flex-col space-y-2">
-          <button 
-            onClick={copyRoomCode} 
-            className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
-          >
-            {copied ? '✅ Copied!' : '📋 Copy'}
-          </button>
-        </div>
+        <button 
+          onClick={copyRoomCode} 
+          className="p-2 text-blue-300 hover:text-blue-100 transition"
+          title="Copy room code"
+        >
+          {copied ? '✅' : '📋'}
+        </button>
       </div>
     </div>
   );

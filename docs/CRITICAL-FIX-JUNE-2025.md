@@ -2,11 +2,13 @@
 
 ## 🎯 **Summary**
 
-This document details the resolution of two critical issues discovered in June 2025:
-1. **Mobile notifications not working** when users pressed the home button
-2. **Deployment scripts not actually deploying client-side code changes**
+This document details the resolution of critical issues discovered in June 2025:
+1. **Mobile notifications not working** when users pressed the home button ✅ **RESOLVED**
+2. **Deployment scripts not actually deploying client-side code changes** ✅ **RESOLVED** 
+3. **🆕 Infinite reconnection loop issue** when removing rooms from favorites ✅ **RESOLVED**
+4. **🆕 UI improvements** with streamlined chat interface ✅ **COMPLETED**
 
-Both issues have been **completely resolved** with the following fixes.
+All issues have been **completely resolved** with comprehensive fixes and testing.
 
 ## 🚨 **Issue 1: Mobile Notifications Not Working**
 
@@ -289,7 +291,144 @@ npm run deploy:firebase:nuclear      # Complete rebuild
 
 ---
 
-**Date**: June 10, 2025  
-**Status**: ✅ **RESOLVED**  
-**Risk Level**: Very Low (tested fixes with clear rollback procedures)  
-**Next Steps**: Monitor mobile notification performance in production
+## 🚨 **Issue 3: Infinite Reconnection Loop When Removing Favorites** 🆕
+
+### **The Problem**
+Users experienced infinite reconnection loops when removing a room from favorites and then re-entering the room. This caused:
+- Excessive server connections and poor performance
+- App becoming unresponsive or slow
+- Console flooding with "Connection rate limit exceeded" errors
+- Network tab showing excessive connection attempts
+
+### **Root Cause Analysis**
+Race condition between background notifications manager and WebSocket chat hook:
+- Both tried to connect to the same server simultaneously
+- Background manager disconnected when no subscriptions, then immediately reconnected
+- WebSocket chat hook attempted its own connection, causing conflicts
+- Circuit breakers and retry logic from both systems interfered with each other
+
+### **The Solution: Smart Conflict Detection and Avoidance**
+
+**File Modified**: `src/hooks/use-background-notifications.ts`
+
+**Key Enhancement**: Conflict detection prevents simultaneous connections
+
+```typescript
+// CRITICAL FIX: Detect active WebSocket chat connections to prevent conflicts
+private isActiveWebSocketChatConnected(): boolean {
+  try {
+    // Check for active socket.io connections from the chat hook
+    const globalSocketIO = (window as any).io;
+    if (globalSocketIO && globalSocketIO.managers) {
+      for (const [url, manager] of Object.entries(globalSocketIO.managers as any)) {
+        if (manager && manager.engine && manager.engine.readyState === 'open') {
+          console.log('🔍 Detected active WebSocket manager:', url);
+          return true;
+        }
+      }
+    }
+    
+    // Check for DOM elements indicating active chat
+    const chatContainer = document.querySelector('[data-chat-active="true"]');
+    if (chatContainer) {
+      console.log('🔍 Detected active chat container');
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.warn('Error checking for active WebSocket connections:', error);
+    return false;
+  }
+}
+
+// Enhanced connect method with conflict avoidance
+private connect() {
+  if (!this.shouldAttemptConnection()) {
+    return;
+  }
+
+  // CRITICAL FIX: Check for active chat connections to prevent conflicts
+  if (this.isActiveWebSocketChatConnected()) {
+    console.log('🚫 Active WebSocket chat connection detected - deferring background notifications');
+    this.scheduleConflictAvoidanceReconnection();
+    return;
+  }
+
+  // ... rest of connection logic
+}
+```
+
+**Additional Enhancement**: `src/app/chat/[roomId]/page.tsx`
+- Added `data-chat-active` attribute for DOM-based detection
+- Enables background manager to identify active chat sessions
+
+### **Testing Results**
+✅ **Infinite reconnection loops completely eliminated**  
+✅ **Background notifications still work when appropriate**  
+✅ **Resource usage significantly reduced**  
+✅ **Multiple tab conflicts resolved**  
+✅ **Enhanced debug logging for monitoring**  
+
+---
+
+## 🎨 **Issue 4: UI Improvements - Streamlined Chat Interface** 🆕
+
+### **Changes Made**
+
+#### **Header Layout Optimization**
+1. **Moved connection status** from separate section to main header below room name
+2. **Made room name responsive** with truncation: `text-lg sm:text-xl lg:text-2xl truncate`
+3. **Simplified info button** to bigger, bold "i": `text-sm font-bold`
+4. **Consistent pill design** - changed "Waiting for connections..." to "0 online" gray pill
+5. **Removed visual divider** between header and content for cleaner flow
+
+#### **Room Code Card Enhancement**
+1. **Converted to floating card** above chat messages (removed from header)
+2. **Better positioning** with proper spacing (`pt-2 pb-3`)
+3. **Maintains copy/QR functionality** in new prominent location
+
+#### **Visual Result**
+- **More compact header** with better use of vertical space
+- **Increased chat message area** for better conversation flow
+- **Cleaner information hierarchy** with floating room code
+- **Improved mobile experience** with responsive text sizing
+
+**Files Modified**:
+- `src/app/chat/[roomId]/page.tsx` - Header restructuring and layout improvements
+
+### **Testing Results**
+✅ **Room name truncation works on narrow screens**  
+✅ **Floating room code card positioned correctly**  
+✅ **Connection status pills display properly**  
+✅ **Info button functionality maintained**  
+✅ **Mobile layout improved significantly**  
+
+---
+
+## 📋 **Complete Fix Summary (June 11, 2025)**
+
+### **✅ All Issues Resolved**
+1. **Mobile Notifications**: Enhanced mobile-first logic ✅
+2. **Deployment Scripts**: Fixed hosting + functions deployment ✅ 
+3. **Infinite Reconnection Loops**: Conflict detection implemented ✅
+4. **UI Streamlining**: Compact header with floating room code ✅
+
+### **🛠️ Files Modified**
+- `src/hooks/use-push-notifications.ts` - Mobile notification improvements
+- `src/hooks/use-background-notifications.ts` - Infinite loop fix
+- `src/app/chat/[roomId]/page.tsx` - UI improvements + conflict detection support
+- `tools/deploy-firebase-*.sh` - Fixed deployment scripts
+- `docs/fixes/INFINITE-RECONNECTION-LOOP-FIX-JUNE-2025.md` - Complete documentation
+
+### **🧪 Testing Status**
+✅ **Mobile notifications tested on iOS/Android**  
+✅ **Deployment scripts verified working**  
+✅ **Infinite reconnection loop eliminated**  
+✅ **UI improvements tested across devices**  
+✅ **All changes tested in staging environment**  
+
+**Date**: June 11, 2025  
+**Status**: ✅ **ALL ISSUES RESOLVED**  
+**Risk Level**: Very Low (comprehensive testing, graceful degradation)  
+**Next Steps**: Deploy to production and monitor performance

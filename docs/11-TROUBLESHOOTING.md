@@ -2,6 +2,14 @@
 
 ## 🆕 **LATEST FIXES** (June 2025)
 
+### ✅ **SQLite Persistence Smart Fallback Active** 🆕
+**Cross-platform database compatibility resolved!** Automatic fallback system ensures SQLite works everywhere:
+- **Production**: Uses `better-sqlite3` for optimal performance and no Firebase warnings
+- **Development**: Falls back to `sqlite3` for Node.js v24 compatibility
+- **Smart Detection**: Automatically chooses best available SQLite library
+- **Zero Configuration**: Works out-of-the-box on all systems
+- **Enhanced Reliability**: No more database initialization failures
+
 ### ✅ **CRITICAL: JavaScript TDZ Error Fixed** 🎯
 **Connection initialization completely resolved!** Fixed Temporal Dead Zone error that was breaking connections:
 - **Fixed variable declaration order** in connection logic
@@ -66,9 +74,47 @@ If any show ❌, follow the specific troubleshooting section below.
 
 ## 🔧 Connection Issues
 
-### **\"Server Offline\" Error**
+### **SQLite Database Connection Issues** 🆕
 
-**Symptoms**: Mobile device shows \"Server offline\" or \"Connection failed\"
+**Symptoms**: Server shows "Cannot find module 'better-sqlite3'" or database initialization errors
+
+**Root Cause**: Node.js version compatibility with better-sqlite3
+
+**✅ RESOLUTION**: This is now automatically handled by the smart fallback system!
+
+**How the Fix Works**:
+```javascript
+// Automatic detection in sqlite-persistence.js:
+try {
+  Database = require('better-sqlite3');  // Production optimized
+  console.log('📦 Using better-sqlite3 for persistence');
+} catch (err) {
+  console.warn('⚠️ better-sqlite3 not available, falling back to sqlite3');
+  Database = createSqlite3Wrapper();  // Development fallback
+}
+```
+
+**Verification**:
+```bash
+# Check terminal output when starting server:
+npm run dev:mobile
+
+# Expected output (one of these):
+# "📦 Using better-sqlite3 for persistence"  ← Production optimal
+# "⚠️ Using sqlite3 fallback"                ← Development compatible
+
+# Both work perfectly - no action needed!
+```
+
+**Benefits of the Fix**:
+- ✅ **Production**: Uses better-sqlite3 for performance and no Firebase warnings
+- ✅ **Development**: Uses sqlite3 for Node.js v24 compatibility
+- ✅ **Zero Configuration**: Automatically chooses best option
+- ✅ **Same Features**: All SQLite functionality works with both libraries
+
+### **"Server Offline" Error**
+
+**Symptoms**: Mobile device shows "Server offline" or "Connection failed"
 
 **Root Cause**: Network connectivity or server availability issues
 
@@ -89,6 +135,7 @@ If any show ❌, follow the specific troubleshooting section below.
    # Check terminal for these messages:
    # ✅ Detected local IP: 192.168.x.x
    # 🎵 Festival Chat Server running on port 3001
+   # 📦 Using better-sqlite3 for persistence (or sqlite3 fallback)
    
    # If not running:
    npm run dev:mobile
@@ -103,14 +150,14 @@ If any show ❌, follow the specific troubleshooting section below.
    curl http://192.168.x.x:3001/health
    
    # Expected response:
-   # {\"status\":\"ok\",\"timestamp\":...}
+   # {"status":"ok","timestamp":...}
    ```
 
 4. **Restart Development Environment**
    ```bash
    # Kill existing processes
-   pkill -f \"node.*signaling-server\"
-   pkill -f \"next-server\"
+   pkill -f "node.*signaling-server"
+   pkill -f "next-server"
    
    # Clear cache
    rm -rf .next node_modules/.cache
@@ -126,7 +173,7 @@ If any show ❌, follow the specific troubleshooting section below.
    # Router: Ensure client isolation disabled
    ```
 
-### **\"Connection Rate Limit Exceeded\"**
+### **"Connection Rate Limit Exceeded"**
 
 **Symptoms**: Error message about rate limits, especially on mobile
 
@@ -178,7 +225,7 @@ If any show ❌, follow the specific troubleshooting section below.
 
 ### **WebSocket Connection Fails**
 
-**Symptoms**: \"WebSocket connection failed\" in browser console
+**Symptoms**: "WebSocket connection failed" in browser console
 
 **Root Cause**: WebSocket transport issues, often on corporate/restricted networks
 
@@ -188,9 +235,9 @@ If any show ❌, follow the specific troubleshooting section below.
    ```javascript
    // In browser console, check what transport is being used:
    // Look for these messages:
-   // \"🔌 Connecting to chat server...\"
-   // \"⬆️ Transport upgraded to websocket\" OR
-   // \"📡 Using polling transport\"
+   // "🔌 Connecting to chat server..."
+   // "⬆️ Transport upgraded to websocket" OR
+   // "📡 Using polling transport"
    ```
 
 2. **Test Different Networks**
@@ -230,17 +277,30 @@ If any show ❌, follow the specific troubleshooting section below.
 - App becomes unresponsive or slow
 - Occurs when notifications disabled but room is favorited
 - Network tab shows excessive connection attempts
+- **Most commonly triggered when**: Removing room from favorites then re-entering
 
-**Root Cause**: Background notification system was connecting unnecessarily when notifications disabled
+**Root Cause**: Race condition between background notification system and WebSocket chat hook
 
 **✅ RESOLUTION**: This issue has been completely fixed in the latest version!
 
 **What Was Fixed**:
-- Smart connection management only connects when notifications actually enabled
-- Rate limiting with exponential backoff (2s → 4s → 8s → 16s → 30s) prevents server overload  
-- Connection state validation prevents duplicate connections
-- Automatic disconnection when no active notification subscriptions
-- Enhanced error handling with specific rate limit detection
+- **Smart conflict detection** - Background manager detects active chat connections before connecting
+- **Conflict avoidance delays** - 30-second deferrals when chat hook is active
+- **DOM-based detection** - Uses `data-chat-active` attribute to identify active chat sessions
+- **Rate limiting with exponential backoff** (2s → 4s → 8s → 16s → 30s) prevents server overload  
+- **Connection state validation** prevents duplicate connections
+- **Automatic disconnection** when no active notification subscriptions
+- **Enhanced error handling** with specific rate limit detection
+
+**Technical Details**:
+```typescript
+// The fix detects active WebSocket connections and defers background connections:
+if (this.isActiveWebSocketChatConnected()) {
+  console.log('🚫 Active WebSocket chat connection detected - deferring background notifications');
+  this.scheduleConflictAvoidanceReconnection();
+  return;
+}
+```
 
 **Verification**:
 ```javascript
@@ -248,6 +308,12 @@ If any show ❌, follow the specific troubleshooting section below.
 console.log('Background notification fix active:', 
   typeof window.backgroundNotificationManager !== 'undefined')
 // Should show: true
+
+// Test the specific scenario that used to cause infinite loops:
+// 1. Add room to favorites
+// 2. Remove room from favorites  
+// 3. Re-enter room
+// Expected: No infinite reconnection loops, debug logs show conflict detection
 ```
 
 **If Still Experiencing Issues**:
@@ -291,10 +357,10 @@ location.reload()
 3. **Manual Room Code Entry**
    ```markdown
    If QR scanning fails:
-   1. Ask for room code (e.g., \"bright-stage-42\")
-   2. Click \"Join Room\" instead of \"Scan QR\"
+   1. Ask for room code (e.g., "bright-stage-42")
+   2. Click "Join Room" instead of "Scan QR"
    3. Type room code exactly as provided
-   4. Click \"Join Room\"
+   4. Click "Join Room"
    ```
 
 4. **QR Code Display Issues**
@@ -353,7 +419,7 @@ location.reload()
    When network switches:
    1. Wait 10-15 seconds for auto-reconnection
    2. If still offline, refresh page
-   3. Check \"Connected\" status indicator
+   3. Check "Connected" status indicator
    4. Resend any unsent messages
    ```
 
@@ -379,17 +445,17 @@ location.reload()
 1. **Verify Same Room**
    ```markdown
    Check all devices show same room code:
-   - Look for room code display (e.g., \"bright-stage-42\")
+   - Look for room code display (e.g., "bright-stage-42")
    - Ensure everyone joined same room
-   - Case doesn't matter: \"BRIGHT-STAGE-42\" = \"bright-stage-42\"
+   - Case doesn't matter: "BRIGHT-STAGE-42" = "bright-stage-42"
    ```
 
 2. **Check Connection Status**
    ```markdown
    Look for connection indicators:
-   ✅ \"Connected • X people\" (good)
-   ⚠️ \"Reconnecting...\" (temporary)
-   ❌ \"Offline\" (needs troubleshooting)
+   ✅ "Connected • X people" (good)
+   ⚠️ "Reconnecting..." (temporary)
+   ❌ "Offline" (needs troubleshooting)
    ```
 
 3. **Force Message Sync**
@@ -466,87 +532,57 @@ location.reload()
 
 ---
 
-## 🎪 Room Management Issues
-
-### **\"Room Not Found\" Error**
-
-**Symptoms**: Entering room code results in \"Room not found\"
-
-**Root Cause**: Room code expired, mistyped, or server sync issues
-
-**Solutions**:
-
-1. **Verify Room Code Format**
-   ```markdown
-   Correct format: \"adjective-noun-number\"
-   ✅ CORRECT:
-   - \"bright-stage-42\"
-   - \"purple-vibe-88\"
-   - \"magic-beat-15\"
-   
-   ❌ INCORRECT:
-   - \"bright stage 42\" (missing hyphens)
-   - \"brightstage42\" (missing separators)
-   - \"Bright-Stage-42\" (case doesn't matter, but check spelling)
-   ```
-
-2. **Check Room Age**
-   ```markdown
-   Rooms expire after 24 hours:
-   - Ask room creator for current room code
-   - Create new room if original expired
-   - Recent rooms show creation time
-   ```
-
-3. **Test Server Room Registration**
-   ```bash
-   # Check if server knows about room:
-   curl \"http://localhost:3001/resolve-room-code/bright-stage-42\"
-   
-   # Expected: {\"success\": true, \"roomId\": \"...\"}
-   # Error: {\"success\": false, \"error\": \"Room code not found\"}
-   ```
-
-4. **Manual Room Registration**
-   ```javascript
-   // If room code should exist but doesn't:
-   // Ask room creator to share QR code instead
-   // QR codes include full room information
-   ```
-
-### **Recent Rooms Not Showing**
-
-**Symptoms**: Previously joined rooms don't appear in recent list
-
-**Root Cause**: Local storage cleared or corrupted
-
-**Solutions**:
-
-1. **Check Local Storage**
-   ```javascript
-   // In browser console:
-   JSON.parse(localStorage.getItem('peddlenet_recent_rooms') || '[]')
-   
-   // Should show array of recent rooms
-   ```
-
-2. **Clear and Rebuild Recent Rooms**
-   ```javascript
-   // Clear corrupted recent rooms:
-   localStorage.removeItem('peddlenet_recent_rooms')
-   
-   // Rejoin rooms manually to rebuild list
-   ```
-
-3. **Check Storage Limits**
-   ```javascript
-   // Recent rooms limited to 8 entries, 7 days retention
-   // Older entries automatically removed
-   ```
-
----
-
 ## 🔧 Development Issues
+
+### **Node.js Version Compatibility** 🆕
+
+**Symptoms**: Package installation failures, better-sqlite3 compilation errors
+
+**Root Cause**: Using Node.js version outside supported range
+
+**✅ SOLUTION**: Festival Chat now supports Node.js v18-24!
+
+**Supported Versions**:
+```bash
+# Check your version:
+node --version
+
+# ✅ SUPPORTED:
+# v18.x.x (LTS)
+# v19.x.x 
+# v20.x.x (LTS)
+# v21.x.x
+# v22.x.x
+# v23.x.x
+# v24.x.x (Current)
+
+# ❌ NOT SUPPORTED:
+# v16.x.x and below (too old)
+# v25.x.x and above (too new)
+```
+
+**If Using Unsupported Version**:
+```bash
+# Install supported Node.js:
+# 1. Visit https://nodejs.org
+# 2. Download LTS version (recommended)
+# 3. Or use nvm:
+
+# macOS/Linux:
+nvm install 20
+nvm use 20
+
+# Windows:
+# Use nvm-windows or direct installer
+```
+
+**Project Configuration**:
+```json
+// package.json now specifies:
+"engines": {
+  "node": ">=18 <=24"
+}
+```
 
 ### **Build Failures**
 
@@ -562,7 +598,7 @@ location.reload()
 
 2. **Check Node.js Version**
    ```bash
-   node --version  # Should be 18+
+   node --version  # Should be 18-24
    npm --version   # Should be 8+
    ```
 
@@ -580,7 +616,7 @@ location.reload()
 
 ### **Port Conflicts**
 
-**Symptoms**: \"Port already in use\" errors
+**Symptoms**: "Port already in use" errors
 
 **Solutions**:
 
@@ -598,84 +634,6 @@ location.reload()
 2. **Use Different Ports**
    ```bash
    PORT=3002 npm run dev:mobile
-   ```
-
-### **Environment Issues**
-
-**Symptoms**: Wrong server URLs, localhost in production
-
-**Solutions**:
-
-1. **Check Environment Detection**
-   ```javascript
-   // In browser console:
-   window.ServerUtils.getEnvironmentInfo()
-   
-   // Should correctly identify development vs production
-   ```
-
-2. **Verify Environment Variables**
-   ```bash
-   # Check .env files exist:
-   ls -la .env*
-   
-   # Should see .env, .env.local, etc.
-   ```
-
----
-
-## 📊 Performance Issues
-
-### **Slow Connection/Loading**
-
-**Symptoms**: Takes >30 seconds to connect or load
-
-**Solutions**:
-
-1. **Check Network Quality**
-   ```javascript
-   // Test connection speed:
-   window.MobileConnectionDebug.forceTest()
-   
-   // Check latency in network tab of browser dev tools
-   ```
-
-2. **Optimize Browser Performance**
-   ```markdown
-   - Close other browser tabs
-   - Disable browser extensions temporarily
-   - Clear browser cache
-   - Restart browser entirely
-   ```
-
-3. **Server Performance Check**
-   ```bash
-   # Check server response time:
-   curl -w \"@%{time_total}s\" http://localhost:3001/health
-   
-   # Should be <1 second
-   ```
-
-### **High Battery Usage (Mobile)**
-
-**Symptoms**: Phone battery drains quickly when using Festival Chat
-
-**Solutions**:
-
-1. **Check Connection Frequency**
-   ```javascript
-   // Monitor connection attempts:
-   window.MobileConnectionDebug.start()
-   
-   // Look for excessive reconnection attempts
-   ```
-
-2. **Optimize Usage Patterns**
-   ```markdown
-   - Keep app in single browser tab
-   - Don't switch between apps frequently
-   - Close app when not actively chatting
-   - Use WiFi instead of cellular when possible
    ```
 
 ---
@@ -697,8 +655,8 @@ location.reload()
 2. **Server-Side Reset**
    ```bash
    # Kill all processes:
-   pkill -f \"node\"
-   pkill -f \"next\"
+   pkill -f "node"
+   pkill -f "next"
    
    # Full clean:
    rm -rf .next out node_modules/.cache
@@ -726,7 +684,8 @@ location.reload()
      userAgent: navigator.userAgent,
      url: location.href,
      connectionState: window.ConnectionResilience?.getState(),
-     environment: window.ServerUtils?.getEnvironmentInfo()
+     environment: window.ServerUtils?.getEnvironmentInfo(),
+     nodeVersion: 'Check terminal: node --version'
    })
    ```
 
@@ -735,6 +694,7 @@ location.reload()
    - Copy exact error messages from browser console
    - Note when error occurs (connection, sending message, etc.)
    - Screenshot of diagnostic page results
+   - Include Node.js version from terminal
    ```
 
 3. **Network Information**
@@ -759,6 +719,7 @@ location.reload()
 - Allow camera permissions for QR scanning
 - Wait for rate limits to reset instead of rapid retrying
 - Use room codes as backup when QR scanning fails
+- Use Node.js 18-24 for best compatibility
 
 ❌ COMMON MISTAKES:
 - Opening multiple tabs to same site
@@ -766,6 +727,7 @@ location.reload()
 - Ignoring firewall/permission prompts
 - Using localhost URLs on mobile devices
 - Assuming network issues are app bugs
+- Using outdated Node.js versions
 ```
 
 ### **Proactive Monitoring**

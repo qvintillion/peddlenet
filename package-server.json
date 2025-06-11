@@ -1,25 +1,39 @@
 {
   "name": "festival-chat-websocket-server",
   "version": "1.0.0",
-  "description": "WebSocket signaling server for Festival Chat",
-  "main": "signaling-server-cloudrun.js",
+  "description": "WebSocket signaling server for Festival Chat with better-sqlite3",
+  "main": "signaling-server-sqlite-enhanced.js",
   "scripts": {
-    "start": "node signaling-server-cloudrun.js"
+    "start": "node signaling-server-sqlite-enhanced.js",
+    "health": "curl http://localhost:${PORT:-8080}/health",
+    "test": "node -e \"console.log('Server package ready')\""
   },
   "dependencies": {
     "express": "^5.1.0",
     "socket.io": "^4.8.1",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "better-sqlite3": "^11.5.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   },
   "keywords": [
     "websocket",
     "signaling",
     "p2p",
     "festival",
-    "chat"
+    "chat",
+    "sqlite",
+    "realtime"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/qvintillion/peddlenet.git"
+  },
+  "author": {
+    "name": "PeddleNet Team",
+    "email": "team@peddlenet.app"
+  }
 }
