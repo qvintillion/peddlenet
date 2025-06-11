@@ -34,6 +34,7 @@ class BackgroundNotificationManager {
   private globalNotificationHandler: ((message: Message) => void) | null = null;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private isInitialized = false;
+  private isUserDisconnected = false; // Track if user deliberately unsubscribed from all rooms
   
   // Rate limiting variables
   private connectionAttempts = 0;
@@ -92,6 +93,12 @@ class BackgroundNotificationManager {
 
   private shouldAttemptConnection(): boolean {
     const now = Date.now();
+    
+    // CRITICAL FIX: Don't attempt connection if user deliberately disconnected
+    if (this.isUserDisconnected) {
+      console.log('🚫 User deliberately unsubscribed from all rooms - not attempting connection');
+      return false;
+    }
     
     // Check if we're hitting rate limits
     if (this.connectionAttempts >= this.maxRetries) {
@@ -338,6 +345,10 @@ class BackgroundNotificationManager {
 
     console.log('🔔 Subscribing to background notifications for room:', roomId);
 
+    // CRITICAL FIX: Reset user disconnected flag when subscribing to a room
+    this.isUserDisconnected = false;
+    console.log('🔔 Reset user disconnected flag - user has active subscriptions again');
+
     // Update existing subscription or create new one
     const existingSubscription = this.state.subscriptions.get(roomId);
     if (existingSubscription) {
@@ -403,9 +414,13 @@ class BackgroundNotificationManager {
 
     // Disconnect if no more active subscriptions
     const hasActiveSubscriptions = Array.from(this.state.subscriptions.values()).some(sub => sub.subscribed);
-    if (!hasActiveSubscriptions && this.socket?.connected) {
+    if (!hasActiveSubscriptions) {
       console.log('🔔 No more active subscriptions - disconnecting background service');
       this.disconnect();
+      
+      // CRITICAL FIX: Mark this as a deliberate user action to prevent auto-reconnection
+      this.isUserDisconnected = true;
+      console.log('🔔 Marked as user-initiated disconnection to prevent auto-reconnection');
     }
     
     // IMPORTANT: Clear any reconnection attempts to prevent conflicts
@@ -435,6 +450,7 @@ class BackgroundNotificationManager {
     
     this.state.isConnected = false;
     this.isConnecting = false;
+    this.connectionAttempts = 0; // Reset connection attempts on manual disconnect
     this.notifyListeners();
   }
 
@@ -519,6 +535,7 @@ class BackgroundNotificationManager {
     this.isInitialized = false;
     this.isConnecting = false;
     this.connectionAttempts = 0;
+    this.isUserDisconnected = false; // Reset user disconnected state on cleanup
   }
 }
 

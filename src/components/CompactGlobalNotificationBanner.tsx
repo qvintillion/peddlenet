@@ -104,8 +104,11 @@ export function CompactGlobalNotificationBanner({ className = '' }: CompactGloba
   return (
     <div className={`relative ${className}`}>
       <div 
-        className={`p-3 rounded-lg border cursor-pointer transition-all ${status.bgColor} hover:opacity-80`}
-        onClick={() => setShowDropdown(!showDropdown)}
+      className={`p-3 rounded-lg border cursor-pointer transition-all ${status.bgColor} hover:opacity-80`}
+      onClick={(e) => {
+          e.stopPropagation();
+          setShowDropdown(!showDropdown);
+        }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -134,7 +137,10 @@ export function CompactGlobalNotificationBanner({ className = '' }: CompactGloba
 
       {/* Dropdown */}
       {showDropdown && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-10 p-4">
+        <div 
+          className="absolute top-full left-0 right-0 mt-2 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-10 p-4"
+          onClick={(e) => e.stopPropagation()} // Prevent dropdown from closing when clicking inside
+        >
           {permission === 'default' && (
             <div className="space-y-3">
               <p className="text-sm text-gray-300">
@@ -174,20 +180,19 @@ export function CompactGlobalNotificationBanner({ className = '' }: CompactGloba
                 <h4 className="font-medium text-sm text-white">Global Settings:</h4>
                 
                 {/* Toggle for enabled */}
-                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded border border-gray-600">
+                <div className="flex items-center justify-between p-2 bg-gray-700/50 rounded border border-gray-600">
                   <div>
                     <span className="text-sm text-gray-200">Master notifications</span>
                     <p className="text-xs text-gray-400">Turn all notifications on/off</p>
                   </div>
                   <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={settings.enabled}
-                      onChange={(e) => updateSettings({ enabled: e.target.checked })}
-                      className="sr-only"
-                    />
                     <div
-                      onClick={() => updateSettings({ enabled: !settings.enabled })}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('🔔 Master notifications toggle clicked, current:', settings.enabled);
+                        updateSettings({ enabled: !settings.enabled });
+                      }}
                       className={`block w-10 h-6 rounded-full cursor-pointer transition-colors ${
                         settings.enabled ? 'bg-purple-600' : 'bg-gray-400'
                       }`}
@@ -199,24 +204,23 @@ export function CompactGlobalNotificationBanner({ className = '' }: CompactGloba
                       />
                     </div>
                   </div>
-                </label>
+                </div>
                 
                 {/* Toggle for new messages */}
-                <label className="flex items-center justify-between p-2 bg-gray-700/50 rounded border border-gray-600">
+                <div className="flex items-center justify-between p-2 bg-gray-700/50 rounded border border-gray-600">
                   <div>
                     <span className="text-sm text-gray-200">Message alerts</span>
                     <p className="text-xs text-gray-400">Notify for new chat messages</p>
                   </div>
                   <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={settings.newMessages}
-                      onChange={(e) => updateSettings({ newMessages: e.target.checked })}
-                      disabled={!settings.enabled}
-                      className="sr-only"
-                    />
                     <div
-                      onClick={() => !settings.enabled || updateSettings({ newMessages: !settings.newMessages })}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (!settings.enabled) return;
+                        console.log('🔔 Message alerts toggle clicked, current:', settings.newMessages);
+                        updateSettings({ newMessages: !settings.newMessages });
+                      }}
                       className={`block w-10 h-6 rounded-full cursor-pointer transition-colors ${
                         settings.newMessages && settings.enabled ? 'bg-purple-600' : 'bg-gray-400'
                       } ${!settings.enabled ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -228,7 +232,7 @@ export function CompactGlobalNotificationBanner({ className = '' }: CompactGloba
                       />
                     </div>
                   </div>
-                </label>
+                </div>
               </div>
 
               {/* Test Notification */}

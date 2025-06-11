@@ -205,7 +205,11 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
   }, [roomId]);
 
   const updateSettings = useCallback((newSettings: Partial<PushNotificationSettings>) => {
+    console.log('🔔 updateSettings called with:', newSettings);
+    console.log('🔔 Current global settings:', globalSettings);
+    
     const updatedSettings = { ...globalSettings, ...newSettings };
+    console.log('🔔 New updated settings:', updatedSettings);
     
     // Update global state
     globalSettings = updatedSettings;
@@ -218,14 +222,20 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
       console.warn('Failed to save notification settings:', error);
     }
     
-    // Notify all listeners
-    globalSettingsListeners.forEach(listener => {
-      try {
-        listener(updatedSettings);
-      } catch (error) {
-        console.error('Error notifying settings listener:', error);
-      }
-    });
+    // Force immediate local state update
+    setSettings(updatedSettings);
+    console.log('🔔 Local settings state updated');
+    
+    // Notify all listeners with a small delay to ensure state propagation
+    setTimeout(() => {
+      globalSettingsListeners.forEach(listener => {
+        try {
+          listener(updatedSettings);
+        } catch (error) {
+          console.error('Error notifying settings listener:', error);
+        }
+      });
+    }, 10);
     
     console.log('🔔 Settings updated globally:', updatedSettings);
   }, []);

@@ -2,6 +2,54 @@
 
 ## 🆕 **LATEST FIXES** (June 2025)
 
+### ✅ **Global Notification Banner Toggle Fixed** 🆕
+**Critical UX improvement!** Fixed unresponsive notification toggles in global banner:
+- **Master notifications toggle** now works immediately when clicked
+- **Message alerts toggle** responds properly and respects master setting
+- **Event propagation fixed** - no more conflicts between nested clickable elements
+- **Immediate visual feedback** - toggles update instantly without lag
+- **Settings persistence** - preferences save properly and persist across sessions
+- **Debugging enhanced** - console logs help track toggle state changes
+
+**How to Test the Fix**:
+```javascript
+// On homepage, open notification banner and:
+// 1. Toggle "Master notifications" - should work immediately
+// 2. Toggle "Message alerts" - should work when master enabled
+// 3. Check browser console for debug logs confirming changes
+// 4. Refresh page - settings should persist
+```
+
+### ✅ **Background Notifications Reconnection Loop Fixed** 🆕
+**Major stability improvement!** Eliminated infinite reconnection loops when users unsubscribe from rooms:
+- **Smart user intent tracking** - remembers when users deliberately disable notifications
+- **Prevents unwanted auto-reconnection** after unsubscribing from all rooms
+- **Conflict avoidance** - detects active chat connections before connecting background service
+- **Resource optimization** - only connects when notifications actually wanted
+- **Clean subscription state** - preserves user preferences without aggressive reconnection
+
+**What Was Fixed**:
+```typescript
+// Added user disconnection tracking:
+if (this.isUserDisconnected) {
+  console.log('🚫 User deliberately unsubscribed - not attempting connection');
+  return false;
+}
+
+// Reset flag when user subscribes to new rooms:
+this.isUserDisconnected = false;
+console.log('🔔 User has active subscriptions again');
+```
+
+**Testing the Fix**:
+```markdown
+1. Join a room (auto-subscribes to notifications)
+2. Disable notifications in room settings
+3. Leave room and try to rejoin
+4. Expected: No reconnection loop, smooth room entry
+5. Check console - should see conflict detection logs
+```
+
 ### ✅ **SQLite Persistence Smart Fallback Active** 🆕
 **Cross-platform database compatibility resolved!** Automatic fallback system ensures SQLite works everywhere:
 - **Production**: Uses `better-sqlite3` for optimal performance and no Firebase warnings

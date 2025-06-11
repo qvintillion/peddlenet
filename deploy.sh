@@ -37,48 +37,51 @@ echo ""
 echo "📝 Committing changes..."
 
 # Split the commit into title and body for better handling
-COMMIT_TITLE="🛡️🎪🔧 CRITICAL: Development Stability + Room Navigation + Hydration Fixes"
+COMMIT_TITLE="🔔🔧🔍 CRITICAL: Notification Toggle Fixes + Reconnection Loop Prevention"
 
 # Create temporary file for commit message
 cat > /tmp/commit_message.txt << 'EOF'
-🛡️🎪🔧 CRITICAL: Development Stability + Room Navigation + Hydration Fixes
+🔔🔧🔍 CRITICAL: Notification Toggle Fixes + Reconnection Loop Prevention
 
-Major development workflow protection, enhanced user experience, and technical stability improvements.
+Major notification system fixes resolving unresponsive toggles and infinite reconnection loops.
 
-🛡️ CRITICAL: Enhanced Deployment Safety
-• Problem: Dev servers becoming unstable during staging deployment
-• Solution: Enhanced all Firebase deployment scripts with safety measures
-• Files: tools/deploy-firebase-*.sh (all 3 scripts)
-• Impact: Eliminates deployment conflicts, protects development environment
-
-🎪 Enhanced Room Switcher (Always-Visible Room Display)
-• Problem: Fresh users saw no room identification in header
-• Solution: Modified component to always show current room
-• Files: src/components/ChatRoomSwitcher.tsx
-• Impact: Immediate room context for all users
-
-🔧 React Hydration Mismatch Fix
-• Problem: CompactGlobalNotificationBanner causing hydration mismatches
-• Solution: Implemented standard React SSR pattern with isClient state
+🔔 CRITICAL: Global Notification Toggle Fixes
+• Problem: Master notifications and message alerts toggles unresponsive in global banner
+• Root Cause: Event propagation conflicts between nested clickable elements
+• Solution: Removed conflicting <label>/<input>, added explicit preventDefault/stopPropagation
 • Files: src/components/CompactGlobalNotificationBanner.tsx
-• Impact: No more hydration errors, smooth loading experience
+• Impact: Toggles now work immediately with instant visual feedback
 
-🔧 Dynamic Import Error Prevention
-• Problem: TypeError when entering rooms due to undefined roomId
-• Solution: Enhanced parameter safety with comprehensive guards
-• Files: src/app/chat/[roomId]/page.tsx
-• Impact: Eliminated undefined errors during navigation
+🔧 CRITICAL: Background Notifications Reconnection Loop Fixed
+• Problem: Infinite reconnection attempts when users unsubscribed from all rooms
+• Root Cause: Missing flag to distinguish user-initiated vs accidental disconnection
+• Solution: Added isUserDisconnected tracking with smart connection logic
+• Files: src/hooks/use-background-notifications.ts
+• Impact: Eliminates resource waste and server overload from unwanted connections
+
+🔍 Enhanced Settings Update Mechanism
+• Problem: Settings changes not propagating immediately to all components
+• Solution: Enhanced updateSettings with immediate local state updates and debugging
+• Files: src/hooks/use-push-notifications.ts
+• Impact: Reliable cross-component synchronization and persistence
+
+💡 Dropdown Event Propagation Fix
+• Problem: Clicking toggles inside dropdown closed the dropdown
+• Solution: Added stopPropagation to dropdown container and toggle handlers
+• Files: src/components/CompactGlobalNotificationBanner.tsx
+• Impact: Users can adjust settings without dropdown closing unexpectedly
 
 📚 Comprehensive Documentation Updates
-• New: docs/DEVELOPMENT-STABILITY-UX-UPDATE-JUNE-11-2025.md
-• Updated: docs/06-DEPLOYMENT.md, docs/11-TROUBLESHOOTING.md, README.md
-• Content: Technical implementation details, testing procedures
+• New: docs/NOTIFICATION-FIXES-JUNE-11-2025.md (detailed technical implementation)
+• Updated: docs/11-TROUBLESHOOTING.md (notification troubleshooting section)
+• Content: Testing procedures, debugging steps, user verification guides
 
-🚀 DEPLOYMENT IMPACT
-• Developer Experience: Eliminated deployment conflicts
-• User Experience: Improved room identification for newcomers
-• System Stability: Prevented hydration mismatches and import errors
-• Workflow Preservation: No breaking changes, enhanced safety
+🚀 USER EXPERIENCE IMPACT
+• Predictable Controls: Notification toggles work immediately when clicked
+• Persistent Settings: Preferences save and restore properly across sessions
+• No More Loops: Smooth room navigation without connection spam
+• Resource Efficiency: Background connections only when actually needed
+• Enhanced Debugging: Console logs help track notification state changes
 EOF
 
 git commit -F /tmp/commit_message.txt
@@ -101,33 +104,36 @@ if [ $? -eq 0 ]; then
             echo "🎉 Successfully deployed to GitHub!"
             echo ""
             echo "📋 Deployment Summary:"
-            echo "🛡️ Development Workflow Protection: ✅ ENHANCED DEPLOYMENT SAFETY"
-            echo "🎪 Room Navigation: ✅ ALWAYS-VISIBLE ROOM DISPLAY"
-            echo "🔧 React Hydration: ✅ FIXED MISMATCHES WITH SSR PATTERN"
-            echo "🔧 Dynamic Imports: ✅ ENHANCED PARAMETER SAFETY"
-            echo "📚 Documentation: ✅ COMPREHENSIVE UPDATES"
+            echo "🔔 Global Notification Toggles: ✅ FIXED UNRESPONSIVE CONTROLS"
+            echo "🔧 Background Notifications: ✅ ELIMINATED RECONNECTION LOOPS"
+            echo "🔍 Settings Synchronization: ✅ ENHANCED CROSS-COMPONENT SYNC"
+            echo "💡 Dropdown Interaction: ✅ FIXED EVENT PROPAGATION"
+            echo "📚 Documentation: ✅ COMPREHENSIVE NOTIFICATION FIXES"
             echo ""
-            echo "🎪 Festival Chat: Enhanced stability + Better UX + Protected workflow!"
+            echo "🎪 Festival Chat: Responsive notification controls + No more loops!"
             echo ""
             echo "🚀 Next Steps for Staging:"
-            echo "   npm run deploy:firebase:quick  # Safe deployment with protection"
+            echo "   npm run deploy:firebase:quick  # Deploy notification fixes"
             echo ""
-            echo "🛡️ Enhanced Deployment Safety:"
-            echo "   • All Firebase scripts now include automatic safety measures"
-            echo "   • Development environment protected from corruption"
-            echo "   • Process conflict detection prevents port conflicts"
-            echo "   • Automatic backup/restore of environment variables"
+            echo "🔔 Notification System Improvements:"
+            echo "   • Master notifications toggle works immediately"
+            echo "   • Message alerts toggle respects master setting"
+            echo "   • Settings persist across browser sessions"
+            echo "   • No more infinite reconnection loops"
+            echo "   • Enhanced debugging with console logs"
             echo ""
-            echo "🎪 Room Navigation Improvements:"
-            echo "   • Fresh users immediately see room identification"
-            echo "   • Always displays 🎪 room-name even without other rooms"
-            echo "   • Progressive enhancement - dropdown only when needed"
+            echo "🧪 Testing Checklist:"
+            echo "   1. Open homepage notification banner"
+            echo "   2. Toggle master notifications - should work immediately"
+            echo "   3. Toggle message alerts - should respect master setting"
+            echo "   4. Join/leave rooms - no reconnection loops"
+            echo "   5. Check console for debugging logs"
             echo ""
-            echo "🔧 Technical Stability:"
-            echo "   • Fixed React hydration mismatches"
-            echo "   • Enhanced parameter safety for dynamic imports"
-            echo "   • Better error handling for invalid URLs"
-            echo "   • Consistent loading states across components"
+            echo "📈 Benefits:"
+            echo "   • Predictable notification controls"
+            echo "   • Resource-efficient background connections"
+            echo "   • Better user experience"
+            echo "   • Eliminated server overload from loops"
         else
             echo "❌ Failed to push to GitHub"
             exit 1
