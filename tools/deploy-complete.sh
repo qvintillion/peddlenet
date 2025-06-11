@@ -2,15 +2,22 @@
 
 # Complete Firebase + Cloud Run Deployment Script
 # Deploys WebSocket server to Cloud Run and rebuilds Firebase with the URL
+# FIXED: Now includes cache-busting and proper hosting deployment
 
 set -e
 
-echo "🚀 Complete Firebase + Cloud Run Deployment"
-echo "============================================"
+echo "🚀 Complete Firebase + Cloud Run Deployment (Fixed)"
+echo "=================================================="
 
 PROJECT_ID="peddlenet-1749130439"
 SERVICE_NAME="peddlenet-websocket-server"
 REGION="us-central1"
+
+# Cache bust - clear builds to ensure fresh deployment
+echo "🧹 Cache bust: clearing all builds..."
+rm -rf .next/
+rm -rf functions/.next/
+rm -rf functions/lib/
 
 # Check if user wants to update Cloud Run
 read -p "🤔 Update Cloud Run WebSocket server? (y/N): " update_cloudrun
@@ -43,7 +50,7 @@ if [[ $update_cloudrun =~ ^[Yy]$ ]]; then
         --port 8080 \
         --memory 512Mi \
         --cpu 1 \
-        --min-instances 0 \
+        --min-instances 1 \
         --max-instances 10 \
         --set-env-vars NODE_ENV=production \
         --set-env-vars PLATFORM="Google Cloud Run"
@@ -112,8 +119,14 @@ echo "=========================================="
 echo "🏗️  Rebuilding Firebase with Cloud Run configuration..."
 npm run build:firebase
 
-echo "🚀 Deploying to Firebase..."
-firebase deploy --only hosting
+echo "🔧 Building Functions..."
+cd functions
+npm run build
+cd ..
+
+# Deploy BOTH hosting and functions (this was the missing piece!)
+echo "🚀 Deploying to Firebase (hosting + functions)..."
+firebase deploy --only hosting,functions
 
 # Get Firebase URL for testing
 FIREBASE_URL="https://festival-chat-peddlenet.web.app"
@@ -123,6 +136,9 @@ echo "🎉 Complete Deployment Successful!"
 echo "================================="
 echo "🔥 Firebase URL: $FIREBASE_URL"
 echo "🔌 WebSocket Server: $WEBSOCKET_URL"
+echo "🌐 Client-side code: Deployed"
+echo "⚡ SSR Functions: Deployed"
+echo "🧹 Cache-bust applied - fresh deployment guaranteed"
 echo "☁️  Cloud Run Console: https://console.cloud.google.com/run/detail/$REGION/$SERVICE_NAME?project=$PROJECT_ID"
 echo "🎛️  Firebase Console: https://console.firebase.google.com/project/festival-chat-peddlenet"
 echo ""

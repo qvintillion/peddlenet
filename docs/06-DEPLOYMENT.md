@@ -8,25 +8,110 @@ Festival Chat uses a dual-deployment architecture:
 
 ## 🛠️ Available Deployment Scripts
 
-### **Quick Firebase Updates** (UI Changes Only)
+### **🚀 Super-Quick Deploy (Fastest)**
+```bash
+npm run deploy:firebase:super-quick
+```
+**Use when**: Rapid iteration during development  
+**Time**: ~1-2 minutes  
+**What it does**: Minimal output, skips health checks, cache-busting built-in  
+**Deploys**: Hosting + Functions  
+
+### **⚡ Quick Deploy (Fast)** 
 ```bash
 npm run deploy:firebase:quick
-# OR
-./tools/deploy-firebase-quick.sh
 ```
-**Use when**: UI fixes, content updates, frontend-only changes  
+**Use when**: Most frontend changes, UI fixes, content updates  
 **Time**: ~2-3 minutes  
-**What it does**: Rebuilds frontend and deploys to Firebase, reuses existing backend
+**What it does**: Skips Cloud Run, rebuilds and deploys Functions + Hosting  
+**Deploys**: Hosting + Functions  
 
-### **Complete Deployment** (Full Stack)
+### **🔧 Complete Deploy (Full Infrastructure)**
 ```bash
-npm run deploy:firebase:complete  
-# OR
-./tools/deploy-complete.sh
+npm run deploy:firebase:complete
 ```
-**Use when**: Backend changes, new features, first-time deployment  
+**Use when**: Infrastructure changes, Cloud Run updates, first-time deployment  
 **Time**: ~5-8 minutes  
-**What it does**: Deploys new WebSocket server to Cloud Run + rebuilds Firebase frontend
+**What it does**: Updates Cloud Run + rebuilds + deploys everything  
+**Deploys**: Cloud Run + Hosting + Functions  
+
+### **🧨 Emergency Options**
+```bash
+# For stubborn cache issues
+npm run deploy:firebase:cache-bust
+
+# Nuclear option - complete rebuild
+npm run deploy:firebase:nuclear
+```
+
+## 🚨 **CRITICAL: Cache Issue Resolution (June 2025)**
+
+### **The Problem That Was Fixed**
+Prior to June 10, 2025, deployment scripts had a critical issue:
+- **Quick scripts only deployed Functions** ❌
+- **Client-side code lives in Hosting** (not Functions)
+- **Result**: Code changes didn't deploy, causing cache issues
+
+### **Root Cause Analysis**
+```bash
+# BROKEN (Before Fix):
+npm run deploy:firebase:quick
+# → firebase deploy --only functions  ❌ (Missing hosting!)
+
+npm run deploy:firebase:super-quick  
+# → firebase deploy --only functions  ❌ (Missing hosting!)
+
+# WORKING (After Fix):
+npm run deploy:firebase:quick
+# → firebase deploy --only hosting,functions  ✅
+
+npm run deploy:firebase:super-quick
+# → firebase deploy --only hosting,functions  ✅
+```
+
+### **What We Fixed**
+1. **✅ All scripts now deploy hosting + functions**
+2. **✅ Cache-busting built into all scripts**
+3. **✅ Scripts follow original project specifications**
+4. **✅ Better Firebase cache headers implemented**
+
+### **Cache-Busting Measures**
+All deployment scripts now include:
+```bash
+# Clear builds to ensure fresh deployment
+rm -rf .next/
+rm -rf functions/.next/
+rm -rf functions/lib/
+
+# Deploy with proper cache headers
+firebase deploy --only hosting,functions
+```
+
+### **Firebase Cache Headers (Updated)**
+```json
+{
+  "hosting": {
+    "headers": [
+      {
+        "source": "/index.html",
+        "headers": [{"key": "Cache-Control", "value": "no-cache, no-store, must-revalidate"}]
+      },
+      {
+        "source": "/_next/**",
+        "headers": [{"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}]
+      },
+      {
+        "source": "**/*.js",
+        "headers": [{"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}]
+      },
+      {
+        "source": "**/*.css", 
+        "headers": [{"key": "Cache-Control", "value": "public, max-age=31536000, immutable"}]
+      }
+    ]
+  }
+}
+```
 
 ## 🔄 Development Workflow
 
@@ -40,6 +125,33 @@ npm run dev:mobile
 # 🎵 Festival Chat Server running on port 3001
 # 💾 SQLite persistence enabled!
 ```
+
+### **🧹 Clean Signaling Server Architecture**
+
+**Current Simplified Structure** (after cleanup):
+```
+festival-chat/
+├── signaling-server.js                    # 🟢 ACTIVE: Development
+├── signaling-server-sqlite-enhanced.js    # 🟢 ACTIVE: Production  
+├── sqlite-persistence.js                  # 🟢 ACTIVE: Database helper
+└── archive/                               # 🗂️ Archived backups
+    ├── signaling-server-cloudrun.js       # 📦 Moved to archive
+    ├── signaling-server-firebase.js       # 📦 Moved to archive
+    ├── signaling-server-production.js     # 📦 Moved to archive
+    ├── signaling-server-sqlite.js         # 📦 Moved to archive
+    └── [other archived versions]          # 📦 Safe backups
+```
+
+**Benefits of Cleanup**:
+- ✅ **Clear separation** - Development vs production environments
+- ✅ **Reduced confusion** - Only 2 active server files (was 6+)
+- ✅ **Better maintenance** - Single source of truth per environment
+- ✅ **Faster development** - No confusion about which file to edit
+- ✅ **Easier collaboration** - Team knows exactly which files are active
+
+**Server Selection Logic**:
+- **Development**: `npm run server` → Uses `signaling-server.js` (in-memory)
+- **Production**: Dockerfile → Uses `signaling-server-sqlite-enhanced.js` (SQLite + optimizations)
 
 ### **Testing Before Deploy**
 ```bash
@@ -65,6 +177,7 @@ npm run start
 - **Backend URL**: `wss://peddlenet-websocket-server-[hash]-uc.a.run.app`
 - **Database**: SQLite with 24h message retention
 - **SSL**: Automatic HTTPS via Firebase/Cloud Run
+- **Server**: `signaling-server-sqlite-enhanced.js` with full optimizations
 
 ### **Key Components**
 ```
@@ -116,6 +229,36 @@ curl https://[new-cloud-run-url]/health
 ```
 
 ## 🔧 Troubleshooting Deployments
+
+### **🚨 Cache Issues (SOLVED)**
+
+#### **"Code changes not appearing after deploy"**
+```bash
+# ✅ FIXED: All scripts now deploy hosting + functions
+# Old problem: Scripts only deployed functions, not hosting
+# Solution: Use any of our fixed deployment scripts
+
+npm run deploy:firebase:quick        # ✅ Now deploys both
+npm run deploy:firebase:super-quick  # ✅ Now deploys both  
+npm run deploy:firebase:complete     # ✅ Always worked
+
+# If still having cache issues:
+npm run deploy:firebase:cache-bust   # Nuclear cache clear
+```
+
+#### **"Browser showing old version"**
+```bash
+# Clear browser cache completely:
+# Chrome: Ctrl+Shift+R (Cmd+Shift+R on Mac)
+# Firefox: Ctrl+F5
+# Safari: Cmd+Option+R
+
+# Or test in incognito/private mode
+
+# Look for new build hash in network tab:
+# Old: page-3f87604ab806f752.js
+# New: page-dbdb4ab9a9667a27.js (should be different)
+```
 
 ### **Common Issues**
 
@@ -246,6 +389,7 @@ https://[cloud-run-url]/health
 ## 🚀 Ready for Festival Deployment!
 
 The deployment system is production-ready with:
+- **✅ FIXED: Cache issue resolution** - All scripts deploy properly
 - **Automated deployment scripts** for quick iteration
 - **Health monitoring** and rollback procedures  
 - **Cross-platform compatibility** for all devices
@@ -253,3 +397,9 @@ The deployment system is production-ready with:
 - **24/7 availability** with auto-scaling
 
 Use `npm run deploy:firebase:quick` for UI fixes and `npm run deploy:firebase:complete` for backend changes.
+
+## 📚 Related Documentation
+
+- **[Mobile Notification Fix Details](./CRITICAL-FIX-JUNE-2025.md)** - Technical details of mobile notification enhancement
+- **[Cross-Room System](./archive/Cross-Room-Notification-System-Technical-Summary.md)** - Advanced multi-room functionality (archived)
+- **[Troubleshooting Guide](./11-TROUBLESHOOTING.md)** - Common issues and solutions

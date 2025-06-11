@@ -3,6 +3,7 @@
 
 self.addEventListener('install', function(event) {
   console.log('🔔 Push notification service worker installed');
+  console.log('📱 Enhanced mobile notification support active');
   self.skipWaiting();
 });
 
@@ -59,18 +60,26 @@ self.addEventListener('push', function(event) {
     }
   }
 
+  // Enhanced mobile notification options
+  const notificationOptions = {
+    body: notificationData.body,
+    icon: notificationData.icon,
+    badge: notificationData.badge,
+    tag: notificationData.tag,
+    vibrate: notificationData.vibrate || [200, 100, 200, 100, 200], // Enhanced vibration pattern
+    data: notificationData.data,
+    actions: notificationData.actions,
+    requireInteraction: true, // Keep visible until user interacts (critical for mobile)
+    renotify: true, // Always show new notifications
+    silent: false, // Make sure notification makes sound
+    timestamp: Date.now()
+  };
+  
+  console.log('📱 Showing notification with enhanced mobile options:', notificationOptions);
+  
   const showNotification = self.registration.showNotification(
     notificationData.title,
-    {
-      body: notificationData.body,
-      icon: notificationData.icon,
-      badge: notificationData.badge,
-      tag: notificationData.tag,
-      vibrate: notificationData.vibrate,
-      data: notificationData.data,
-      actions: notificationData.actions,
-      requireInteraction: true // Keep notification visible until user interacts
-    }
+    notificationOptions
   );
 
   event.waitUntil(showNotification);
@@ -78,37 +87,63 @@ self.addEventListener('push', function(event) {
 
 self.addEventListener('notificationclick', function(event) {
   console.log('🔔 Notification clicked:', event);
+  console.log('📝 Event action:', event.action);
+  console.log('📝 Notification data:', event.notification.data);
   
   event.notification.close();
 
   if (event.action === 'dismiss') {
-    // User dismissed the notification
+    console.log('🚫 User dismissed notification');
     return;
   }
 
   // Default action or "open" action
-  const targetUrl = event.notification.data.url || '/';
+  const targetUrl = event.notification.data?.url || '/';
+  const roomId = event.notification.data?.roomId;
+  
+  console.log('🎯 Target URL:', targetUrl, 'Room ID:', roomId);
   
   event.waitUntil(
-    self.clients.matchAll({ type: 'window' }).then(function(clients) {
-      // Check if Festival Chat is already open
+    self.clients.matchAll({ 
+      type: 'window',
+      includeUncontrolled: true
+    }).then(function(clients) {
+      console.log('🔍 Found clients:', clients.length);
+      
+      // Look for existing Festival Chat window
       for (let client of clients) {
-        if (client.url.includes(self.location.origin)) {
-          // Focus existing window and navigate to room if specified
-          if (event.notification.data.roomId) {
-            client.navigate(`/chat/${event.notification.data.roomId}`);
+        console.log('🔍 Checking client:', client.url);
+        
+        // Check if this is our app (more flexible matching)
+        if (client.url.includes(self.location.origin) || 
+            client.url.includes('festival-chat') ||
+            client.url.includes('peddlenet')) {
+          console.log('✅ Found existing Festival Chat window, focusing...');
+          
+          // Navigate to the specific room if available
+          if (roomId) {
+            console.log('📨 Navigating to room:', roomId);
+            client.navigate(`/chat/${roomId}`);
           }
+          
           return client.focus();
         }
       }
       
-      // Open new window
-      let openUrl = targetUrl;
-      if (event.notification.data.roomId) {
-        openUrl = `/chat/${event.notification.data.roomId}`;
+      // No existing window found, open new one
+      let openUrl = '/';
+      if (roomId) {
+        openUrl = `/chat/${roomId}`;
+      } else if (targetUrl && targetUrl !== '/') {
+        openUrl = targetUrl;
       }
       
+      console.log('🆕 Opening new window:', openUrl);
       return self.clients.openWindow(openUrl);
+    }).catch(error => {
+      console.error('❌ Error handling notification click:', error);
+      // Fallback: just open the home page
+      return self.clients.openWindow('/');
     })
   );
 });

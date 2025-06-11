@@ -1,25 +1,18 @@
 #!/bin/bash
 
-# Quick Firebase Functions + Hosting Update Script
-# Rebuilds and deploys Firebase Functions with SSR + Hosting
-# FIXED: Now deploys hosting + functions with cache-busting
+# FIXED: Quick Firebase Deploy with BOTH hosting and functions
+# This ensures client-side code updates get deployed
 
 set -e
 
-echo "⚡ Quick Firebase Functions + Hosting Update (Fixed)"
-echo "=================================================="
+echo "⚡ FIXED Quick Firebase Deploy (Hosting + Functions)"
+echo "==================================================="
 
 PROJECT_ID="peddlenet-1749130439"
 SERVICE_NAME="peddlenet-websocket-server"
 REGION="us-central1"
 
-# Cache bust - clear builds to ensure fresh deployment
-echo "🧹 Cache bust: clearing builds..."
-rm -rf .next/
-rm -rf functions/.next/
-rm -rf functions/lib/
-
-# Get the existing Cloud Run service URL (optional, for display)
+# Get the existing Cloud Run service URL
 echo "📡 Getting existing Cloud Run WebSocket server URL..."
 SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
   --region=$REGION \
@@ -27,7 +20,7 @@ SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
   --format="value(status.url)" 2>/dev/null)
 
 if [ -z "$SERVICE_URL" ]; then
-    echo "⚠️ Cloud Run service not found, but continuing with Functions deployment..."
+    echo "⚠️ Cloud Run service not found, using fallback..."
     WEBSOCKET_URL="wss://peddlenet-websocket-server-padyxgyv5a-uc.a.run.app"
 else
     # Convert HTTP to WSS for WebSocket
@@ -48,7 +41,13 @@ EOF
 # Copy env for Next.js build
 cp .env.firebase .env.local
 
-# Rebuild and deploy Firebase Functions + Hosting
+# Clear any cached builds
+echo "🧹 Clearing cached builds..."
+rm -rf .next/
+rm -rf functions/.next/
+rm -rf functions/lib/
+
+# Rebuild everything
 echo "🏗️ Rebuilding Next.js..."
 npm run build
 
@@ -58,18 +57,17 @@ npm run build
 cd ..
 
 # Deploy BOTH hosting and functions (this was the missing piece!)
-echo "🚀 Deploying Functions + Hosting to Firebase..."
+echo "🚀 Deploying BOTH hosting and functions to Firebase..."
 firebase deploy --only hosting,functions
 
 FIREBASE_URL="https://festival-chat-peddlenet.web.app"
 
 echo ""
-echo "✅ Firebase Functions + Hosting Updated Successfully!"
-echo "=================================================="
+echo "✅ FIXED Firebase Deploy Complete!"
+echo "================================="
 echo "🔥 Firebase URL: $FIREBASE_URL"
 echo "🔌 WebSocket Server: $WEBSOCKET_URL"
-echo "⚡ SSR Functions: Deployed"
-echo "🌐 Client-side code: Deployed"
-echo "🧹 Cache-bust applied - fresh deployment guaranteed"
+echo "📱 Client-side code: UPDATED (hosting deployed)"
+echo "⚡ SSR Functions: UPDATED"
 echo ""
-echo "📱 Ready for testing!"
+echo "🎯 Your mobile notification debug should now appear!"

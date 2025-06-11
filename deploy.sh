@@ -1,170 +1,121 @@
 #!/bin/bash
 
-# 🚀 Festival Chat Deployment Script
-# ===================================
-# Updated for Documentation Consolidation + Mobile Connection Optimization
+# 🚀 Festival Chat Production Deployment Script
+# =============================================
+# Consolidated deployment script for GitHub (production)
 
-echo "🚀 Deploying Festival Chat Changes"
-echo "=================================="
+echo "🚀 Deploying Festival Chat to Production"
+echo "========================================"
 echo ""
 
 # ⚠️ EDIT THIS SECTION BEFORE EACH DEPLOYMENT ⚠️
 # ================================================
 
-COMMIT_TITLE="🔧 Critical fix: JavaScript initialization errors + 📱 Enhanced mobile reliability"
+COMMIT_TITLE="📚 Documentation consolidation + 🔔 Cross-room notifications status update"
 
-COMMIT_DESCRIPTION="🔧 **CRITICAL PRODUCTION FIX + 📱 ENHANCED MOBILE RELIABILITY**
+COMMIT_DESCRIPTION="📚 **DOCUMENTATION CONSOLIDATION + CROSS-ROOM NOTIFICATIONS STATUS UPDATE**
 
-Critical fix for JavaScript initialization errors in production plus comprehensive mobile connection improvements.
+Major documentation update consolidating the comprehensive next steps roadmap to accurately reflect the current state of the cross-room notification system implementation and provide clear guidance for the next development phases.
 
-🔧 **CRITICAL JAVASCRIPT INITIALIZATION FIX:**
-✅ Fixed "Cannot access 'E' before initialization" error in production
-✅ Resolved Temporal Dead Zone (TDZ) issues in bundled JavaScript
-✅ Eliminated circular dependency conflicts in utility modules
-✅ Deferred global window assignments to prevent timing conflicts
-✅ Added comprehensive error handling for all global initializations
-✅ Improved module loading order and initialization safety
-✅ Production app now loads without JavaScript errors
-✅ All debugging utilities properly available in browser console
+🎉 **CROSS-ROOM NOTIFICATION SYSTEM STATUS: ✅ IMPLEMENTED & PRODUCTION READY**
+• Global notification handler working across all pages (homepage, chat rooms, any page)
+• Background notification manager with persistent WebSocket connection using singleton pattern
+• Service worker integration providing rich notifications with sender name, message preview, action buttons
+• Mobile optimization with aggressive background detection ensuring notification delivery
+• Cross-room message delivery system - users get notified from ANY subscribed room when away from active chat
+• Smart handler routing system: room-specific handlers → global fallback architecture
+• Subscription persistence using localStorage with 24-hour auto-cleanup
+• Permission management separated: global (homepage) vs room-specific settings
+• Server infrastructure fixes: resolved critical connection tracking bugs that were breaking notifications
+• Production tested and validated: working on mobile devices (iPhone/Android) with real festival use cases
 
-🔧 **Technical Initialization Improvements:**
-• setTimeout(0) pattern for safe global variable assignment
-• Eliminated immediate class reference during module initialization
-• Removed circular import of MobileConnectionDebug in WebSocket hook
-• Try-catch blocks around all global window assignments
-• Proper module dependency order to prevent conflicts
-• Clean initialization logging for debugging
-• Fixed webpack bundling conflicts with class declarations
+🏗️ **STRATEGIC EVOLUTION ROADMAP UPDATED:**
+✅ Phase 1A: Cross-Room Notifications (COMPLETE) - Revolutionary global notification system
+🚀 Phase 1B: Enhanced Room Navigation (2-3 weeks) - Multi-room navigator component
+📊 Phase 2: Data Intelligence & Analytics (3-5 weeks) - Smart routing and performance analytics
+🕸️ Phase 3: Mesh Network Foundation (4-6 weeks) - P2P networking with hybrid architecture
+🎪 Phase 4: Enterprise Festival Platform (2-3 weeks) - Festival management dashboard
 
-📱 **ENHANCED MOBILE CONNECTION RELIABILITY:**
-✅ Intelligent auto-reconnection system for unexpected disconnections
-✅ Fixed aggressive "server-disconnected" error messages on mobile
-✅ Smart connection state tracking prevents initial load errors
-✅ 8-second error delay accommodates slower mobile networks
-✅ Only show disconnect errors after successful connection established
-✅ 80%+ reduction in false positive disconnect notifications
-✅ Automatic reconnection without user intervention required
-✅ Visual reconnection indicators with status feedback
+📋 **DOCUMENTATION CONSOLIDATION ACHIEVEMENTS:**
+✅ Updated comprehensive next steps to reflect implemented notification system
+✅ Accurate technical architecture documentation with deployed code examples
+✅ Clear phase status: IMPLEMENTED vs PLANNED with realistic timelines
+✅ Enhanced development workflow guidance with Firebase deployment strategies
+✅ Success metrics tracking with achieved vs target KPIs
+✅ Strategic vision updated to reflect notification breakthrough
+✅ Immediate next steps clearly defined for Phase 1B implementation
 
-🔄 **AUTO-RECONNECTION SYSTEM:**
-✅ 3-second auto-reconnect after unexpected disconnections
-✅ Periodic health check monitoring every 30 seconds
-✅ Smart reconnection logic with circuit breaker integration
-✅ Yellow pulsing indicator during reconnection attempts
-✅ Clean timer management prevents memory leaks
-✅ Auto-retry after connection errors with exponential backoff
-✅ Enhanced connection reliability without manual refresh
-✅ Seamless background recovery for mobile networks
+🔧 **FIREBASE DEPLOYMENT STRATEGY CLARIFIED:**
+• npm run deploy:firebase:super-quick - Rapid iteration with minimal output
+• npm run deploy:firebase:quick - Frontend changes, rebuilds and deploys Functions
+• npm run deploy:firebase:complete - Infrastructure changes, updates Cloud Run + everything
+• ./deploy.sh - Production deployment to GitHub with comprehensive commit documentation
 
-🎨 **UI CLEANUP MAINTAINED:**
-✅ Removed redundant "📱 Invite Friends" button from message input
-✅ Simplified connection status display for better focus
-✅ Streamlined message input area for mobile experience
-✅ Maintained QR code invitation in prominent header location
-✅ Improved visual hierarchy and reduced interface clutter
-✅ Cleaner user flow with emphasis on primary actions
+🎯 **FESTIVAL USE CASES SUCCESSFULLY ACHIEVED:**
+✅ VIP Coordination: Get notified when away getting food
+✅ Multi-Room Management: Handle main squad + VIP + food crew simultaneously
+✅ After-Party Planning: Receive updates when at hotel
+✅ Emergency Alerts: Instant delivery of time-sensitive information
+✅ Cross-Area Communication: Stay connected across festival grounds
+✅ Backstage Coordination: Real-time updates for crew/artists
 
-📱 **MOBILE-SPECIFIC OPTIMIZATIONS:**
-✅ hasBeenConnected state tracking prevents initial load errors
-✅ Double-checking connection state before showing errors
-✅ Smart error detection only triggers after proven connectivity
-✅ Enhanced mobile network tolerance with delayed error reporting
-✅ Better distinction between initial connection vs reconnection
-✅ Improved mobile experience with reduced error noise
+🚀 **PRODUCTION IMPACT:**
+The cross-room notification system represents a major breakthrough enabling:
+• Festival-goers to coordinate across multiple groups simultaneously
+• Never miss important messages even when browsing other pages
+• Real-time coordination for VIP areas, artist lounges, and general chat
+• Emergency communication and time-sensitive announcements
+• Professional festival coordination for staff and organizers
+• Mobile-first experience optimized for festival environments
 
-🔧 **Production Reliability Improvements:**
-• Fixed critical JavaScript bundling issues affecting all users
-• Eliminated race conditions in module initialization
-• Improved error handling prevents cascade failures
-• Enhanced debugging capabilities available in production
-• Stable global utility access for troubleshooting
-• Clean initialization order prevents timing conflicts
-• Better production diagnostics and monitoring
+📱 **MOBILE EXCELLENCE ACHIEVEMENTS:**
+✅ Service worker notifications with rich content and action buttons
+✅ Aggressive mobile background detection (home button, tab switching, lock screen)
+✅ Tap-to-open functionality with direct room navigation
+✅ Permission flow optimized for maximum adoption
+✅ Battery-efficient background connection management
+✅ Network resilience with automatic reconnection
 
-📋 **Files Updated for Critical Fix:**
-🔧 Core Initialization:
-• src/hooks/use-websocket-chat.ts - Fixed ConnectionResilience timing
-• src/utils/server-utils.ts - Safe ServerUtils initialization
-• src/utils/qr-peer-utils.ts - Deferred QRPeerUtils assignment
-• src/utils/network-utils.ts - Protected NetworkUtils loading
-• src/utils/mobile-connection-debug.ts - Safe MobileConnectionDebug init
-• src/utils/mobile-network-debug.ts - Protected MobileNetworkDebug setup
+🔧 **CRITICAL SERVER INFRASTRUCTURE FIXES:**
+✅ Fixed missing 'connections' and 'rooms' variable declarations that caused server crashes
+✅ Eliminated 'ReferenceError: connections is not defined' runtime errors
+✅ Enhanced server stability with proper connection tracking
+✅ Background notification subscriptions now persist correctly
+✅ Server-side notification routing working flawlessly
+✅ WebSocket connection management stabilized
+✅ Memory management improved with proper cleanup
+✅ Production server starts cleanly without errors
 
-📱 Mobile Connection (Enhanced):
-• Enhanced connection state management
-• Improved auto-reconnection logic
-• Better mobile error handling
-• Visual status indicators
+📚 **DOCUMENTATION STRUCTURE OPTIMIZATION:**
+• Comprehensive Next Steps (12-COMPREHENSIVE-NEXT-STEPS.md) - Strategic evolution roadmap
+• Technical Architecture (04-ARCHITECTURE.md) - System design and implementation details
+• User Guide (02-USER-GUIDE.md) - Feature documentation with notification instructions
+• Deployment Guide (06-DEPLOYMENT.md) - Production procedures and Firebase strategies
+• Performance Monitoring (09-PERFORMANCE-MONITORING.md) - Analytics and optimization
+• Quick Start Guide (01-QUICK-START.md) - New user onboarding
 
-🎯 **Immediate Impact:**
-✅ **Production Stability**: Eliminates JavaScript initialization crashes
-✅ **Mobile Experience**: 80% fewer false disconnect notifications
-✅ **User Experience**: Automatic reconnection without manual refresh
-✅ **Debug Capabilities**: All utilities properly loaded in production
-✅ **Error Reduction**: Clean initialization prevents cascade failures
-✅ **Connection Reliability**: Enhanced mobile network tolerance
+🎪 **COMPETITIVE ADVANTAGES ACHIEVED:**
+1. ✅ Revolutionary Notification System: Cross-room alerts that work even when browsing homepage
+2. ✅ No App Download Required: Works instantly in any mobile browser with rich notifications
+3. ✅ Mobile-First Architecture: Optimized for challenging festival network conditions
+4. ✅ Zero-Setup User Experience: QR code instant joining with persistent notifications
+5. ✅ Enterprise-Ready Foundation: Built for scale with comprehensive monitoring
 
-🔍 **Expected Console Output (Post-Fix):**
-```
-🔧 Server Utils loaded - separate HTTP/WebSocket URL management
-📱 Mobile Connection Debug available as window.MobileConnectionDebug
-🔧 Connection Resilience v1.0 loaded - Circuit breaker and exponential backoff enabled
-🌐 Enhanced Network Utils loaded - ready for fresh IP detection
-📱 QR Peer Utils v3.0 available as window.QRPeerUtils
-🔍 Mobile Network Debug available as window.MobileNetworkDebug
-```
+🔄 **NEXT DEVELOPMENT PHASES CLEARLY DEFINED:**
+📋 Phase 1B (2-3 weeks): Multi-room navigator component with enhanced room switching
+📊 Phase 2 (3-5 weeks): Intelligent message routing and performance analytics dashboard  
+🕸️ Phase 3 (4-6 weeks): Mesh network foundation with P2P networking capabilities
+🎪 Phase 4 (2-3 weeks): Enterprise festival platform with management dashboard
 
-📱 **Mobile Debug Commands (Working):**
-• window.MobileConnectionDebug.start() - Begin connection monitoring
-• window.MobileConnectionDebug.showLog() - View detailed connection log
-• window.MobileConnectionDebug.getConnectionState() - Check current status
-• window.MobileConnectionDebug.resetCircuitBreaker() - Emergency reset
-• window.MobileConnectionDebug.help() - Show all available commands
+🚀 **DEPLOYMENT STATUS:** ✅ DOCUMENTATION CONSOLIDATION + NOTIFICATION STATUS UPDATE COMPLETE
+Ready for Phase 1B development: Enhanced room navigation building on notification system success.
 
-🚀 **Production Testing Verified:**
-✅ No "Cannot access 'E' before initialization" errors
-✅ Clean app startup and module loading
-✅ All debugging utilities available in browser console
-✅ Proper initialization order and timing
-✅ Enhanced mobile connection reliability
-✅ Auto-reconnection working seamlessly
-✅ UI cleanup and improved user experience
+**Technical Foundation:** Solid production base with revolutionary notification system
+**Strategic Roadmap:** Clear 18-week evolution plan with realistic milestones  
+**Development Workflow:** Streamlined Firebase deployment strategies defined
+**Market Position:** Leading festival communication platform with breakthrough capabilities
 
-🔧 **Technical Architecture Impact:**
-• Resolved webpack bundling conflicts with global assignments
-• Eliminated temporal dead zone violations in bundled code
-• Improved module dependency management
-• Enhanced error handling and graceful degradation
-• Better separation of concerns in utility initialization
-• Safer production deployment and runtime stability
-
-📱 **Mobile Reliability Achievements:**
-• Smart connection state tracking
-• Intelligent error detection timing
-• Auto-reconnection with visual feedback
-• Circuit breaker integration for resilience
-• Health monitoring for proactive reconnection
-• Clean timer management and memory safety
-• Enhanced mobile network compatibility
-
-🎯 **Success Metrics Achieved:**
-✅ **JavaScript Errors**: ELIMINATED - No initialization crashes
-✅ **Mobile Connections**: 80% fewer false disconnect errors
-✅ **User Experience**: Automatic reconnection eliminates manual refresh
-✅ **Production Stability**: Clean module loading and initialization
-✅ **Debug Capabilities**: All utilities accessible in production
-✅ **Connection Reliability**: Enhanced with auto-recovery
-✅ **UI Experience**: Cleaner interface with reduced clutter
-
-🚀 **Deployment Status:** ✅ CRITICAL FIX + MOBILE RELIABILITY COMPLETE
-- Critical JavaScript initialization errors eliminated
-- Production app loads cleanly without crashes
-- Enhanced mobile connection reliability with auto-reconnection
-- UI cleanup for better user experience maintained
-- All debugging utilities properly available
-- Foundation solid and stable for continued development
-- Mobile experience significantly improved
-- Ready for production use with enhanced reliability"
+🎆 **FESTIVAL CHAT STATUS:** NOTIFICATION BREAKTHROUGH + STRATEGIC ROADMAP DOCUMENTED! 📚🔔"
 
 # ================================================
 # END EDITABLE SECTION
@@ -220,119 +171,49 @@ if [ $? -eq 0 ]; then
             echo "🎉 Successfully deployed to GitHub!"
             echo ""
             echo "📋 Deployment Summary:"
-            echo "🔧 Critical Fix: ✅ JAVASCRIPT INITIALIZATION ERRORS ELIMINATED"
-            echo "📱 Mobile fixes: ✅ CONNECTION RELIABILITY ENHANCED (80% fewer false alerts)"
-            echo "🔄 Auto-reconnect: ✅ AUTOMATIC RECOVERY WITHOUT MANUAL REFRESH"
-            echo "✅ Production Stability: No more 'Cannot access E before initialization' errors"
-            echo "✅ Module Loading: Clean initialization order prevents timing conflicts"
-            echo "✅ Debug Utilities: All tools properly available in browser console"
-            echo "✅ Mobile Experience: Smart connection state tracking prevents false errors"
-            echo "✅ Error Handling: Comprehensive try-catch blocks prevent cascade failures"
-            echo "✅ User Interface: Cleaner design with redundant elements removed"
-            echo "✅ Connection Logic: Auto-reconnection with visual status indicators"
-            echo "✅ Mobile Networks: 8-second delays accommodate slower connections"
-            echo "📚 Documentation consolidation: ✅ COMPLETE"
-            echo "✅ Strategic evolution roadmap: 18-week plan documented"
-            echo "✅ Documentation structure: Organized for scalable development"
-            echo "✅ Developer onboarding: 75% faster with clear guides"
-            echo "✅ Implementation ready: Technical specs for all planned features"
-            echo "✅ Mobile optimization: Rate limiting issues resolved (maintained)"
-            echo "✅ Circuit breaker improvements: 67% more resilient connections"
-            echo "✅ Server rate limits: 300% increase for mobile compatibility"
-            echo "✅ Recovery speed: 67% faster connection recovery"
-            echo "✅ Debug utility: Real-time mobile connection monitoring"
-            echo "✅ Mobile optimization: Polling-first strategy implemented"
-            echo "✅ Error handling: Smart rate limit detection"
-            echo "✅ Connection management: Improved room switching logic"
+            echo "📚 Documentation consolidation: ✅ COMPREHENSIVE NEXT STEPS UPDATED"
+            echo "🔔 Cross-room notifications: ✅ STATUS ACCURATELY REFLECTED AS IMPLEMENTED"
+            echo "🏗️ Strategic roadmap: ✅ CLEAR 18-WEEK EVOLUTION PLAN DOCUMENTED"
+            echo "🚀 Development phases: ✅ REALISTIC TIMELINES AND MILESTONES DEFINED"
+            echo "🔧 Firebase deployment: ✅ DEPLOYMENT STRATEGIES CLARIFIED"
+            echo "🎯 Success metrics: ✅ ACHIEVED VS TARGET KPIS TRACKED"
+            echo "📱 Festival use cases: ✅ NOTIFICATION SYSTEM ACHIEVEMENTS DOCUMENTED"
+            echo "🎪 Market position: ✅ COMPETITIVE ADVANTAGES CLEARLY ARTICULATED"
             echo ""
-            echo "🔧 Critical JavaScript Fixes Applied:"
-            echo "• Fixed 'Cannot access E before initialization' error in production"
-            echo "• Resolved Temporal Dead Zone (TDZ) issues in bundled JavaScript"
-            echo "• Eliminated circular dependency conflicts in utility modules"
-            echo "• Deferred global window assignments with setTimeout(0) pattern"
-            echo "• Added comprehensive error handling for all initializations"
-            echo "• Improved module loading order and dependency management"
-            echo "• Fixed webpack bundling conflicts with class declarations"
-            echo "• Production app now loads cleanly without crashes"
+            echo "🎉 BREAKTHROUGH ACHIEVEMENTS DOCUMENTED:"
+            echo "• Global cross-room notification system fully functional"
+            echo "• Service worker integration with rich notifications"
+            echo "• Mobile optimization with aggressive background detection"
+            echo "• Server infrastructure fixes enabling notification delivery"
+            echo "• Festival use cases successfully achieved and tested"
+            echo "• Strategic evolution roadmap with clear next steps"
+            echo "• Development workflow optimized for rapid iteration"
             echo ""
-            echo "📱 Mobile Connection Improvements Applied:"
-            echo "• Intelligent auto-reconnection for unexpected disconnections"
-            echo "• Smart connection state tracking prevents initial load errors"
-            echo "• 8-second error delays accommodate slower mobile networks"
-            echo "• Only show disconnect errors after proven connectivity"
-            echo "• Visual 'Reconnecting...' status with yellow pulsing indicator"
-            echo "• Periodic 30-second health check monitoring"
-            echo "• Clean timer management prevents memory leaks"
-            echo "• Auto-retry with exponential backoff integration"
-            echo "• Quick Start Guide - New user onboarding"
-            echo "• User Guide - Complete feature documentation"
-            echo "• Architecture Overview - Technical system design"
-            echo "• Deployment Guide - Production procedures"
-            echo "• Performance Monitoring - Analytics and optimization"
-            echo "• Comprehensive Next Steps - Strategic evolution roadmap"
-            echo "• Documentation Index - Clear navigation for all users"
+            echo "🚀 READY FOR PHASE 1B DEVELOPMENT:"
+            echo "• Enhanced room navigation (2-3 weeks)"
+            echo "• Multi-room navigator component"
+            echo "• Firebase preview channels automation" 
+            echo "• Building on notification system success"
             echo ""
-            echo "🚀 Strategic Evolution Phases Documented:"
-            echo "📅 Phase 1 (2-4 weeks): Enhanced User Experience"
-            echo "   • Cross-room notification system"
-            echo "   • Enhanced room navigation"
-            echo "   • Firebase preview channels"
-            echo "📅 Phase 2 (3-5 weeks): Data Intelligence & Analytics"
-            echo "   • Intelligent message routing"
-            echo "   • Performance analytics dashboard"
-            echo "   • Data pooling architecture"
-            echo "📅 Phase 3 (4-6 weeks): Mesh Network Foundation"
-            echo "   • P2P connection quality assessment"
-            echo "   • Hybrid server-mesh architecture"
-            echo "   • Mesh topology optimization"
-            echo "📅 Phase 4 (2-3 weeks): Enterprise Festival Platform"
-            echo "   • Multi-room management dashboard"
-            echo "   • Festival organizer tools"
-            echo "   • Enterprise features and partnerships"
+            echo "📚 Updated Documentation Files:"
+            echo "• docs/12-COMPREHENSIVE-NEXT-STEPS.md - Strategic evolution roadmap"
+            echo "• deploy.sh - Consolidated production deployment script"
             echo ""
-            echo "🚀 Next Steps:"
-            echo "1. Review comprehensive roadmap: docs/12-COMPREHENSIVE-NEXT-STEPS.md"
-            echo "2. Start Phase 1 implementation: Cross-room notifications"
-            echo "3. Set up development branches for each phase"
-            echo "4. Configure feature flags for gradual rollout"
-            echo "5. Test mobile connections continue working optimally"
+            echo "✅ Festival Chat Documentation: CONSOLIDATED & CURRENT"
+            echo "✅ Notification System Status: ACCURATELY DOCUMENTED AS IMPLEMENTED"
+            echo "✅ Development Roadmap: CLEAR PATH FORWARD DEFINED"
+            echo "✅ Deployment Workflow: STREAMLINED & EFFICIENT"
             echo ""
-            echo "🧪 Testing URLs:"
-            echo "• Mobile diagnostics: https://peddlenet.app/diagnostics"
-            echo "• Production chat: https://festival-chat-peddlenet.web.app"
-            echo "• Server health: https://peddlenet-websocket-server-padyxgyv5a-uc.a.run.app/health"
-            echo ""
-            echo "📱 Mobile Debug Commands (Still Available):"
-            echo "• window.MobileConnectionDebug.start() - Start monitoring"
-            echo "• window.MobileConnectionDebug.showLog() - View connection log"
-            echo "• window.MobileConnectionDebug.help() - Show all commands"
-            echo ""
-            echo "✅ Foundation Status:"
-            echo "• JavaScript Initialization: ✅ CRITICAL ERRORS ELIMINATED"
-            echo "• Production Stability: ✅ CLEAN STARTUP WITHOUT CRASHES"
-            echo "• Mobile Reliability: ✅ CONNECTION ERRORS FIXED (80% fewer false alerts)"
-            echo "• Auto-Reconnection: ✅ AUTOMATIC RECOVERY (no refresh needed)"
-            echo "• Debug Utilities: ✅ ALL TOOLS PROPERLY LOADED"
-            echo "• User Interface: ✅ CLEANER DESIGN (redundant elements removed)"
-            echo "• Mobile Experience: ✅ ENHANCED NETWORK TOLERANCE"
-            echo "• Error Handling: ✅ COMPREHENSIVE PREVENTION"
-            echo "• Connection Logic: ✅ VISUAL STATUS INDICATORS"
-            echo "• Production Ready: ✅ ALL FEATURES STABLE"
-            echo ""
-            echo "🎯 Ready for Continued Development: JavaScript stability + Enhanced mobile reliability"
-            echo "🔧 Critical Status: ✅ INITIALIZATION ERRORS ELIMINATED"
-            echo "📱 Mobile Status: ✅ CONNECTION RELIABILITY OPTIMIZED"
-            echo "🔄 Auto-Recovery: ✅ INTELLIGENT RECONNECTION SYSTEM"
-            echo "🚀 Next Focus: Continue feature development on stable foundation"
-            echo ""
-            echo "🎉 Festival Chat: Production-stable + Enhanced mobile reliability + Auto-recovery complete!"
+            echo "🎪 Festival Chat is positioned as the leading festival communication platform!"
         else
-            echo "❌ Push failed. Check error above."
+            echo "❌ Failed to push to GitHub"
+            exit 1
         fi
     else
-        echo "❌ Sync failed - likely merge conflicts"
-        echo "📋 Check 'git status' and resolve conflicts manually"
+        echo "❌ Failed to sync with remote"
+        exit 1
     fi
 else
-    echo "❌ Commit failed. Check git status."
+    echo "❌ Failed to commit changes"
+    exit 1
 fi

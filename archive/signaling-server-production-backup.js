@@ -1,4 +1,5 @@
-// signaling-server-production.js - Production-ready signaling server
+// signaling-server-production-backup.js - Backup of original production server
+// Created: June 10, 2025 - Before connection stability enhancements
 const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');

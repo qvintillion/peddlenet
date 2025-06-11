@@ -11,8 +11,8 @@ COPY package*.json ./
 # Install dependencies with better caching
 RUN npm ci --omit=dev --prefer-offline && npm cache clean --force
 
-# Copy the enhanced SQLite signaling server
-COPY signaling-server-sqlite.js ./
+# Copy the enhanced SQLite signaling server with stability improvements
+COPY signaling-server-sqlite-enhanced.js ./
 COPY sqlite-persistence.js ./
 
 # Create data directory with proper permissions
@@ -34,5 +34,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 8080) + '/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
-# Start the SQLite server
-CMD ["node", "signaling-server-sqlite.js"]
+# Start the enhanced SQLite server
+CMD ["node", "signaling-server-sqlite-enhanced.js"]

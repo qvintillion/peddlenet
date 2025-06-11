@@ -18,7 +18,7 @@
     "dev": "next dev -H 0.0.0.0",
     "dev:full": "chmod +x start-dev.sh && ./start-dev.sh",
     "dev:mobile": "chmod +x scripts/dev-mobile.sh && ./scripts/dev-mobile.sh",
-    "server": "node signaling-server.js",
+    "server": "node signaling-server-sqlite-enhanced.js",
     "dev:with-server": "concurrently \"npm run server\" \"npm run dev\"",
     "test:server": "chmod +x test-server.sh && ./test-server.sh",
     "build": "next build",
@@ -36,6 +36,10 @@
     "deploy:firebase:quick": "./tools/deploy-firebase-quick.sh",
     "deploy:firebase:complete": "./tools/deploy-complete.sh",
     "deploy:firebase:super-quick": "chmod +x tools/deploy-firebase-super-quick.sh && ./tools/deploy-firebase-super-quick.sh",
+    "deploy:firebase:quick-FIXED": "chmod +x tools/deploy-firebase-quick-FIXED.sh && ./tools/deploy-firebase-quick-FIXED.sh",
+    "deploy:firebase:super-quick-FIXED": "chmod +x tools/deploy-firebase-super-quick-FIXED.sh && ./tools/deploy-firebase-super-quick-FIXED.sh",
+    "deploy:firebase:nuclear": "chmod +x tools/deploy-firebase-nuclear.sh && ./tools/deploy-firebase-nuclear.sh",
+    "deploy:firebase:cache-bust": "chmod +x tools/deploy-cache-bust.sh && ./tools/deploy-cache-bust.sh",
     "deploy:firebase:functions": "npm run build && cd functions && npm run build && cd .. && firebase deploy --only functions"
   },
   "dependencies": {

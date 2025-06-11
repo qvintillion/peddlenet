@@ -62,14 +62,18 @@ if ! node -e "require('sqlite3')" 2>/dev/null; then
     npm install sqlite3
 fi
 
-# Determine which server file to use
-SERVER_FILE="signaling-server-sqlite.js"
+# Determine which server file to use - prefer enhanced version
+SERVER_FILE="signaling-server-sqlite-enhanced.js"
 if [ ! -f "$SERVER_FILE" ]; then
-    echo "⚠️  SQLite server not found, falling back to memory-only server"
-    SERVER_FILE="signaling-server.js"
+    echo "⚠️  Enhanced SQLite server not found, falling back to standard SQLite server"
+    SERVER_FILE="signaling-server-sqlite.js"
     if [ ! -f "$SERVER_FILE" ]; then
-        echo "❌ No server file found. Make sure you're in the project root directory."
-        exit 1
+        echo "⚠️  SQLite server not found, falling back to memory-only server"
+        SERVER_FILE="signaling-server.js"
+        if [ ! -f "$SERVER_FILE" ]; then
+            echo "❌ No server file found. Make sure you're in the project root directory."
+            exit 1
+        fi
     fi
 fi
 

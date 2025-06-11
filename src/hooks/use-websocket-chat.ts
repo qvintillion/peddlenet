@@ -8,18 +8,25 @@ import { NetworkUtils } from '@/utils/network-utils';
 import { MessagePersistence } from '@/utils/message-persistence';
 import { ServerUtils } from '@/utils/server-utils';
 
-// Simplified connection resilience - avoid class to prevent TDZ issues
-const createConnectionResilience = () => {
+// Enhanced connection resilience with adaptive timing
+const createEnhancedConnectionResilience = () => {
   let circuitBreaker = {
     isOpen: false,
     failureCount: 0,
     lastFailureTime: 0,
-    successCount: 0
+    successCount: 0,
+    lastSuccessTime: 0
   };
   
-  const FAILURE_THRESHOLD = 5;
-  const RECOVERY_TIMEOUT = 15000;
-  const SUCCESS_THRESHOLD = 1;
+  let backoffState = {
+    currentAttempt: 0,
+    lastAttemptTime: 0
+  };
+  
+  const FAILURE_THRESHOLD = 3; // Reduced from 5 for faster detection
+  const RECOVERY_TIMEOUT = 10000; // Reduced from 15s for faster recovery
+  const SUCCESS_THRESHOLD = 2; // Require 2 successes to close circuit
+  const MAX_BACKOFF = 15000; // Max 15 seconds (reduced from 30s)
   
   return {
     shouldAllowConnection(): boolean {
@@ -28,7 +35,7 @@ const createConnectionResilience = () => {
       
       if (circuitBreaker.isOpen) {
         if (timeSinceLastFailure > RECOVERY_TIMEOUT) {
-          console.log('🔄 Circuit breaker attempting recovery - allowing connection');
+          console.log('🔄 Circuit breaker attempting recovery - allowing test connection');
           return true;
         }
         console.log('🚫 Circuit breaker open - blocking connection');
@@ -39,7 +46,10 @@ const createConnectionResilience = () => {
     },
     
     recordSuccess(): void {
+      const now = Date.now();
       circuitBreaker.successCount++;
+      circuitBreaker.lastSuccessTime = now;
+      backoffState.currentAttempt = 0; // Reset backoff on success
       
       if (circuitBreaker.isOpen && circuitBreaker.successCount >= SUCCESS_THRESHOLD) {
         circuitBreaker.isOpen = false;
@@ -50,8 +60,9 @@ const createConnectionResilience = () => {
     },
     
     recordFailure(): void {
+      const now = Date.now();
       circuitBreaker.failureCount++;
-      circuitBreaker.lastFailureTime = Date.now();
+      circuitBreaker.lastFailureTime = now;
       circuitBreaker.successCount = 0;
       
       if (circuitBreaker.failureCount >= FAILURE_THRESHOLD) {
@@ -60,18 +71,42 @@ const createConnectionResilience = () => {
       }
     },
     
-    getExponentialBackoffDelay(attempt: number): number {
-      const baseDelay = 500;
-      const maxDelay = 8000;
+    getExponentialBackoffDelay(attempt?: number): number {
+      const currentAttempt = attempt !== undefined ? attempt : backoffState.currentAttempt;
+      const baseDelay = 1000; // Start with 1 second
       const jitter = Math.random() * 500;
       
-      const delay = Math.min(baseDelay * Math.pow(1.5, attempt) + jitter, maxDelay);
-      console.log(`⏱️ Exponential backoff: attempt ${attempt}, delay ${Math.round(delay)}ms`);
+      const delay = Math.min(baseDelay * Math.pow(1.8, currentAttempt) + jitter, MAX_BACKOFF);
+      backoffState.currentAttempt = currentAttempt + 1;
+      backoffState.lastAttemptTime = Date.now();
+      
+      console.log(`⏱️ Exponential backoff: attempt ${currentAttempt}, delay ${Math.round(delay)}ms`);
       return delay;
     },
     
+    // Adaptive timing based on connection success rate
+    getAdaptiveTimeout(): number {
+      const recentFailures = circuitBreaker.failureCount;
+      const baseTimeout = 8000;
+      
+      // Increase timeout if we've had recent failures
+      if (recentFailures > 2) {
+        return Math.min(baseTimeout * 1.5, 15000);
+      }
+      
+      return baseTimeout;
+    },
+    
     getState() {
-      return { ...circuitBreaker };
+      return { 
+        ...circuitBreaker, 
+        backoff: { ...backoffState },
+        thresholds: {
+          failure: FAILURE_THRESHOLD,
+          recovery: RECOVERY_TIMEOUT,
+          success: SUCCESS_THRESHOLD
+        }
+      };
     },
     
     reset(): void {
@@ -79,28 +114,91 @@ const createConnectionResilience = () => {
         isOpen: false,
         failureCount: 0,
         lastFailureTime: 0,
-        successCount: 0
+        successCount: 0,
+        lastSuccessTime: 0
       };
-      console.log('🔄 Circuit breaker manually reset');
+      backoffState = {
+        currentAttempt: 0,
+        lastAttemptTime: 0
+      };
+      console.log('🔄 Enhanced circuit breaker manually reset');
     }
   };
 };
 
-// Create instance without class declaration
-const ConnectionResilience = createConnectionResilience();
+// Create enhanced instance
+const EnhancedConnectionResilience = createEnhancedConnectionResilience();
 
-// Global access for debugging - moved to separate initialization to avoid temporal dead zone issues
+// Global access for debugging
 if (typeof window !== 'undefined') {
-  // Use setTimeout to ensure all modules are fully initialized before global assignment
   setTimeout(() => {
     try {
-      (window as any).ConnectionResilience = ConnectionResilience;
-      console.log('🔧 Connection Resilience v1.0 loaded - Circuit breaker and exponential backoff enabled');
+      (window as any).EnhancedConnectionResilience = EnhancedConnectionResilience;
+      console.log('🔧 Enhanced Connection Resilience v2.0 loaded - Adaptive timing and improved stability');
     } catch (error) {
-      console.warn('ConnectionResilience initialization failed:', error);
+      console.warn('Enhanced ConnectionResilience initialization failed:', error);
     }
   }, 0);
 }
+
+// Health monitoring for connections
+const createHealthMonitor = () => {
+  let healthState = {
+    lastPing: 0,
+    lastPong: 0,
+    pingCount: 0,
+    pongCount: 0,
+    averageLatency: 0,
+    connectionQuality: 'unknown' as 'excellent' | 'good' | 'poor' | 'unknown'
+  };
+  
+  return {
+    recordPing(): void {
+      healthState.lastPing = Date.now();
+      healthState.pingCount++;
+    },
+    
+    recordPong(): void {
+      const now = Date.now();
+      const latency = now - healthState.lastPing;
+      
+      healthState.lastPong = now;
+      healthState.pongCount++;
+      
+      // Calculate rolling average latency
+      healthState.averageLatency = healthState.averageLatency === 0 
+        ? latency 
+        : (healthState.averageLatency * 0.7) + (latency * 0.3);
+      
+      // Update connection quality
+      if (latency < 100) {
+        healthState.connectionQuality = 'excellent';
+      } else if (latency < 300) {
+        healthState.connectionQuality = 'good';
+      } else {
+        healthState.connectionQuality = 'poor';
+      }
+      
+      console.log(`🏥 Health: ${latency}ms latency, avg: ${Math.round(healthState.averageLatency)}ms, quality: ${healthState.connectionQuality}`);
+    },
+    
+    isHealthy(): boolean {
+      const now = Date.now();
+      const timeSinceLastPong = now - healthState.lastPong;
+      
+      // Consider unhealthy if no pong in last 60 seconds
+      return timeSinceLastPong < 60000 && healthState.connectionQuality !== 'poor';
+    },
+    
+    getHealthMetrics() {
+      return {
+        ...healthState,
+        timeSinceLastPong: Date.now() - healthState.lastPong,
+        isHealthy: this.isHealthy()
+      };
+    }
+  };
+};
 
 export function useWebSocketChat(roomId: string, displayName?: string) {
   const [isConnected, setIsConnected] = useState(false);
@@ -110,56 +208,88 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
   const [retryCount, setRetryCount] = useState(0);
   const [connectionCooldown, setConnectionCooldown] = useState(false);
   const [shouldAutoReconnect, setShouldAutoReconnect] = useState(true);
-  const autoReconnectTimer = useRef<NodeJS.Timeout | null>(null);
+  const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'poor' | 'unknown'>('unknown');
   
   const socketRef = useRef<Socket | null>(null);
   const messageHandlersRef = useRef<Set<(message: Message) => void>>(new Set());
-  // Don't allow any connection until we have a real display name
+  const healthMonitor = useRef(createHealthMonitor());
+  const autoReconnectTimer = useRef<NodeJS.Timeout | null>(null);
+  const healthCheckTimer = useRef<NodeJS.Timeout | null>(null);
+  
+  // Connection state management
   const effectiveDisplayName = displayName && displayName.trim() && displayName !== 'Anonymous' ? displayName.trim() : null;
   const myPeerId = useRef<string>(generateCompatibleUUID());
   const connectionId = useRef<string>(Math.random().toString(36).substring(7));
   const roomConnectionRef = useRef<string>('');
   const isConnectingRef = useRef(false);
+  const lastSuccessfulConnection = useRef<number>(0);
 
   const status: ConnectionStatus = {
     isConnected,
     connectedPeers: connectedPeers.length,
     networkReach: isConnected ? 'server' as const : 'isolated' as const,
-    signalStrength: isConnected ? 'strong' as const : 'none' as const,
+    signalStrength: connectionQuality === 'excellent' ? 'strong' as const : 
+                   connectionQuality === 'good' ? 'medium' as const : 
+                   connectionQuality === 'poor' ? 'weak' as const : 'none' as const,
   };
 
-  // Enhanced connect to server function with circuit breaker and exponential backoff
+  // Enhanced health check system
+  const startHealthMonitoring = useCallback((socket: Socket) => {
+    // Clear any existing health check
+    if (healthCheckTimer.current) {
+      clearInterval(healthCheckTimer.current);
+    }
+    
+    healthCheckTimer.current = setInterval(() => {
+      if (socket && socket.connected) {
+        healthMonitor.current.recordPing();
+        socket.emit('health-ping', { timestamp: Date.now() });
+      } else {
+        console.log('🏥 Health check: Socket disconnected');
+      }
+    }, 15000); // Health check every 15 seconds
+    
+    console.log('🏥 Health monitoring started');
+  }, []);
+
+  const stopHealthMonitoring = useCallback(() => {
+    if (healthCheckTimer.current) {
+      clearInterval(healthCheckTimer.current);
+      healthCheckTimer.current = null;
+      console.log('🏥 Health monitoring stopped');
+    }
+  }, []);
+
+  // Enhanced connect to server function
   const connectToServer = useCallback(async () => {
-    // Check circuit breaker first
-    if (!ConnectionResilience.shouldAllowConnection()) {
-      console.log(`🚫 [${connectionId.current}] Circuit breaker blocking connection attempt`);
+    // Enhanced circuit breaker check
+    if (!EnhancedConnectionResilience.shouldAllowConnection()) {
+      console.log(`🚫 [${connectionId.current}] Enhanced circuit breaker blocking connection attempt`);
       return;
     }
     
     if (!roomId || !effectiveDisplayName || isConnectingRef.current) {
-      console.log(`⏸️ [${connectionId.current}] Skipping connection - missing requirements:`, {
-        roomId: !!roomId,
-        effectiveDisplayName: !!effectiveDisplayName,
-        isConnecting: isConnectingRef.current,
-        cooldown: connectionCooldown,
-        circuitBreaker: ConnectionResilience.getState()
-      });
+      console.log(`⏸️ [${connectionId.current}] Skipping connection - missing requirements`);
       return;
     }
     
-    // Allow room switching but add slight delay to prevent rapid switching
+    // Prevent rapid reconnection attempts
+    const now = Date.now();
+    const timeSinceLastSuccess = now - lastSuccessfulConnection.current;
+    if (timeSinceLastSuccess < 2000 && socketRef.current?.connected) {
+      console.log(`⏳ [${connectionId.current}] Too soon since last connection, waiting...`);
+      return;
+    }
+    
     if (connectionCooldown && roomConnectionRef.current === roomId) {
-      console.log(`⏳ [${connectionId.current}] In cooldown for same room, waiting...`);
+      console.log(`⏳ [${connectionId.current}] In enhanced cooldown, waiting...`);
       return;
     }
     
-    if (socketRef.current?.connected && roomConnectionRef.current === roomId) {
-      console.log(`🔄 [${connectionId.current}] Already connected to room:`, roomId, 'skipping duplicate');
-      return;
-    }
-    
+    // Handle room switching
     if (socketRef.current?.connected && roomConnectionRef.current !== roomId) {
-      console.log(`🔄 [${connectionId.current}] Switching rooms:`, roomConnectionRef.current, '→', roomId);
+      console.log(`🔄 [${connectionId.current}] Enhanced room switching:`, roomConnectionRef.current, '→', roomId);
+      stopHealthMonitoring();
       socketRef.current.disconnect();
       socketRef.current = null;
       roomConnectionRef.current = '';
@@ -169,19 +299,19 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     
     if (socketRef.current) {
       console.log('Disconnecting existing socket before new connection');
+      stopHealthMonitoring();
       socketRef.current.disconnect();
       socketRef.current = null;
     }
 
-    // Use ServerUtils for proper WebSocket URL
+    // Enhanced server URL detection
     const serverUrl = ServerUtils.getWebSocketServerUrl();
     const envInfo = ServerUtils.getEnvironmentInfo();
     
-    console.log('🔍 Server connection details:');
+    console.log('🔍 Enhanced server connection details:');
     console.log('  - WebSocket URL:', serverUrl);
     console.log('  - Environment:', envInfo.environment);
-    console.log('  - Protocol:', envInfo.protocol);
-    console.log('  - HTTP URL:', envInfo.httpUrl);
+    console.log('  - Adaptive timeout:', EnhancedConnectionResilience.getAdaptiveTimeout());
     
     if (!serverUrl) {
       console.error('❌ No WebSocket server URL configured');
@@ -190,57 +320,58 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     }
 
     setIsRetrying(true);
-    console.log(`🔌 [${connectionId.current}] Connecting to chat server:`, serverUrl, 'as:', effectiveDisplayName);
-    console.log(`🔧 Connection attempt details:`, {
-      transports: ['websocket', 'polling'],
-      hostname: envInfo.hostname,
-      protocol: envInfo.protocol,
-      environment: envInfo.environment
-    });
+    console.log(`🔌 [${connectionId.current}] Enhanced connection to:`, serverUrl, 'as:', effectiveDisplayName);
 
+    const adaptiveTimeout = EnhancedConnectionResilience.getAdaptiveTimeout();
+    
     const socket = io(serverUrl, {
-      // Phase 2: Mobile-optimized transport configuration
-      transports: ['polling', 'websocket'], // Polling first for reliability, then upgrade
-      timeout: 8000,         // Reduced from 10s for mobile responsiveness
+      // Enhanced mobile-optimized transport configuration
+      transports: ['polling', 'websocket'], // Polling first for better mobile compatibility
+      timeout: adaptiveTimeout,
       forceNew: true,
       autoConnect: true,
       
-      // Mobile-friendly reconnection strategy
-      reconnection: false,   // Disable automatic reconnection to prevent conflicts with our circuit breaker
+      // Enhanced reconnection strategy (disabled for manual control)
+      reconnection: false,
       reconnectionAttempts: 0,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      maxReconnectionAttempts: 0,
       
-      // Transport upgrade settings
+      // Enhanced transport settings
       upgrade: true,
-      rememberUpgrade: true,       // Remember successful upgrades
+      rememberUpgrade: false, // Don't remember upgrades for mobile network changes
       
-      // Optimized timeouts matching server
-      pingTimeout: 30000,          // Match server: 30s
-      pingInterval: 10000,         // Match server: 10s
+      // Optimized timeouts to match enhanced server
+      pingTimeout: 30000,
+      pingInterval: 15000,
       
-      // Connection efficiency
+      // Enhanced connection efficiency
       withCredentials: false,
       closeOnBeforeunload: false,
       forceBase64: false,
       
-      // Phase 2: Enhanced error handling
-      parser: undefined // Use default parser for reliability
+      // Enhanced error handling
+      allowUpgrades: true
     });
 
     socketRef.current = socket;
 
+    // Enhanced connection event handlers
     socket.on('connect', () => {
-      console.log(`🚀 [${connectionId.current}] Connected to chat server as:`, effectiveDisplayName);
+      const now = Date.now();
+      console.log(`🚀 [${connectionId.current}] Enhanced connection established as:`, effectiveDisplayName);
+      console.log(`   Transport: ${socket.io.engine.transport.name}, Upgraded: ${socket.io.engine.upgraded}`);
+      
       setIsConnected(true);
       setIsRetrying(false);
       setRetryCount(0);
       isConnectingRef.current = false;
       roomConnectionRef.current = roomId;
+      lastSuccessfulConnection.current = now;
       
-      // Record successful connection for circuit breaker
-      ConnectionResilience.recordSuccess();
+      // Record successful connection
+      EnhancedConnectionResilience.recordSuccess();
+      
+      // Start enhanced health monitoring
+      startHealthMonitoring(socket);
       
       socket.emit('join-room', {
         roomId,
@@ -248,91 +379,133 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
         displayName: effectiveDisplayName
       });
       
-      // Set timeout to check if server sends message history
+      // Enhanced message history handling
       setTimeout(() => {
-        // If no message-history event was received, use localStorage as fallback
         const localMessages = MessagePersistence.getRoomMessages(roomId);
         if (localMessages.length > 0) {
-          console.log('⏰ Server history timeout, using local fallback:', localMessages.length);
-          setMessages(prev => {
-            // Only set if we haven't received any messages yet
-            if (prev.length === 0) {
-              return localMessages;
-            }
-            return prev;
-          });
+          console.log('⏰ Enhanced history timeout, using local fallback:', localMessages.length);
+          setMessages(prev => prev.length === 0 ? localMessages : prev);
         }
-      }, 2000); // Wait 2 seconds for server history
+      }, 3000); // Increased timeout for server response
     });
 
+    // Enhanced disconnect handling with cold start detection
     socket.on('disconnect', (reason) => {
-      console.log(`🔌 [${connectionId.current}] Disconnected from chat server:`, reason);
+      console.log(`🔌 [${connectionId.current}] Enhanced disconnect:`, reason);
+      console.log(`   Transport: ${socket.io.engine?.transport?.name || 'unknown'}`);
+      
       setIsConnected(false);
       isConnectingRef.current = false;
       roomConnectionRef.current = '';
+      stopHealthMonitoring();
       
-      // Only record as failure if it was an unexpected disconnect
-      // (not user-initiated or normal cleanup)
-      if (reason !== 'client namespace disconnect' && reason !== 'transport close') {
-        console.log(`⚠️ [${connectionId.current}] Unexpected disconnect, recording as failure:`, reason);
-        ConnectionResilience.recordFailure();
+      // Enhanced disconnect reason analysis with Cloud Run detection
+      const isUnexpected = reason !== 'client namespace disconnect' && 
+                          reason !== 'transport close' &&
+                          reason !== 'io client disconnect';
+      
+      // Special handling for Cloud Run cold starts
+      const isCloudRunColdStart = reason === 'transport close' || reason === 'ping timeout';
+      
+      if (isCloudRunColdStart) {
+        console.log(`❄️ [${connectionId.current}] Detected Cloud Run cold start - will retry with shorter delay`);
+      } else if (isUnexpected) {
+        console.log(`⚠️ [${connectionId.current}] Unexpected enhanced disconnect:`, reason);
+        EnhancedConnectionResilience.recordFailure();
+      }
+      
+      // Enhanced auto-reconnect with cold start awareness
+      if (shouldAutoReconnect && effectiveDisplayName && !reason.includes('server')) {
+        // Use shorter delay for cold starts since server just needs to wake up
+        const backoffDelay = isCloudRunColdStart ? 
+          Math.min(2000 + Math.random() * 1000, 5000) : // 2-5s for cold starts
+          EnhancedConnectionResilience.getExponentialBackoffDelay(); // Normal backoff
+          
+        console.log(`🔄 [${connectionId.current}] Enhanced auto-reconnect in ${backoffDelay}ms...`);
         
-        // Auto-reconnect for unexpected disconnections
-        if (shouldAutoReconnect && effectiveDisplayName) {
-          console.log(`🔄 [${connectionId.current}] Scheduling auto-reconnect in 3 seconds...`);
-          autoReconnectTimer.current = setTimeout(() => {
-            console.log(`🔄 [${connectionId.current}] Attempting auto-reconnect...`);
-            connectToServer();
-          }, 3000);
-        }
+        autoReconnectTimer.current = setTimeout(() => {
+          console.log(`🔄 [${connectionId.current}] Attempting enhanced auto-reconnect...`);
+          connectToServer();
+        }, backoffDelay);
       }
     });
 
+    // Enhanced error handling
     socket.on('connect_error', (error) => {
-      console.error('Connection error:', error.message);
-      console.error('Connection error details:', {
+      console.error('Enhanced connection error:', {
+        message: error.message,
         type: error.type,
         description: error.description,
         context: error.context,
         transport: error.transport
       });
+      
       setIsConnected(false);
       setIsRetrying(false);
       isConnectingRef.current = false;
       
-      // Only record certain errors as failures (not rate limits)
-      if (!error.message.includes('rate limit') && !error.message.includes('throttle')) {
-        ConnectionResilience.recordFailure();
+      // Enhanced error categorization
+      const isRetryableError = !error.message.includes('rate limit') && 
+                              !error.message.includes('throttle') &&
+                              !error.message.includes('forbidden');
+      
+      if (isRetryableError) {
+        EnhancedConnectionResilience.recordFailure();
       } else {
-        console.log('🕰️ Rate limit detected, not counting as circuit breaker failure');
+        console.log('🕰️ Non-retryable error detected, not counting as circuit breaker failure');
       }
       
-      // Use exponential backoff for cooldown with shorter delays for rate limits
+      // Enhanced backoff with error-specific delays
       const isRateLimit = error.message.includes('rate limit') || error.message.includes('throttle');
       const backoffDelay = isRateLimit ? 
-        Math.min(2000 + Math.random() * 3000, 5000) : // 2-5s for rate limits
-        ConnectionResilience.getExponentialBackoffDelay(retryCount);
+        Math.min(3000 + Math.random() * 2000, 8000) : // 3-8s for rate limits
+        EnhancedConnectionResilience.getExponentialBackoffDelay();
         
       setConnectionCooldown(true);
       setRetryCount(prev => prev + 1);
       
       setTimeout(() => {
         setConnectionCooldown(false);
-        console.log(`🔄 [${connectionId.current}] Cooldown ended, connection attempts allowed`);
+        console.log(`🔄 [${connectionId.current}] Enhanced cooldown ended`);
         
-        // Auto-retry connection after cooldown if should reconnect
-        if (shouldAutoReconnect && effectiveDisplayName) {
-          console.log(`🔄 [${connectionId.current}] Auto-retrying connection after error...`);
+        // Enhanced auto-retry logic
+        if (shouldAutoReconnect && effectiveDisplayName && isRetryableError) {
+          console.log(`🔄 [${connectionId.current}] Enhanced auto-retry after error...`);
           connectToServer();
         }
       }, backoffDelay);
     });
 
-    // Handle message history - merge with persisted messages
-    socket.on('message-history', (messageHistory: Message[]) => {
-      console.log('📚 Received message history from server:', messageHistory.length);
+    // Enhanced health monitoring handlers
+    socket.on('health-pong', (data) => {
+      healthMonitor.current.recordPong();
+      const metrics = healthMonitor.current.getHealthMetrics();
+      setConnectionQuality(metrics.connectionQuality);
       
-      // Always merge with local storage
+      // Check if connection is degrading
+      if (!metrics.isHealthy && isConnected) {
+        console.log('🏥 Connection health degraded, considering reconnection...');
+        // Don't auto-reconnect immediately, but prepare for it
+      }
+    });
+
+    // Enhanced server shutdown handling
+    socket.on('server-shutdown', (data) => {
+      console.log('🛑 Server shutdown notification:', data);
+      setShouldAutoReconnect(false);
+      
+      // Attempt reconnection after suggested delay
+      setTimeout(() => {
+        setShouldAutoReconnect(true);
+        console.log('🔄 Attempting reconnection after server maintenance...');
+        connectToServer();
+      }, data.reconnectDelay || 10000);
+    });
+
+    // Enhanced message handling
+    socket.on('message-history', (messageHistory: Message[]) => {
+      console.log('📚 Enhanced message history received:', messageHistory.length);
+      
       const localMessages = MessagePersistence.getRoomMessages(roomId);
       
       if (messageHistory.length > 0) {
@@ -340,17 +513,15 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
         setMessages(mergedMessages);
         MessagePersistence.saveRoomMessages(roomId, mergedMessages, connectedPeers.length);
       } else {
-        // Server has no history, but we might have local messages
-        console.log('📂 No server history, using local messages:', localMessages.length);
+        console.log('📂 Enhanced: No server history, using local messages:', localMessages.length);
         if (localMessages.length > 0) {
           setMessages(localMessages);
         }
       }
     });
 
-    // Handle new real-time messages
     socket.on('chat-message', (message: any) => {
-      console.log('📥 Real-time message from server:', message);
+      console.log('📥 Enhanced real-time message:', message);
       
       const normalizedMessage: Message = {
         id: message.id || generateCompatibleUUID(),
@@ -365,40 +536,61 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       setMessages(prev => {
         const isDuplicate = prev.some(m => m.id === normalizedMessage.id);
         if (isDuplicate) {
-          console.log('⚠️ Duplicate message ignored:', normalizedMessage.id);
+          console.log('⚠️ Enhanced: Duplicate message ignored:', normalizedMessage.id);
           return prev;
         }
         
         const updated = [...prev, normalizedMessage].sort((a, b) => a.timestamp - b.timestamp);
-        console.log(`✅ Message added, total: ${updated.length}`);
-        
-        // Persist to localStorage
         MessagePersistence.addMessage(roomId, normalizedMessage);
         
         return updated;
       });
       
-      // Notify message handlers
+      // Enhanced message handler notifications (simple approach)
       messageHandlersRef.current.forEach(handler => {
         try {
           handler(normalizedMessage);
         } catch (e) {
-          console.error('Message handler error:', e);
+          console.error('Enhanced message handler error:', e);
         }
       });
     });
 
-    // Handle peer list updates
+    // Enhanced peer management with better logging for anonymous users
     socket.on('room-peers', (peers: any[]) => {
-      console.log('Room peers total:', peers.length);
+      console.log('Enhanced room peers total:', peers.length);
       const uniquePeerNames = Array.from(new Set(peers.map(p => p.displayName)))
-        .filter(name => name !== effectiveDisplayName);
-      console.log('Other peers (excluding self):', uniquePeerNames.length, uniquePeerNames);
+        .filter(name => name !== effectiveDisplayName && name && name.trim());
+      
+      // Separate anonymous vs named users for clearer logging
+      const namedUsers = uniquePeerNames.filter(name => !name.startsWith('User_'));
+      const anonymousUsers = uniquePeerNames.filter(name => name.startsWith('User_'));
+      
+      console.log('Enhanced peers:', {
+        total: uniquePeerNames.length,
+        named: namedUsers.length,
+        anonymous: anonymousUsers.length,
+        namedUsers,
+        anonymousUsers
+      });
+      
       setConnectedPeers(uniquePeerNames);
     });
 
     socket.on('peer-joined', (peer: any) => {
-      console.log('Peer joined:', peer.displayName);
+      // Validate peer data before processing
+      if (!peer || !peer.displayName || !peer.displayName.trim()) {
+        console.warn('Invalid peer data received:', peer);
+        return;
+      }
+      
+      const isAnonymous = peer.displayName.startsWith('User_');
+      const logMessage = isAnonymous 
+        ? `📝 Anonymous user joined: ${peer.displayName} (temporary connection)`
+        : `👋 User joined: ${peer.displayName}`;
+      
+      console.log(logMessage, peer.isReconnection ? '(reconnection)' : '(new)');
+      
       if (peer.displayName !== effectiveDisplayName) {
         setConnectedPeers(prev => {
           if (prev.includes(peer.displayName)) return prev;
@@ -408,65 +600,45 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     });
 
     socket.on('peer-left', (peer: any) => {
-      console.log('Peer left:', peer.displayName);
+      // Validate peer data before processing
+      if (!peer || !peer.displayName) {
+        console.warn('Invalid peer data received for leave:', peer);
+        return;
+      }
+      
+      const isAnonymous = peer.displayName.startsWith('User_');
+      const logMessage = isAnonymous 
+        ? `📝 Anonymous user left: ${peer.displayName} (likely setting proper name)`
+        : `👋 User left: ${peer.displayName}`;
+      
+      console.log(logMessage, 'reason:', peer.reason);
+      
       if (peer.displayName !== effectiveDisplayName) {
         setConnectedPeers(prev => prev.filter(name => name !== peer.displayName));
       }
     });
 
-  }, [roomId, effectiveDisplayName, connectionCooldown, retryCount]); // Only depend on stable values, cooldown, and retry count
+  }, [roomId, effectiveDisplayName, connectionCooldown, retryCount, startHealthMonitoring, stopHealthMonitoring]);
 
-  // Auto-reconnect health monitor
+  // Enhanced initialization effect
   useEffect(() => {
-    let healthCheckInterval: NodeJS.Timeout;
-    
-    if (isConnected && effectiveDisplayName) {
-      // Set up periodic health check when connected
-      healthCheckInterval = setInterval(() => {
-        const socket = socketRef.current;
-        if (socket && !socket.connected) {
-          console.log('🏥 Health check: Socket disconnected, attempting reconnect...');
-          forceReconnect();
-        }
-      }, 30000); // Check every 30 seconds
-    }
-    
-    return () => {
-      if (healthCheckInterval) {
-        clearInterval(healthCheckInterval);
-      }
-    };
-  }, [isConnected, effectiveDisplayName]);
-
-  // Initialize connection and load persisted messages
-  useEffect(() => {
-    // Load persisted messages first
     if (roomId) {
       const persistedMessages = MessagePersistence.getRoomMessages(roomId);
       if (persistedMessages.length > 0) {
-        console.log(`📂 Loaded ${persistedMessages.length} persisted messages for room ${roomId}`);
+        console.log(`📂 Enhanced: Loaded ${persistedMessages.length} persisted messages for room ${roomId}`);
         setMessages(persistedMessages);
       }
     }
     
-    // Only connect if we have valid requirements AND we're not already connected to this room
     if (roomId && effectiveDisplayName && !isConnectingRef.current && 
         !(socketRef.current?.connected && roomConnectionRef.current === roomId)) {
-      console.log(`🚀 [${connectionId.current}] Initializing connection for:`, effectiveDisplayName);
+      console.log(`🚀 [${connectionId.current}] Enhanced initialization for:`, effectiveDisplayName);
       connectToServer();
-    } else {
-      console.log(`⏳ [${connectionId.current}] Skipping connection - already connected or missing requirements`);
-      
-      if (socketRef.current && socketRef.current.connected && !effectiveDisplayName) {
-        console.log(`🔌 [${connectionId.current}] Disconnecting due to invalid display name`);
-        socketRef.current.disconnect();
-        socketRef.current = null;
-        roomConnectionRef.current = '';
-      }
     }
 
     return () => {
-      setShouldAutoReconnect(false); // Disable auto-reconnect during cleanup
+      setShouldAutoReconnect(false);
+      stopHealthMonitoring();
       
       if (autoReconnectTimer.current) {
         clearTimeout(autoReconnectTimer.current);
@@ -474,7 +646,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       }
       
       if (socketRef.current) {
-        console.log(`🛑 [${connectionId.current}] Disconnecting from chat server - cleanup`);
+        console.log(`🛑 [${connectionId.current}] Enhanced cleanup - disconnecting`);
         const socket = socketRef.current;
         socketRef.current = null;
         isConnectingRef.current = false;
@@ -485,18 +657,18 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
         }
       }
     };
-  }, [roomId, effectiveDisplayName]); // Remove connectToServer to prevent infinite reconnection loop
+  }, [roomId, effectiveDisplayName, connectToServer, stopHealthMonitoring]);
 
-  // Send message function
+  // Enhanced send message function
   const sendMessage = useCallback((messageData: Omit<Message, 'id' | 'timestamp'>) => {
     const socket = socketRef.current;
     if (!socket || !socket.connected) {
-      console.log('❌ Cannot send message - not connected');
+      console.log('❌ Enhanced: Cannot send message - not connected');
       return generateCompatibleUUID();
     }
 
     if (!effectiveDisplayName) {
-      console.log('❌ Cannot send message - no valid display name');
+      console.log('❌ Enhanced: Cannot send message - no valid display name');
       return generateCompatibleUUID();
     }
 
@@ -506,16 +678,17 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       roomId,
       message: {
         content: messageData.content,
+        id: messageId
       }
     };
     
-    console.log('📤 Sending message:', messageData.content, 'from:', effectiveDisplayName);
+    console.log('📤 Enhanced: Sending message:', messageData.content);
     socket.emit('chat-message', messagePayload);
     
     return messageId;
   }, [roomId, effectiveDisplayName]);
 
-  // Message handler registration
+  // Enhanced message handler registration
   const onMessage = useCallback((handler: (message: Message) => void) => {
     messageHandlersRef.current.add(handler);
     return () => {
@@ -523,26 +696,28 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     };
   }, []);
 
-  // Enhanced force reconnect with auto-reconnect control
+  // Enhanced force reconnect
   const forceReconnect = useCallback(async () => {
-    console.log('🔄 Force reconnecting with circuit breaker reset...');
+    console.log('🔄 Enhanced force reconnect with full reset...');
     
-    // Clear any pending auto-reconnect timers
+    // Clear all timers
     if (autoReconnectTimer.current) {
       clearTimeout(autoReconnectTimer.current);
       autoReconnectTimer.current = null;
     }
     
-    // Reset circuit breaker state for fresh start
-    ConnectionResilience.recordSuccess();
-    ConnectionResilience.recordSuccess(); // Ensure circuit is fully closed
+    stopHealthMonitoring();
     
-    // Reset local state
+    // Full reset of enhanced circuit breaker
+    EnhancedConnectionResilience.reset();
+    
+    // Reset all local state
     setRetryCount(0);
     setConnectionCooldown(false);
-    setShouldAutoReconnect(true); // Re-enable auto-reconnect
+    setShouldAutoReconnect(true);
+    setConnectionQuality('unknown');
     
-    // Clean disconnect current socket
+    // Clean disconnect
     if (socketRef.current) {
       socketRef.current.disconnect();
       socketRef.current = null;
@@ -550,6 +725,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     
     isConnectingRef.current = false;
     roomConnectionRef.current = '';
+    lastSuccessfulConnection.current = 0;
     
     // Attempt fresh connection
     setTimeout(() => {
@@ -557,33 +733,42 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     }, 1000);
     
     return true;
-  }, [connectToServer]);
+  }, [connectToServer, stopHealthMonitoring]);
   
-  // Connection diagnostics for debugging
+  // Enhanced connection diagnostics
   const getConnectionDiagnostics = useCallback(() => {
     return {
-      circuitBreaker: ConnectionResilience.getState(),
+      enhancedCircuitBreaker: EnhancedConnectionResilience.getState(),
+      healthMetrics: healthMonitor.current.getHealthMetrics(),
       connection: {
         isConnected,
         isRetrying,
         retryCount,
         connectionCooldown,
+        connectionQuality,
         roomId: roomConnectionRef.current,
-        peerId: myPeerId.current
+        peerId: myPeerId.current,
+        lastSuccessfulConnection: lastSuccessfulConnection.current
       },
       socket: {
         exists: !!socketRef.current,
         connected: socketRef.current?.connected || false,
-        id: socketRef.current?.id || null
+        id: socketRef.current?.id || null,
+        transport: socketRef.current?.io.engine?.transport?.name || 'unknown'
+      },
+      timers: {
+        autoReconnect: !!autoReconnectTimer.current,
+        healthCheck: !!healthCheckTimer.current
       }
     };
-  }, [isConnected, isRetrying, retryCount, connectionCooldown]);
+  }, [isConnected, isRetrying, retryCount, connectionCooldown, connectionQuality]);
 
   return {
     peerId: myPeerId.current,
     status,
     isRetrying,
     retryCount,
+    connectionQuality,
     messages,
     sendMessage,
     onMessage,
@@ -593,6 +778,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     isSignalingConnected: isConnected,
     // Enhanced debugging and resilience features
     getConnectionDiagnostics,
-    circuitBreakerState: ConnectionResilience.getState()
+    circuitBreakerState: EnhancedConnectionResilience.getState(),
+    healthMetrics: healthMonitor.current.getHealthMetrics()
   };
 }

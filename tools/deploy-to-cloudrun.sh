@@ -43,7 +43,7 @@ gcloud services enable containerregistry.googleapis.com
 echo "🏗️ Building container image..."
 gcloud builds submit --tag $IMAGE_NAME .
 
-# Deploy to Cloud Run
+# Deploy to Cloud Run with anti-cold-start configuration
 echo "🚀 Deploying to Cloud Run..."
 gcloud run deploy $SERVICE_NAME \
     --image $IMAGE_NAME \
@@ -53,10 +53,11 @@ gcloud run deploy $SERVICE_NAME \
     --port 8080 \
     --memory 512Mi \
     --cpu 1 \
-    --min-instances 0 \
+    --min-instances 1 \
     --max-instances 10 \
     --set-env-vars NODE_ENV=production \
-    --set-env-vars PLATFORM="Google Cloud Run"
+    --set-env-vars PLATFORM="Google Cloud Run" \
+    --set-env-vars KEEP_WARM_URL="$SERVICE_URL/health"
 
 # Get the service URL
 SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --region=$REGION --format="value(status.url)")

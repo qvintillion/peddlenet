@@ -196,24 +196,88 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
 // Helper hook for triggering notifications based on messages
 export function useMessageNotifications(roomId: string, displayName: string) {
   const { permission, isSubscribed, settings } = usePushNotifications(roomId);
+  
+  // Track visibility state changes for better mobile background detection
+  useEffect(() => {
+    let lastVisibilityState = document?.visibilityState;
+    let lastHidden = document?.hidden;
+    
+    const handleVisibilityChange = () => {
+      const currentState = document?.visibilityState;
+      const currentHidden = document?.hidden;
+      
+      console.log('📱 VISIBILITY CHANGE detected:', {
+        previous: { state: lastVisibilityState, hidden: lastHidden },
+        current: { state: currentState, hidden: currentHidden },
+        timestamp: Date.now(),
+        event: 'visibilitychange'
+      });
+      
+      lastVisibilityState = currentState;
+      lastHidden = currentHidden;
+    };
+    
+    const handlePageShow = () => {
+      console.log('📱 PAGE SHOW event - app restored from background');
+    };
+    
+    const handlePageHide = () => {
+      console.log('📱 PAGE HIDE event - app going to background');
+    };
+    
+    const handleFocus = () => {
+      console.log('📱 WINDOW FOCUS event - app gained focus');
+    };
+    
+    const handleBlur = () => {
+      console.log('📱 WINDOW BLUR event - app lost focus');
+    };
+    
+    // Add all the mobile-relevant event listeners
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pageshow', handlePageShow);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pageshow', handlePageShow);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
 
   const shouldNotify = useCallback((message: any): boolean => {
+    console.log('🚀🚀🚀 SHOULDNOTIFY ENTRY - ENHANCED MOBILE BACKGROUND DETECTION');
     console.log('🔔 shouldNotify check:', {
-      sender: message.sender,
-      displayName,
+      messageSender: message.sender,
+      myDisplayName: displayName,
       senderMatch: message.sender === displayName,
       settingsEnabled: settings.enabled,
       newMessagesEnabled: settings.newMessages,
       permission,
       isSubscribed,
       documentHidden: typeof document !== 'undefined' ? document.hidden : 'unknown',
-      documentVisibilityState: typeof document !== 'undefined' ? document.visibilityState : 'unknown'
+      documentVisibilityState: typeof document !== 'undefined' ? document.visibilityState : 'unknown',
+      hasFocus: typeof window !== 'undefined' ? document.hasFocus() : 'unknown'
     });
     
-    // Don't notify for our own messages
+    // Don't notify for our own messages (unless in test mode)
     if (message.sender === displayName) {
-      console.log('🔔 Not notifying: own message');
-      return false;
+      // Check for test mode in URL or localStorage
+      const isTestMode = typeof window !== 'undefined' && (
+        window.location.search.includes('testNotifications=true') ||
+        localStorage.getItem('testNotifications') === 'true'
+      );
+      
+      if (isTestMode) {
+        console.log('🧪 TEST MODE: Allowing notification for own message');
+      } else {
+        console.log('🔔 Not notifying: own message (sender:', message.sender, 'vs displayName:', displayName, ')');
+        return false;
+      }
     }
     
     // Check if notifications are enabled
@@ -228,21 +292,90 @@ export function useMessageNotifications(roomId: string, displayName: string) {
       return false;
     }
     
-    // Check if document is hidden (user is not actively viewing)
-    // Use visibilityState as backup since document.hidden might not work in all browsers
-    const isHidden = typeof document !== 'undefined' && 
-      (document.hidden || document.visibilityState === 'hidden');
+    // Enhanced mobile-first notification logic with better background detection
+    const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
-    if (!isHidden) {
-      console.log('🔔 Not notifying: document is visible', { 
-        hidden: document?.hidden, 
-        visibilityState: document?.visibilityState 
+    console.log('🚀 ENHANCED MOBILE DETECTION:', {
+      userAgent: navigator.userAgent,
+      isMobile,
+      platform: navigator.platform,
+      timestamp: Date.now(),
+      triggeredBy: 'mobile-background-detection-fix'
+    });
+    
+    // CRITICAL MOBILE FIX: Check for page visibility events
+    // Mobile browsers often don't fire visibility events correctly when home button is pressed
+    const isPageHidden = typeof document !== 'undefined' && document.hidden;
+    const visibilityState = typeof document !== 'undefined' ? document.visibilityState : 'unknown';
+    const hasFocus = typeof document !== 'undefined' && document.hasFocus();
+    
+    // For mobile devices, be VERY aggressive with notifications
+    if (isMobile) {
+      console.log('📱 MOBILE AGGRESSIVE NOTIFICATION MODE ACTIVE');
+      console.log('📱 Mobile state check:', {
+        isPageHidden,
+        visibilityState,
+        hasFocus,
+        documentExists: typeof document !== 'undefined'
       });
+      
+      // MOBILE STRATEGY: Show notification in ANY of these cases:
+      // 1. Page is explicitly hidden
+      // 2. Visibility state is hidden
+      // 3. Document doesn't have focus
+      // 4. We can't determine the state (safer to notify)
+      // 5. ANY uncertainty at all (mobile browsers are unreliable)
+      
+      const shouldNotifyMobile = (
+        isPageHidden || 
+        visibilityState === 'hidden' || 
+        !hasFocus || 
+        typeof document === 'undefined' ||
+        visibilityState !== 'visible' // Extra safety check
+      );
+      
+      console.log('📱 Mobile notification decision:', {
+        shouldNotifyMobile,
+        reasons: {
+          isPageHidden,
+          visibilityHidden: visibilityState === 'hidden',
+          noFocus: !hasFocus,
+          noDocument: typeof document === 'undefined',
+          notExplicitlyVisible: visibilityState !== 'visible'
+        }
+      });
+      
+      if (shouldNotifyMobile) {
+        console.log('📱 ✅ MOBILE: Showing notification - app likely backgrounded');
+        return true;
+      }
+      
+      // Only skip if we're absolutely certain the app is active and visible
+      console.log('📱 ❌ MOBILE: Skipping notification - app appears definitely active');
+      return false;
+    } else {
+      // Desktop behavior - more conservative
+      const isInBackground = (
+        isPageHidden || 
+        visibilityState === 'hidden' ||
+        !hasFocus
+      );
+      
+      console.log('🖥️ DESKTOP notification check:', {
+        isInBackground,
+        isPageHidden,
+        visibilityState,
+        hasFocus
+      });
+      
+      if (isInBackground) {
+        console.log('🖥️ ✅ DESKTOP: Showing notification - app is backgrounded');
+        return true;
+      }
+      
+      console.log('🖥️ ❌ DESKTOP: Skipping notification - app is in foreground');
       return false;
     }
-    
-    console.log('✅ Should notify: all conditions met');
-    return true;
   }, [displayName, settings, permission, isSubscribed]);
 
   const triggerNotification = useCallback((message: any) => {
@@ -253,31 +386,123 @@ export function useMessageNotifications(roomId: string, displayName: string) {
       return;
     }
 
-    console.log('✅ Attempting to show notification for message:', message);
+    console.log('✅ PROCEEDING WITH NOTIFICATION for message:', message);
     
-    if ('serviceWorker' in navigator) {
+    // ENHANCED MOBILE NOTIFICATION with multiple fallback methods
+    const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    console.log('📱 Mobile notification attempt:', { isMobile, hasServiceWorker: 'serviceWorker' in navigator, hasNotification: 'Notification' in window });
+    
+    // Method 1: Try Service Worker notification (best for mobile)
+    if ('serviceWorker' in navigator && 'Notification' in window) {
+      console.log('🔔 Method 1: Attempting service worker notification');
+      
       navigator.serviceWorker.ready.then(registration => {
-        console.log('🔔 Service worker ready, showing notification');
+        console.log('🔔 Service worker ready, showing notification via SW');
         
         return registration.showNotification(`New Message in "${roomId}"`, {
           body: `${message.sender}: ${message.content}`,
           icon: '/favicon.ico',
-          tag: 'festival-chat-message',
+          badge: '/favicon.ico',
+          tag: `festival-chat-${roomId}`,
           vibrate: [200, 100, 200],
-          requireInteraction: false,
+          requireInteraction: true, // Keep visible until user interacts
+          renotify: true, // Show even if same tag exists
+          timestamp: Date.now(),
           data: {
             url: `/chat/${roomId}`,
             roomId: roomId,
-            messageId: message.id
-          }
+            messageId: message.id,
+            sender: message.sender,
+            content: message.content
+          },
+          actions: [
+            {
+              action: 'open',
+              title: 'Open Chat'
+            },
+            {
+              action: 'dismiss',
+              title: 'Dismiss'
+            }
+          ]
         });
       }).then(() => {
-        console.log('✅ Notification shown successfully');
+        console.log('✅ Method 1 SUCCESS: Service worker notification shown');
       }).catch(error => {
-        console.error('❌ Failed to show notification:', error);
+        console.error('❌ Method 1 FAILED: Service worker notification error:', error);
+        
+        // Method 2: Direct Notification API fallback
+        console.log('🔔 Method 2: Attempting direct notification API');
+        try {
+          const notification = new Notification(`New Message in "${roomId}"`, {
+            body: `${message.sender}: ${message.content}`,
+            icon: '/favicon.ico',
+            tag: `festival-chat-${roomId}`,
+            vibrate: [200, 100, 200],
+            requireInteraction: true
+          });
+          
+          notification.onclick = () => {
+            window.focus();
+            window.location.href = `/chat/${roomId}`;
+            notification.close();
+          };
+          
+          console.log('✅ Method 2 SUCCESS: Direct notification shown');
+        } catch (directError) {
+          console.error('❌ Method 2 FAILED: Direct notification error:', directError);
+          
+          // Method 3: Basic Notification API (last resort)
+          console.log('🔔 Method 3: Attempting basic notification API');
+          tryBasicNotification();
+        }
       });
+    } else if ('Notification' in window) {
+      // Method 2: Direct to Notification API if no service worker
+      console.log('🔔 Method 2: Service worker not available, using direct notification');
+      try {
+        const notification = new Notification(`New Message in "${roomId}"`, {
+          body: `${message.sender}: ${message.content}`,
+          icon: '/favicon.ico',
+          tag: `festival-chat-${roomId}`,
+          vibrate: [200, 100, 200]
+        });
+        
+        notification.onclick = () => {
+          window.focus();
+          window.location.href = `/chat/${roomId}`;
+          notification.close();
+        };
+        
+        console.log('✅ Method 2 SUCCESS: Direct notification shown (no SW)');
+      } catch (error) {
+        console.error('❌ Method 2 FAILED: Direct notification error (no SW):', error);
+        tryBasicNotification();
+      }
     } else {
-      console.warn('⚠️ Service worker not available');
+      console.warn('⚠️ All notification methods unavailable in this browser');
+    }
+    
+    // Method 3: Basic fallback function
+    function tryBasicNotification() {
+      try {
+        console.log('🔔 Method 3: Basic notification fallback');
+        const notification = new Notification(`Festival Chat: ${message.sender}`, {
+          body: message.content,
+          icon: '/favicon.ico'
+        });
+        
+        notification.onclick = () => {
+          window.focus();
+          window.location.href = `/chat/${roomId}`;
+          notification.close();
+        };
+        
+        console.log('✅ Method 3 SUCCESS: Basic notification shown');
+      } catch (basicError) {
+        console.error('❌ Method 3 FAILED: All notification methods exhausted:', basicError);
+      }
     }
   }, [shouldNotify, roomId]);
 

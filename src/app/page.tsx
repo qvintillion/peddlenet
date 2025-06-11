@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { RoomCodeJoin } from '@/components/RoomCode';
+import { useBackgroundNotifications, useGlobalBackgroundNotifications } from '@/hooks/use-background-notifications';
+import { GlobalNotificationSettings } from '@/components/GlobalNotificationSettings';
 
 function slugifyRoomName(roomName: string): string {
   return roomName
@@ -20,6 +22,17 @@ export default function HomePage() {
   const [displayName, setDisplayName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [mode, setMode] = useState<'create' | 'join'>('create');
+  
+  // Background notifications state
+  const { isConnected, subscriptions, setCurrentRoom } = useBackgroundNotifications();
+  
+  // Global notification handler for homepage
+  useGlobalBackgroundNotifications();
+  
+  // Set current room to null when on homepage
+  useEffect(() => {
+    setCurrentRoom(null);
+  }, [setCurrentRoom]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -174,26 +187,42 @@ export default function HomePage() {
             </div>
           </div>
         )}
+        
+        {/* Global Notification Settings */}
+        <GlobalNotificationSettings className="mt-8" />
 
         <div className="mt-8 p-4 bg-gray-800/50 rounded-lg">
           <h3 className="font-semibold mb-2 flex items-center">
-            <span className="mr-2">💡</span>
-            How it works
+            <span className="mr-2">🔔</span>
+            Background Notifications
+            <span className={`ml-2 w-2 h-2 rounded-full ${
+              isConnected ? 'bg-green-500' : 'bg-red-500'
+            }`} />
           </h3>
-          {mode === 'create' ? (
-            <ol className="text-sm text-gray-300 space-y-1">
-              <li>1. Create a room and join automatically</li>
-              <li>2. Share QR code from chat to invite others</li>
-              <li>3. Instant P2P connections (5-10 seconds)</li>
-              <li>4. Works offline once connected!</li>
-            </ol>
+          
+          {subscriptions.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm text-gray-300">
+                You'll get notified for messages in {subscriptions.length} room{subscriptions.length !== 1 ? 's' : ''}:
+              </p>
+              <div className="space-y-1">
+                {subscriptions.map((sub) => (
+                  <div key={sub.roomId} className="flex items-center justify-between p-2 bg-gray-700/50 rounded text-sm">
+                    <span className="text-gray-200">🎤 {sub.roomId}</span>
+                    <button
+                      onClick={() => router.push(`/chat/${sub.roomId}`)}
+                      className="text-purple-400 hover:text-purple-300 text-xs"
+                    >
+                      Rejoin
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
-            <ol className="text-sm text-gray-300 space-y-1">
-              <li>1. Get a Room Code from someone (e.g., "blue-stage-42")</li>
-              <li>2. Enter it in the Room Code field</li>
-              <li>3. Join the conversation instantly</li>
-              <li>4. Room Code is saved for quick rejoin</li>
-            </ol>
+            <p className="text-sm text-gray-400">
+              Join a room to enable background notifications when you're away.
+            </p>
           )}
         </div>
 

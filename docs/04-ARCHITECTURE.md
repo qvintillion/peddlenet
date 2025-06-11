@@ -45,6 +45,40 @@ Festival Chat is a hybrid WebSocket-based real-time messaging platform optimized
 - **Persistence**: Custom SQLite message storage
 - **CORS**: Configured for cross-origin support
 
+### **🧹 Signaling Server Architecture (Cleaned & Simplified)**
+
+**Current Clean Architecture**:
+```
+festival-chat/
+├── signaling-server.js                    # 🟢 ACTIVE: Local development
+├── signaling-server-sqlite-enhanced.js    # 🟢 ACTIVE: Production (Cloud Run)
+├── sqlite-persistence.js                  # 🟢 ACTIVE: Database helper
+├── Dockerfile                             # → Uses sqlite-enhanced
+├── package.json                           # → "server" uses basic version
+└── archive/                               # 🗂️ Safely stored backups
+    ├── signaling-server-*.js              # 📦 All previous versions archived
+    └── [backup files]                     # 📦 Old development iterations
+```
+
+**Development Server** (`signaling-server.js`):
+- **Purpose**: Local development and testing
+- **Features**: In-memory storage, basic room handling, mobile-accessible URLs
+- **Used by**: `npm run server` and `npm run dev:with-server`
+- **When to use**: Local development, testing, quick prototyping
+
+**Production Server** (`signaling-server-sqlite-enhanced.js`):
+- **Purpose**: Production deployment on Google Cloud Run
+- **Features**: SQLite persistence, mobile optimization, health monitoring, connection throttling
+- **Used by**: Dockerfile and Cloud Run deployment
+- **When to use**: Production deployment, staging environments, performance testing
+
+**Benefits of Clean Architecture**:
+- ✅ **Clear separation** - Development vs production environments
+- ✅ **Reduced confusion** - Only 2 active server files vs previously 6+ versions
+- ✅ **Better maintenance** - Single source of truth for each environment
+- ✅ **Easier collaboration** - Team knows exactly which files are active
+- ✅ **Backup preservation** - All old versions safely archived for rollback if needed
+
 ### **Infrastructure**
 - **Frontend Hosting**: Firebase Hosting + Vercel
 - **Backend Hosting**: Google Cloud Run
@@ -328,7 +362,220 @@ AND id NOT IN (
 );
 ```
 
-## 🛡️ Security Architecture
+## 🔔 Notification Architecture
+
+### **Cross-Room Background Notification System** 🎯
+
+Festival Chat features a sophisticated **global notification system** that works across all rooms when users are away from the app. This breakthrough feature ensures users never miss important messages from any subscribed rooms.
+
+#### **Notification Flow Architecture**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  Global Notification System                │
+├─────────────────────────────────────────────────────────────┤
+│  Homepage (Global Handler)     Chat Rooms (Room Handler)   │
+│  ┌─────────────────────────┐   ┌─────────────────────────┐   │
+│  │ useGlobalNotifications  │   │ useRoomNotifications    │   │
+│  │ - Cross-room alerts     │   │ - Room-specific setup   │   │
+│  │ - Permission management │   │ - Subscription toggle   │   │
+│  │ - Service worker API    │   │ - Custom settings       │   │
+│  └─────────────────────────┘   └─────────────────────────┘   │
+├─────────────────────────────────────────────────────────────┤
+│              Background WebSocket Connection                │
+│  ┌─────────────────────────────────────────────────────┐     │
+│  │ Background Notification Manager (Singleton)         │     │
+│  │ - Persistent connection to WebSocket server         │     │
+│  │ - Subscription management for multiple rooms        │     │
+│  │ - Global + room-specific message handlers          │     │
+│  │ - localStorage persistence of subscriptions        │     │
+│  └─────────────────────────────────────────────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### **Notification Permission Flow** 🔐
+
+```typescript
+// 1. Homepage: Global Permission Request
+function GlobalNotificationSettings() {
+  const { requestPermission, subscribeToNotifications } = usePushNotifications();
+  
+  // One-time browser permission request
+  const enableNotifications = async () => {
+    const permission = await requestPermission(); // Browser prompt
+    if (permission === 'granted') {
+      await subscribeToNotifications(); // Service worker setup
+    }
+  };
+}
+
+// 2. Chat Room: Room-Specific Subscription
+function NotificationSettings({ roomId }) {
+  const { subscribeToRoom } = useBackgroundNotifications();
+  
+  // Subscribe to this specific room's notifications
+  const enableRoomNotifications = () => {
+    subscribeToRoom(roomId, displayName);
+  };
+}
+```
+
+#### **Background Notification Architecture** 🔄
+
+```typescript
+// Background Manager (Singleton)
+class BackgroundNotificationManager {
+  private socket: Socket; // Persistent WebSocket connection
+  private globalHandler: (message: Message) => void; // Homepage handler
+  private roomHandlers: Map<string, Function>; // Room-specific handlers
+  private subscriptions: Map<string, Subscription>; // Active room subscriptions
+  
+  // Message handling priority:
+  onMessage(message) {
+    const roomHandler = this.roomHandlers.get(message.roomId);
+    if (roomHandler) {
+      // Use room-specific handler if available (user in room)
+      roomHandler(message);
+    } else if (this.globalHandler) {
+      // Fallback to global handler (user on homepage/other pages)
+      this.globalHandler(message);
+    }
+  }
+}
+```
+
+#### **Notification Triggers** 📱
+
+**Service Worker Notifications** (Primary Method):
+```typescript
+// Global notification handler for cross-room alerts
+const globalHandler = (message: Message) => {
+  navigator.serviceWorker.ready.then(registration => {
+    return registration.showNotification(`New Message in "${message.roomId}"`, {
+      body: `${message.sender}: ${message.content}`,
+      icon: '/favicon.ico',
+      badge: '/favicon.ico',
+      tag: `festival-chat-${message.roomId}`,
+      vibrate: [200, 100, 200],
+      requireInteraction: true,
+      renotify: true,
+      data: {
+        url: `/chat/${message.roomId}`,
+        roomId: message.roomId,
+        messageId: message.id
+      },
+      actions: [
+        { action: 'open', title: 'Open Chat' },
+        { action: 'dismiss', title: 'Dismiss' }
+      ]
+    });
+  });
+};
+```
+
+**Fallback Notifications** (Backup Method):
+```typescript
+// Direct Notification API fallback
+try {
+  const notification = new Notification(`New Message in "${roomId}"`, {
+    body: `${message.sender}: ${message.content}`,
+    icon: '/favicon.ico',
+    vibrate: [200, 100, 200]
+  });
+  
+  notification.onclick = () => {
+    window.focus();
+    window.location.href = `/chat/${roomId}`;
+    notification.close();
+  };
+} catch (error) {
+  console.warn('Notification fallback failed:', error);
+}
+```
+
+#### **Mobile Notification Optimization** 📲
+
+```typescript
+// Mobile-specific notification logic
+const shouldNotify = (message: Message): boolean => {
+  // Enhanced mobile background detection
+  const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const isPageHidden = document.hidden;
+  const visibilityState = document.visibilityState;
+  const hasFocus = document.hasFocus();
+  
+  if (isMobile) {
+    // Aggressive notification strategy for mobile
+    // Show notification if ANY uncertainty about app state
+    return (
+      isPageHidden || 
+      visibilityState === 'hidden' || 
+      !hasFocus || 
+      visibilityState !== 'visible'
+    );
+  } else {
+    // Conservative desktop strategy
+    return isPageHidden || visibilityState === 'hidden' || !hasFocus;
+  }
+};
+```
+
+#### **Subscription Management** 💾
+
+```typescript
+interface NotificationSubscription {
+  roomId: string;
+  displayName: string;
+  subscribed: boolean;
+  lastSeen: number; // For cleanup
+}
+
+// Persistent storage
+class SubscriptionManager {
+  // Save to localStorage
+  saveSubscriptions() {
+    const subscriptions = Array.from(this.subscriptions.values());
+    localStorage.setItem('background_notification_subscriptions', JSON.stringify(subscriptions));
+  }
+  
+  // Restore on app startup
+  loadSubscriptions() {
+    const saved = localStorage.getItem('background_notification_subscriptions');
+    if (saved) {
+      const data = JSON.parse(saved);
+      // Only restore recent subscriptions (24h)
+      data.forEach(sub => {
+        if (Date.now() - sub.lastSeen < 24 * 60 * 60 * 1000) {
+          this.subscriptions.set(sub.roomId, sub);
+        }
+      });
+    }
+  }
+}
+```
+
+#### **Key Features** ✨
+
+1. **🌍 Global Scope**: Works across all pages, not just chat rooms
+2. **🔄 Persistent Connection**: Background WebSocket maintains subscriptions
+3. **📱 Mobile Optimized**: Aggressive detection for mobile browsers
+4. **💾 Persistence**: Subscriptions survive page refreshes and app restarts
+5. **🎯 Smart Routing**: Room-specific vs global handler priority
+6. **⚡ Instant Delivery**: Real-time notifications via WebSocket
+7. **🔧 Fallback System**: Multiple notification methods for reliability
+8. **🧹 Auto Cleanup**: 24-hour subscription expiry
+
+#### **Notification Scopes** 🎯
+
+| Scope | Handler | When Active | Purpose |
+|-------|---------|-------------|---------|
+| **Global** | `useGlobalBackgroundNotifications()` | Homepage, any non-chat page | Cross-room notifications when away |
+| **Room-Specific** | `useRoomBackgroundNotifications()` | Inside chat rooms | Room-focused notifications with context |
+| **Background Service** | `BackgroundNotificationManager` | Always (singleton) | Persistent connection management |
+
+**This notification architecture ensures users never miss important messages, regardless of which page they're on or how they navigate the app.** 🎪📱
+
+---
 
 ### **Data Protection**
 - **No authentication** - Anonymous usage only
@@ -411,6 +658,25 @@ const environment = {
 const serverUrl = environment.development 
   ? `http://${detectedIP}:3001`
   : 'wss://peddlenet-websocket-server-[hash]-uc.a.run.app';
+```
+
+### **Deployment Server Selection**
+```bash
+# Development workflow
+npm run server                    # Uses signaling-server.js (in-memory)
+npm run dev:with-server          # Frontend + basic server
+
+# Production deployment
+npm run deploy:firebase:complete  # Uses signaling-server-sqlite-enhanced.js
+./deploy.sh                      # Commits to GitHub → Cloud Run deployment
+```
+
+**Docker Configuration**:
+```dockerfile
+# Dockerfile automatically uses enhanced production server
+COPY signaling-server-sqlite-enhanced.js ./
+COPY sqlite-persistence.js ./
+# Starts with full SQLite + mobile optimizations
 ```
 
 ## 📈 Performance Architecture

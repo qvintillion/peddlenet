@@ -1,4 +1,7 @@
-// signaling-server-sqlite.js - Enhanced for persistent messaging with SQLite
+// signaling-server-sqlite-backup.js - Backup of original SQLite server v2.1.0
+// Created: June 10, 2025 - Before adding enhanced connection stability features
+// This was the working production version with SQLite persistence and room codes
+
 const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
@@ -99,62 +102,6 @@ const CONNECTION_LIMIT = 15; // Increased from 5 to 15 for mobile compatibility
 const CONNECTION_WINDOW = 60000; // 1 minute window
 const THROTTLE_DURATION = 10000; // Reduced from 30s to 10s for faster recovery
 
-// Connection throttling middleware
-function connectionThrottleMiddleware(req, res, next) {
-  const clientIP = req.headers['x-forwarded-for'] || 
-                   req.headers['x-real-ip'] || 
-                   req.connection.remoteAddress || 
-                   req.socket.remoteAddress || 
-                   'unknown';
-  
-  const now = Date.now();
-  const attempts = connectionAttempts.get(clientIP) || { count: 0, lastAttempt: 0, blocked: false };
-  
-  // Reset counter if window expired
-  if (now - attempts.lastAttempt > CONNECTION_WINDOW) {
-    attempts.count = 0;
-    attempts.blocked = false;
-  }
-  
-  // Check if currently throttled
-  if (attempts.blocked && (now - attempts.lastAttempt) < THROTTLE_DURATION) {
-    console.log(`🚫 Connection throttled for IP: ${clientIP} (${attempts.count} attempts)`);
-    return res.status(429).json({ 
-      error: 'Too many connection attempts', 
-      retryAfter: Math.ceil((THROTTLE_DURATION - (now - attempts.lastAttempt)) / 1000)
-    });
-  }
-  
-  // Increment counter
-  attempts.count++;
-  attempts.lastAttempt = now;
-  
-  // Block if limit exceeded
-  if (attempts.count > CONNECTION_LIMIT) {
-    attempts.blocked = true;
-    console.log(`⚠️ IP ${clientIP} exceeded connection limit (${attempts.count}/${CONNECTION_LIMIT})`);
-    connectionAttempts.set(clientIP, attempts);
-    return res.status(429).json({ 
-      error: 'Connection rate limit exceeded', 
-      retryAfter: Math.ceil(THROTTLE_DURATION / 1000)
-    });
-  }
-  
-  connectionAttempts.set(clientIP, attempts);
-  
-  // Clean up old entries periodically
-  if (Math.random() < 0.01) { // 1% chance to clean up
-    const cutoff = now - CONNECTION_WINDOW * 2;
-    for (const [ip, data] of connectionAttempts.entries()) {
-      if (data.lastAttempt < cutoff) {
-        connectionAttempts.delete(ip);
-      }
-    }
-  }
-  
-  next();
-}
-
 // Initialize database
 async function initializeDatabase() {
   try {
@@ -179,9 +126,6 @@ async function initializeDatabase() {
 // Middleware
 app.use(cors());
 app.use(express.json());
-
-// Phase 2: Apply connection throttling via Socket.IO middleware instead of Express
-// (This avoids path-to-regexp conflicts with wildcard patterns)
 
 // Root endpoint for service info
 app.get('/', (req, res) => {

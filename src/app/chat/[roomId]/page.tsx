@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useWebSocketChat } from '@/hooks/use-websocket-chat';
 import { useMessageNotifications } from '@/hooks/use-push-notifications';
+import { useRoomBackgroundNotifications } from '@/hooks/use-background-notifications';
+import { useBackgroundNotifications } from '@/hooks/use-background-notifications';
 import { MobileConnectionError, MobileSignalingStatus, MobileNetworkInfo } from '@/components/MobileConnectionError';
 import MobileDiagnostics from '@/components/MobileDiagnostics';
 import { MobileConnectionDebug } from '@/components/MobileConnectionDebug';
@@ -13,6 +15,7 @@ import { NetworkStatus, ConnectionError } from '@/components/NetworkStatus';
 import { RoomCodeDisplay } from '@/components/RoomCode';
 import { NotificationSettings } from '@/components/NotificationSettings';
 import { ConnectionTest } from '@/components/ConnectionTest';
+import { NotificationTest } from '@/components/NotificationTest';
 // Import QRPeerUtils dynamically to avoid initialization issues
 // import { QRPeerUtils } from '@/utils/qr-peer-utils';
 import { RoomCodeDiagnosticPanel } from '@/components/RoomCodeDiagnostics';
@@ -50,6 +53,25 @@ export default function ChatRoomPage() {
 
   // Set up message notifications
   const { triggerNotification } = useMessageNotifications(roomId, displayName);
+  
+  // Set up background notifications for when user navigates away
+  useRoomBackgroundNotifications(roomId, displayName);
+  
+  // Track current room for background notification manager
+  const { setCurrentRoom } = useBackgroundNotifications();
+  
+  // Set current room when component mounts and clean up when unmounting
+  useEffect(() => {
+    if (roomId && displayName) {
+      console.log('📍 Setting current room for background notifications:', roomId);
+      setCurrentRoom(roomId);
+    }
+    
+    return () => {
+      console.log('📍 Clearing current room for background notifications');
+      setCurrentRoom(null);
+    };
+  }, [roomId, displayName, setCurrentRoom]);
 
 
 
@@ -186,12 +208,12 @@ export default function ChatRoomPage() {
     setMessages(serverMessages);
   }, [serverMessages]);
 
-  // Set up push notifications for real-time messages
+  // Set up push notifications for real-time messages (simple approach)
   useEffect(() => {
     const cleanup = onMessage((message: Message) => {
       console.log('📨 Received real-time message:', message);
       
-      // Trigger push notification if appropriate
+      // Simple: Let the notification system handle visibility detection
       triggerNotification(message);
     });
     return cleanup;
@@ -626,6 +648,13 @@ export default function ChatRoomPage() {
             {/* Mobile Network Debug */}
             <MobileConnectionDebug 
               serverUrl={`http://localhost:3001`} // Will be auto-detected
+              className=""
+            />
+            
+            {/* Notification Test Center */}
+            <NotificationTest 
+              roomId={roomId}
+              displayName={displayName}
               className=""
             />
             

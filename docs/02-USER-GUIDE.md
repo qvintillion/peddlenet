@@ -128,7 +128,186 @@ Festival Chat is designed for instant, no-setup messaging at festivals, events, 
 ✅ Stage announcements ("Scan to join backstage chat")
 ```
 
-## 💬 Messaging Features
+## 🔔 Notification System
+
+### **Never Miss a Message**
+
+Festival Chat features a breakthrough **global notification system** that ensures you receive alerts for messages from any subscribed rooms, even when you're not actively viewing the chat.
+
+### **How Notifications Work**
+
+**Step 1: Enable Notifications (One Time)**
+1. Visit the Festival Chat homepage
+2. Look for the "Notifications" section
+3. Click "🔔 Enable Notifications"
+4. Allow browser notifications when prompted
+5. ✅ You're now set up for all future rooms!
+
+**Step 2: Subscribe to Rooms (Per Room)**
+1. Join any chat room
+2. Click the 🔔 button in the chat header
+3. Toggle on "Room Notifications"
+4. Customize your notification preferences
+5. ✅ You'll get notified for this room when away!
+
+### **Notification Features**
+
+#### **🌍 Global Scope**
+- **Cross-Room Alerts**: Get notified for any subscribed room
+- **Homepage Notifications**: Receive alerts even when browsing homepage
+- **Multi-Room Management**: Manage notifications for multiple rooms
+- **Persistent Subscriptions**: Settings survive page refreshes and app restarts
+
+#### **📱 Smart Mobile Detection**
+- **Background Detection**: Automatically detects when app is backgrounded
+- **Home Button Support**: Triggers when you press phone's home button
+- **Tab Switching**: Detects when you switch to other browser tabs
+- **Lock Screen**: Works even when phone is locked
+
+#### **⚡ Real-Time Delivery**
+- **Instant Alerts**: Notifications appear within seconds of message
+- **Rich Content**: Shows sender name and message preview
+- **Direct Links**: Tap notification to jump directly to conversation
+- **Action Buttons**: "Open Chat" or "Dismiss" options
+
+### **Notification Settings**
+
+#### **Global Settings (Homepage)**
+```markdown
+🔔 Master Controls:
+✅ Enable notifications (master switch)
+✅ New messages (get alerts for chat messages)
+⚪ User joined (when someone joins room)
+⚪ User left (when someone leaves room)
+```
+
+#### **Room-Specific Settings (In Chat)**
+```markdown
+🎪 Per-Room Controls:
+✅ Room notifications (subscribe to this room)
+✅ All messages (every message triggers notification)
+⚪ @mentions only (only when mentioned by name)
+⚪ Important only (system messages only)
+```
+
+### **Mobile Notification Best Practices**
+
+#### **✅ For Best Results:**
+- **Allow Permissions**: Always allow browser notifications when prompted
+- **Keep Browser Open**: Leave Festival Chat tab open in browser
+- **Stable Connection**: Ensure good WiFi or cellular signal
+- **Update Browser**: Use latest version of Chrome/Safari for best support
+- **Add to Home Screen**: Consider adding Festival Chat to phone home screen
+
+#### **📱 Mobile-Specific Tips:**
+```markdown
+iPhone Users:
+- Enable "Web App" notifications in Safari settings
+- Keep Safari tab active for best notification delivery
+- Consider using "Add to Home Screen" for app-like experience
+
+Android Users:
+- Chrome provides excellent notification support
+- Ensure Festival Chat has notification permissions
+- Background tabs receive notifications reliably
+```
+
+### **Notification Scenarios**
+
+#### **🎪 Festival Use Cases:**
+
+**VIP Area Coordination:**
+```markdown
+Scenario: You're subscribed to "Mainstage VIP" room
+1. You step away to get food
+2. Someone posts "Artist meet & greet in 5 mins!"
+3. 🔔 Notification appears on your phone
+4. Tap notification → Jump back to VIP chat
+5. Join the meet & greet in time!
+```
+
+**Multi-Room Management:**
+```markdown
+Scenario: You're in multiple festival groups
+1. Subscribed to: "Main Squad", "VIP Access", "Food Crew"
+2. Browsing festival map on homepage
+3. 🔔 "Food Crew": "Best tacos at tent #42!"
+4. 🔔 "VIP Access": "Backstage tour starting now"
+5. Choose which notification to follow!
+```
+
+**After-Party Planning:**
+```markdown
+Scenario: Festival day ends, planning continues
+1. Still subscribed to "Festival Squad 2024"
+2. At hotel, browsing other apps
+3. 🔔 "After party location changed to Hotel Z"
+4. Tap notification → Get updated location
+5. Don't miss the after-party!
+```
+
+### **Troubleshooting Notifications**
+
+#### **Not Receiving Notifications?**
+```markdown
+Quick Fixes:
+1. ✅ Check browser notification permissions
+2. ✅ Verify "Enable Notifications" is on (homepage)
+3. ✅ Ensure room notifications are enabled (in chat)
+4. ✅ Test with "Send Test Notification" button
+5. ✅ Try refreshing the page and re-enabling
+```
+
+#### **Mobile Not Working?**
+```markdown
+Mobile Troubleshooting:
+1. 🔄 Refresh Festival Chat page
+2. 📱 Check phone notification settings
+3. 🌐 Ensure good internet connection
+4. 🔔 Re-enable notifications from homepage
+5. 📋 Test with different browser if needed
+```
+
+#### **Too Many Notifications?**
+```markdown
+Managing Notification Volume:
+1. 🎛️ Turn off notifications for inactive rooms
+2. ⚙️ Set to "@mentions only" in busy rooms
+3. 🔕 Use "Do Not Disturb" during events
+4. 🧹 Clean up old room subscriptions regularly
+```
+
+### **Privacy & Notifications**
+
+- **Anonymous**: Notifications don't reveal your identity
+- **Local Only**: Notification preferences stored on your device
+- **Temporary**: Subscriptions auto-expire after 24 hours
+- **Secure**: All notifications encrypted via HTTPS
+- **No Tracking**: We don't track notification analytics
+
+### **Advanced Notification Features**
+
+#### **🔄 Subscription Management**
+```markdown
+Automatic Features:
+✅ Auto-subscribe when joining rooms
+✅ Auto-cleanup after 24 hours
+✅ Restore subscriptions after page refresh
+✅ Sync across multiple tabs
+```
+
+#### **⚡ Performance Optimized**
+```markdown
+Efficiency Features:
+✅ Battery-efficient background connection
+✅ Minimal data usage for notifications
+✅ Smart retry logic for failed deliveries
+✅ Multiple fallback notification methods
+```
+
+**The notification system ensures you stay connected to your festival community, even when exploring other parts of the event or using other apps!** 🎪📱
+
+---
 
 ### **Basic Messaging**
 - **Real-time**: Messages appear instantly on all devices

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
 
 interface NotificationSettingsProps {
@@ -83,16 +84,10 @@ export function NotificationSettings({ roomId, className = '' }: NotificationSet
 
         {/* Permission & Subscription Status */}
         {permission === 'default' && (
-          <div className="p-3 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-800 mb-2">
-              📱 Get notified of new messages when the app is in the background
+          <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+            <p className="text-sm text-yellow-800 mb-2">
+              ⚠️ Notifications not enabled. <Link href="/" className="underline font-medium">Enable on homepage</Link> to get notified for this room.
             </p>
-            <button
-              onClick={handlePermissionRequest}
-              className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
-            >
-              Enable Notifications
-            </button>
           </div>
         )}
 
@@ -111,26 +106,34 @@ export function NotificationSettings({ roomId, className = '' }: NotificationSet
 
         {permission === 'granted' && (
           <>
-            {/* Subscription Toggle */}
-            <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
-              <div>
-                <p className="font-medium text-sm text-gray-900">Push Notifications</p>
-                <p className="text-xs text-gray-600">
-                  Receive notifications when app is backgrounded
-                </p>
-              </div>
-              <button
-                onClick={handleSubscriptionToggle}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  isSubscribed ? 'bg-purple-600' : 'bg-gray-200'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    isSubscribed ? 'translate-x-6' : 'translate-x-1'
+            {/* Room Subscription Toggle */}
+            <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="font-medium text-sm text-green-900">✓ Room Notifications</p>
+                  <p className="text-xs text-green-700">
+                    Get notified for messages in this room when you're away
+                  </p>
+                </div>
+                <button
+                  onClick={handleSubscriptionToggle}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    isSubscribed ? 'bg-green-600' : 'bg-gray-300'
                   }`}
-                />
-              </button>
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      isSubscribed ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+              <p className="text-xs text-green-600">
+                {isSubscribed 
+                  ? "✓ You'll get notified when away from this room" 
+                  : "Toggle on to get notifications for this room"
+                }
+              </p>
             </div>
 
             {/* Notification Settings */}

@@ -24,12 +24,18 @@
 9. **[Legacy Roadmap](./10-NEXT-STEPS-ROADMAP.md)** - Previous evolution planning
 10. **[Comprehensive Next Steps](./12-COMPREHENSIVE-NEXT-STEPS.md)** - ⭐ **Current roadmap and priorities**
 
+## 🚨 Critical Updates
+
+### **Recent Fixes (June 2025)**
+- **[CRITICAL-FIX-JUNE-2025.md](./CRITICAL-FIX-JUNE-2025.md)** - ⭐ **Mobile notifications & deployment issues resolved**
+
 ## 📂 Archive & Historical
 
 ### **Archive**
 - **[Archive](./archive/)** - Historical documentation and deprecated guides
-  - **[Old Documentation](./archive/old-documentation/)** - Previous documentation versions
-  - **[Archive Summary](./archive/archive.md)** - What's in the archive
+  - **[Deployment Logs](./archive/deployment-logs/)** - June 2025 debugging logs (resolved)
+  - **[Cross-Room System](./archive/Cross-Room-Notification-System-Technical-Summary.md)** - Multi-room functionality (archived)
+  - **[Archive Index](./archive/README.md)** - Complete archive contents
 
 ## 🎯 Current Status
 
@@ -43,18 +49,22 @@
 
 ```
 docs/
-├── 01-QUICK-START.md              # ⭐ Start here for new users
-├── 02-USER-GUIDE.md               # Complete user documentation  
-├── 04-ARCHITECTURE.md             # Technical system overview
-├── 06-DEPLOYMENT.md               # Production deployment
-├── 07-MOBILE-OPTIMIZATION.md     # Mobile-first design
-├── 08-CONNECTION-RESILIENCE.md   # Reliability patterns
-├── 09-PERFORMANCE-MONITORING.md  # Analytics and metrics
-├── 10-NEXT-STEPS-ROADMAP.md      # Legacy roadmap
-├── 11-TROUBLESHOOTING.md         # Problem solving
-├── 12-COMPREHENSIVE-NEXT-STEPS.md # ⭐ Current strategic plan
-├── README.md                      # This index
-└── archive/                       # Historical documentation
+├── 01-QUICK-START.md               # ⭐ Start here for new users
+├── 02-USER-GUIDE.md                # Complete user documentation  
+├── 04-ARCHITECTURE.md              # Technical system overview
+├── 06-DEPLOYMENT.md                # Production deployment
+├── 07-MOBILE-OPTIMIZATION.md      # Mobile-first design
+├── 08-CONNECTION-RESILIENCE.md    # Reliability patterns
+├── 09-PERFORMANCE-MONITORING.md   # Analytics and metrics
+├── 10-NEXT-STEPS-ROADMAP.md       # Legacy roadmap
+├── 11-TROUBLESHOOTING.md           # Problem solving
+├── 12-COMPREHENSIVE-NEXT-STEPS.md  # ⭐ Current strategic plan
+├── CRITICAL-FIX-JUNE-2025.md       # ⭐ Recent critical fixes
+├── README.md                       # This index
+└── archive/                        # Historical documentation
+    ├── deployment-logs/            # June 2025 debugging logs
+    ├── Cross-Room-System.md        # Multi-room functionality
+    └── README.md                   # Archive contents
 ```
 
 ## 🏷️ Documentation Categories

@@ -1,12 +1,19 @@
 #!/bin/bash
 
 # Super Quick Firebase Deploy - Minimal steps for faster iteration
-# Use this for frequent deployments during development
+# Use for rapid iteration during development
+# FIXED: Now deploys hosting + functions with cache-busting
 
 set -e
 
-echo "⚡ SUPER QUICK Firebase Deploy"
-echo "============================"
+echo "⚡ SUPER QUICK Firebase Deploy (Fixed + Cache-Bust)"
+echo "=================================================="
+
+# Cache bust - clear builds to ensure fresh deployment
+echo "🧹 Cache bust: clearing builds..."
+rm -rf .next/ > /dev/null 2>&1 || true
+rm -rf functions/.next/ > /dev/null 2>&1 || true
+rm -rf functions/lib/ > /dev/null 2>&1 || true
 
 # Just copy the existing environment (assuming it's correct)
 if [ -f .env.firebase ]; then
@@ -25,10 +32,12 @@ cd functions
 npm run build > /dev/null 2>&1
 cd ..
 
-echo "🚀 Deploying Functions..."
-firebase deploy --only functions
+# Deploy BOTH hosting and functions (this was the missing piece!)
+echo "🚀 Deploying hosting + functions..."
+firebase deploy --only hosting,functions
 
 echo ""
 echo "✅ Super Quick Deploy Complete!"
 echo "🔥 URL: https://festival-chat-peddlenet.web.app"
 echo "⚡ Time saved by skipping health checks and verbosity"
+echo "🧹 Cache-bust applied - fresh deployment guaranteed"
