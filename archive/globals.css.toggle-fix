@@ -1,0 +1,2 @@
+/* Additional CSS for toggle switches */
+.dot {\n  transition: transform 0.2s ease;\n}

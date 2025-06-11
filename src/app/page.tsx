@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { RoomCodeJoin } from '@/components/RoomCode';
 import { useBackgroundNotifications, useGlobalBackgroundNotifications } from '@/hooks/use-background-notifications';
-import { GlobalNotificationSettings } from '@/components/GlobalNotificationSettings';
+import { CompactGlobalNotificationBanner } from '@/components/CompactGlobalNotificationBanner';
+import { JoinedRooms } from '@/components/JoinedRooms';
+import { RecentRooms } from '@/components/RecentRooms';
+import { PublicRooms } from '@/components/PublicRooms';
 
 function slugifyRoomName(roomName: string): string {
   return roomName
@@ -24,7 +27,7 @@ export default function HomePage() {
   const [mode, setMode] = useState<'create' | 'join'>('create');
   
   // Background notifications state
-  const { isConnected, subscriptions, setCurrentRoom } = useBackgroundNotifications();
+  const { setCurrentRoom } = useBackgroundNotifications();
   
   // Global notification handler for homepage
   useGlobalBackgroundNotifications();
@@ -75,24 +78,23 @@ export default function HomePage() {
     }
   };
 
-  // Suggested room names for events
-  const suggestedNames = [
-    'Main Stage Chat',
-    'Food Court Meetup',
-    'Lost & Found',
-    'Ride Share',
-    'After Party Planning',
-    'VIP Lounge'
-  ];
-
   return (
     <main className="min-h-screen bg-gradient-to-br from-purple-900 via-black to-purple-900 text-white px-6 py-12 flex flex-col items-center">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <div className="text-6xl mb-4">🎵</div>
+          <div className="flex justify-center mb-4">
+            <img 
+              src="/peddlenet-logo.svg" 
+              alt="PeddleNet Logo" 
+              className="w-20 h-16"
+            />
+          </div>
           <h1 className="text-4xl font-bold mb-2">PeddleNet</h1>
           <p className="text-purple-200">Create instant P2P chat rooms</p>
         </div>
+        
+        {/* Compact Global Notification Banner */}
+        <CompactGlobalNotificationBanner className="mb-6" />
         
         {/* Mode Toggle */}
         <div className="flex mb-6 bg-gray-800 rounded-lg p-1">
@@ -140,24 +142,6 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Quick suggestions */}
-            <div className="space-y-2">
-              <p className="text-sm text-purple-200">Quick suggestions:</p>
-              <div className="flex flex-wrap gap-2">
-                {suggestedNames.map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    onClick={() => setRoomName(suggestion)}
-                    className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded-full text-sm transition-colors"
-                    disabled={isCreating}
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <button
               type="submit"
               disabled={!roomName.trim() || isCreating}
@@ -165,70 +149,43 @@ export default function HomePage() {
             >
               {isCreating ? '🚀 Creating Room...' : '🎪 Create & Join Room'}
             </button>
-          </form>
-        ) : (
-          /* Join Room Form - Room Code Only */
-          <div className="space-y-6">
-            {/* Room Code Join - Primary Method */}
-            <RoomCodeJoin className="" />
             
             {/* Festival Reconnection Tips */}
             <div className="mt-6 p-4 bg-gray-800/50 rounded-lg">
               <h3 className="font-semibold mb-2 flex items-center">
                 <span className="mr-2">🎪</span>
-                Festival Reconnection
+                Festival Room Creation
               </h3>
               <ul className="text-sm text-gray-300 space-y-1">
-                <li>• Lost connection? Recent rooms show your history</li>
-                <li>• Room codes work even after phone refresh</li>
-                <li>• Share room codes with friends as backup</li>
-                <li>• All conversations preserved automatically</li>
+                <li>• Your room gets a unique code others can use to join</li>
+                <li>• Share the QR code or room code with your festival crew</li>
+                <li>• Room stays active even if you temporarily disconnect</li>
+                <li>• Already have a room? Use "Join Room" tab above</li>
               </ul>
             </div>
+          </form>
+        ) : (
+          /* Join Room Section - Enhanced Layout */
+          <div className="space-y-6">
+            {/* Room Code Join - Primary Method */}
+            <div>
+              <RoomCodeJoin className="" />
+            </div>
+            
+            {/* Joined Rooms Section */}
+            <JoinedRooms className="" />
+            
+            {/* Recent Rooms Section */}
+            <RecentRooms className="" />
+            
+            {/* Public Rooms - Moved from Create Room */}
+            <PublicRooms className="" />
           </div>
         )}
-        
-        {/* Global Notification Settings */}
-        <GlobalNotificationSettings className="mt-8" />
-
-        <div className="mt-8 p-4 bg-gray-800/50 rounded-lg">
-          <h3 className="font-semibold mb-2 flex items-center">
-            <span className="mr-2">🔔</span>
-            Background Notifications
-            <span className={`ml-2 w-2 h-2 rounded-full ${
-              isConnected ? 'bg-green-500' : 'bg-red-500'
-            }`} />
-          </h3>
-          
-          {subscriptions.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-sm text-gray-300">
-                You'll get notified for messages in {subscriptions.length} room{subscriptions.length !== 1 ? 's' : ''}:
-              </p>
-              <div className="space-y-1">
-                {subscriptions.map((sub) => (
-                  <div key={sub.roomId} className="flex items-center justify-between p-2 bg-gray-700/50 rounded text-sm">
-                    <span className="text-gray-200">🎤 {sub.roomId}</span>
-                    <button
-                      onClick={() => router.push(`/chat/${sub.roomId}`)}
-                      className="text-purple-400 hover:text-purple-300 text-xs"
-                    >
-                      Rejoin
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400">
-              Join a room to enable background notifications when you're away.
-            </p>
-          )}
-        </div>
 
         {displayName && (
           <div className="mt-4 text-center text-sm text-purple-200">
-            Creating as: <span className="font-semibold">{displayName}</span>
+            Peddling as: <span className="font-semibold">{displayName}</span>
             <button
               onClick={() => {
                 const newName = prompt('Change display name:', displayName);

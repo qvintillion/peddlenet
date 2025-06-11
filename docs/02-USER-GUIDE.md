@@ -46,12 +46,12 @@ Festival Chat is designed for instant, no-setup messaging at festivals, events, 
 5. Share the **room code** or **QR code** with others
 6. Wait for people to join and start chatting!
 
-### **Method 3: Rejoin Recent Room**
+### **Method 3: Enter Recent Room**
 
 **Return to previous conversations:**
 1. Go to Festival Chat website
 2. Recent rooms appear as clickable cards
-3. Click any recent room to rejoin instantly
+3. Click "Enter" on any recent room to join instantly
 4. Continue where you left off!
 
 ## 🎛️ Interface Guide
@@ -80,7 +80,7 @@ Festival Chat is designed for instant, no-setup messaging at festivals, events, 
 
 ```
 ┌─────────────────────────────────┐
-│  ← 🎪 bright-stage-42           │  ← Back + Room info
+│  [🎨 Logo] bright-stage-42        │  ← Interactive logo + Room info
 ├─────────────────────────────────┤
 │  🎫 Room Code: bright-stage-42  │  ← Share info
 │  [📋 Copy] [🔗 QR Code]         │
@@ -128,11 +128,265 @@ Festival Chat is designed for instant, no-setup messaging at festivals, events, 
 ✅ Stage announcements ("Scan to join backstage chat")
 ```
 
-## 🔔 Notification System
+## ❤️ Favorites System
 
-### **Never Miss a Message**
+### **Never Lose Track of Your Rooms**
 
-Festival Chat features a breakthrough **global notification system** that ensures you receive alerts for messages from any subscribed rooms, even when you're not actively viewing the chat.
+The Favorites system is Festival Chat's primary feature for managing and quickly accessing your most important chat rooms. It combines room bookmarking with intelligent notification management to keep you connected to your communities.
+
+### **How Favorites Work**
+
+**Adding Rooms to Favorites:**
+1. Join any chat room
+2. Click the ❤️ button in the chat header
+3. Room is instantly added to your favorites
+4. Automatic notification subscription enabled
+5. ✅ Room appears on homepage favorites section!
+
+**Accessing Favorite Rooms:**
+1. Go to Festival Chat homepage
+2. Scroll to "Favorites" section
+3. See all your favorite rooms as horizontal scrolling cards
+4. Click "Enter" on any card to rejoin instantly
+5. See notification status at a glance
+
+### **🏠 Homepage Favorites Interface**
+
+**Favorites Cards Layout:**
+```
+┌─────────────────────────────────────────────────┐
+│                   Favorites                     │
+│                                        [Clear]  │
+├─────────────────────────────────────────────────┤
+│ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ │
+│ │   [×]   │ │   [×]   │ │   [×]   │ │   [×]   │ │
+│ │mainstage│ │backstage│ │vip-lounge│ │afterparty│ │
+│ │magic-42 │ │cosmic-88│ │bright-15│ │party-99 │ │
+│ │2 hrs ago│ │5 hrs ago│ │1 day ago│ │3 days ago│ │
+│ │🔔 On    │ │🔕 Off   │ │🔔 On    │ │🔕 Off   │ │
+│ │ [Enter] │ │ [Enter] │ │ [Enter] │ │ [Enter] │ │
+│ └─────────┘ └─────────┘ └─────────┘ └─────────┘ │
+│                Scroll horizontally →            │
+└─────────────────────────────────────────────────┘
+```
+
+**Card Information:**
+- **Room Name**: Full room identifier (e.g., "mainstage-vip")
+- **Room Code**: Shareable code for others to join (e.g., "magic-42")
+- **Last Activity**: When you last visited this room
+- **Notification Status**: Current notification subscription state
+- **Remove Button (×)**: Remove from favorites and disable notifications
+- **Enter Button**: Rejoin the room instantly
+
+### **🔔 Integrated Notification Management**
+
+**Automatic Notification Subscription:**
+```markdown
+✅ Add to Favorites → Automatically enables notifications
+❌ Remove from Favorites → Automatically disables notifications
+⚙️ Room Settings → Can customize notification preferences
+🔄 Status Sync → Favorites cards always show current notification state
+```
+
+**Notification Status Indicators:**
+```markdown
+🔔 Green Status:
+├─ Green dot indicator
+├─ 🔔 Bell icon
+├─ "On" text label
+└─ You'll receive notifications when away from this room
+
+🔕 Gray Status:
+├─ Gray dot indicator
+├─ 🔕 Muted bell icon
+├─ "Off" text label
+└─ No notifications for this room
+```
+
+**Managing Notifications per Room:**
+1. **From Favorites Card**: Click ❤️ in room to toggle favorite + notifications
+2. **From Room Settings**: Use ⚙️ button in chat to customize notification preferences
+3. **Bulk Management**: Use "Clear" button to remove all favorites and disable all notifications
+
+### **💡 Smart Features**
+
+#### **Persistent Across Sessions**
+- **Survives Browser Refresh**: Favorites persist when you refresh the page
+- **Cross-Device Sync**: Favorites stored locally on each device
+- **Session Restoration**: Return to favorited rooms even after closing browser
+- **Room Code Preservation**: Always shows the correct shareable room code
+
+#### **Intelligent Room Management**
+```markdown
+🧠 Smart Behaviors:
+✅ Most recently visited rooms appear first
+✅ Inactive rooms (>7 days) automatically archived
+✅ Notification preferences preserved when re-entering rooms
+✅ Room codes stay consistent for easy sharing
+✅ Real-time status updates across all interface elements
+```
+
+#### **Visual Feedback System**
+```markdown
+🎨 Visual Cues:
+🟢 Hover Effect: Cards highlight when you hover (purple border)
+⭐ Activity Indicators: Recently active rooms show brighter colors
+📅 Time Stamps: Clear "2 hrs ago" / "3 days ago" labels
+🔄 Status Sync: Instant updates when notification settings change
+```
+
+### **🎪 Festival Use Cases**
+
+#### **Music Festival Coordination**
+```markdown
+Scenario: Multi-Stage Festival Management
+1. Add "Mainstage VIP" to favorites → Auto-notifications ON
+2. Add "Backstage Crew" to favorites → Auto-notifications ON
+3. Add "Food Truck Squad" to favorites → Auto-notifications ON
+4. Homepage shows all 3 rooms with status indicators
+5. Quick-switch between conversations via "Enter" buttons
+6. Get notified for any room when exploring festival grounds
+```
+
+#### **Conference Room Hopping**
+```markdown
+Scenario: Multi-Track Conference
+1. Favorite "AI Panel Q&A" → Notifications ON
+2. Favorite "Startup Networking" → Notifications ON
+3. Disable notifications for "General Announcements" → Status shows OFF
+4. Access all rooms instantly from homepage
+5. Stay updated on important discussions while attending sessions
+```
+
+#### **Event Production Teams**
+```markdown
+Scenario: Event Coordination
+1. "Production Team" → Always favorited, notifications ON
+2. "Security Channel" → Favorited, notifications ON
+3. "Vendor Coordination" → Favorited, notifications during setup only
+4. Quick access to all channels from central homepage
+5. Manage notification noise by room priority
+```
+
+### **🛠️ Advanced Management**
+
+#### **Removing Rooms from Favorites**
+```markdown
+Method 1 - From Favorites Card:
+1. Click the × button on any favorites card
+2. Confirm removal in popup
+3. Room removed + notifications disabled
+4. Card disappears from homepage
+
+Method 2 - From Chat Room:
+1. Click ❤️ button in chat header (turns from red to white)
+2. Room immediately removed from favorites
+3. Notifications automatically disabled
+4. Homepage updates in real-time
+
+Method 3 - Bulk Clear:
+1. Click "Clear" button in favorites section
+2. Confirm bulk removal
+3. All favorites removed + all notifications disabled
+4. Clean slate for new rooms
+```
+
+#### **Notification Customization**
+```markdown
+Per-Room Notification Settings:
+1. Enter any favorited room
+2. Click ⚙️ (settings) button
+3. Customize notification preferences:
+   ├─ All messages (default)
+   ├─ @mentions only
+   ├─ Important messages only
+   └─ Completely disabled
+4. Settings automatically sync to favorites card
+5. Preferences preserved when re-entering room
+```
+
+### **📱 Mobile Favorites Experience**
+
+#### **Touch-Optimized Interface**
+- **Large Touch Targets**: All buttons sized for easy finger tapping
+- **Horizontal Scrolling**: Swipe through favorites cards smoothly
+- **Quick Actions**: Large "Enter" buttons for instant room access
+- **Visual Status**: Clear notification indicators at a glance
+
+#### **Mobile-Specific Features**
+```markdown
+📱 Mobile Optimizations:
+✅ Swipe to scroll through favorite rooms
+✅ Large tap targets for settings and removal
+✅ Responsive card sizing for phone screens
+✅ Touch-friendly notification toggles
+✅ Haptic feedback on button presses (iOS/Android)
+```
+
+### **🔧 Technical Details**
+
+#### **Data Storage**
+- **Local Storage**: Favorites list stored in browser localStorage
+- **Cross-Tab Sync**: Changes sync across multiple browser tabs
+- **Room Code Integration**: Connects with room code system for consistency
+- **Event System**: Real-time updates between components
+
+#### **Performance Features**
+```markdown
+⚡ Optimizations:
+✅ Memoized rendering (prevents unnecessary re-renders)
+✅ Event-driven updates (efficient cross-component communication)
+✅ Smart re-ordering (most recent rooms first)
+✅ Lazy loading (only load visible room data)
+✅ Efficient cleanup (automatic removal of stale rooms)
+```
+
+### **💡 Tips for Best Experience**
+
+#### **Effective Favorites Management**
+```markdown
+✅ BEST PRACTICES:
+• Favorite only rooms you actively participate in
+• Use notification customization for noisy rooms
+• Regularly clean up inactive rooms (use "Clear" button)
+• Take advantage of quick "Enter" buttons for room switching
+• Let status indicators guide your notification management
+
+❌ AVOID:
+• Favoriting every room you visit (creates clutter)
+• Ignoring notification status indicators
+• Forgetting to remove inactive event rooms
+• Manually typing room codes when favorites exist
+```
+
+#### **Festival-Specific Tips**
+```markdown
+🎪 Festival Success:
+• Favorite main coordination rooms at event start
+• Use notification customization during busy periods
+• Quick-switch between VIP, general, and crew channels
+• Share room codes from favorites cards (always current)
+• Clean up favorites at event end for next festival
+```
+
+### **🎯 Why Favorites Matter**
+
+**The Favorites system transforms Festival Chat from a simple messaging app into a **comprehensive festival communication hub**:**
+
+1. **🚀 Instant Access**: No more remembering or searching for room codes
+2. **🔔 Smart Notifications**: Automatic subscription management with granular control
+3. **📱 Mobile Optimized**: Touch-friendly interface perfect for festival environments
+4. **🎪 Event-Focused**: Designed specifically for multi-room festival coordination
+5. **💾 Persistent**: Survives app refreshes, browser restarts, and network issues
+6. **🔄 Synchronized**: Status indicators always accurate across all interface elements
+
+**Favorites make Festival Chat feel like a native app while maintaining the simplicity of a web-based solution.** 🎪❤️
+
+---
+
+### **Never Miss a Message - ENHANCED 2025**
+
+Festival Chat features a **breakthrough global notification system** that ensures you receive alerts for messages from any subscribed rooms, even when you're not actively viewing the chat. **Recent major improvements** ensure notification preferences are properly respected and synchronized across all interface elements.
 
 ### **How Notifications Work**
 
@@ -145,18 +399,57 @@ Festival Chat features a breakthrough **global notification system** that ensure
 
 **Step 2: Subscribe to Rooms (Per Room)**
 1. Join any chat room
-2. Click the 🔔 button in the chat header
-3. Toggle on "Room Notifications"
-4. Customize your notification preferences
-5. ✅ You'll get notified for this room when away!
+2. Click the ❤️ button to add to favorites
+3. Click the ⚙️ button to open room settings
+4. Toggle on "Room notifications"
+5. Customize your notification preferences
+6. ✅ You'll get notified for this room when away!
+
+### **🆕 Enhanced Status Synchronization (June 2025)**
+
+**Major UI Improvements:**
+- **Persistent Preferences**: Notification settings are now properly preserved when re-entering rooms
+- **Synchronized Status**: Favorites cards and room settings always show the same notification status
+- **Smart Auto-Subscribe**: New rooms auto-enable notifications, but respect your preferences for returning rooms
+- **Real-time Updates**: Notification status updates immediately across all interface elements
+
+**How Status Indicators Work:**
+```markdown
+🏠 Homepage Favorites Cards:
+✅ Green dot + 🔔 + "On" = Notifications enabled for this room
+⭕ Gray dot + 🔕 + "Off" = Notifications disabled for this room
+
+⚙️ Room Settings Panel:
+✅ Toggle ON = Notifications enabled (matches favorites card)
+❌ Toggle OFF = Notifications disabled (matches favorites card)
+✅ Status always synchronized between both interfaces
+```
+
+**Improved User Experience:**
+```markdown
+✅ BEFORE (Fixed Issues):
+❌ Disabling notifications in room settings
+❌ Leaving room and returning
+❌ Notifications would re-enable automatically
+❌ Favorites card and room settings showed different statuses
+
+✅ AFTER (Current Behavior):
+✅ Disable notifications in room settings
+✅ Leave room and return multiple times
+✅ Notifications stay disabled as intended
+✅ Favorites card and room settings always match
+✅ Your preferences are respected and preserved
+```
 
 ### **Notification Features**
 
 #### **🌍 Global Scope**
 - **Cross-Room Alerts**: Get notified for any subscribed room
 - **Homepage Notifications**: Receive alerts even when browsing homepage
-- **Multi-Room Management**: Manage notifications for multiple rooms
+- **Multi-Room Management**: Manage notifications for multiple rooms from favorites cards
 - **Persistent Subscriptions**: Settings survive page refreshes and app restarts
+- **Preference Preservation**: Notification choices are respected when re-entering rooms
+- **Synchronized Interface**: Status indicators always match across favorites and room settings
 
 #### **📱 Smart Mobile Detection**
 - **Background Detection**: Automatically detects when app is backgrounded
@@ -289,11 +582,27 @@ Managing Notification Volume:
 
 #### **🔄 Subscription Management**
 ```markdown
-Automatic Features:
-✅ Auto-subscribe when joining rooms
-✅ Auto-cleanup after 24 hours
+Favorites Card Status Indicators (Homepage):
+✅ Green dot + 🔔 + "On" = Notifications enabled for this room
+⭕ Gray dot + 🔕 + "Off" = Notifications disabled for this room
+✅ Status reflects current notification subscription state
+✅ Click "Enter" to join room with notification preference preserved
+✅ Click "×" to remove from favorites and disable notifications
+
+Room Settings Panel (In Chat):
+✅ "Room notifications" toggle matches favorites card status
+✅ Toggle OFF = Immediately updates favorites card to show "🔕 Off"
+✅ Toggle ON = Immediately updates favorites card to show "🔔 On"
+✅ Settings persist when leaving and re-entering rooms
+✅ Auto-subscribe for new rooms, respect preferences for returning rooms
+
+Advanced Management:
+✅ Auto-subscribe when joining rooms for first time
+✅ Preserve user preferences for rooms previously visited
+✅ Auto-cleanup after 24 hours of inactivity
 ✅ Restore subscriptions after page refresh
-✅ Sync across multiple tabs
+✅ Sync across multiple browser tabs
+✅ Real-time status updates across all UI elements
 ```
 
 #### **⚡ Performance Optimized**

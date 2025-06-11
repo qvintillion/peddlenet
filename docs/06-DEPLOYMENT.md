@@ -126,6 +126,22 @@ npm run dev:mobile
 # 💾 SQLite persistence enabled!
 ```
 
+### **🆕 Background Notifications Stability (June 10, 2025)**
+
+The app now includes a critical fix for background notification connection loops:
+
+**What Was Fixed:**
+- Eliminated infinite reconnection loops when notifications disabled
+- Smart connection management only connects when notifications enabled
+- Rate limiting with exponential backoff prevents server overload
+- Enhanced error handling for "Connection rate limit exceeded" errors
+
+**Deployment Impact:**
+- Use `npm run deploy:firebase:quick` - frontend-only fix
+- No backend changes required
+- Safe deployment with zero breaking changes
+- Immediate stability improvement for all users
+
 ### **🧹 Clean Signaling Server Architecture**
 
 **Current Simplified Structure** (after cleanup):

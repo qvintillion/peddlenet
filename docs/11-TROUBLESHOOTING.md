@@ -10,6 +10,14 @@
 - **Immediate connection establishment** without retries
 - **Mobile and desktop both working perfectly**
 
+### ✅ **Background Notifications Reconnection Loop Fixed**
+**Critical stability improvement!** Fixed infinite reconnection loops that occurred when notifications were disabled:
+- **Smart connection management** - Only connects when notifications actually enabled
+- **Rate limiting implemented** - Exponential backoff (2s → 4s → 8s → 16s → 30s) prevents server overload
+- **Connection state validation** - Prevents duplicate connections and unnecessary server requests
+- **Resource optimization** - Automatic disconnection when no active notification subscriptions
+- **Enhanced error handling** - Specific "Connection rate limit exceeded" detection and recovery
+
 ### ✅ **Auto-Reconnection System Active**
 **No more manual refresh needed!** The app now automatically recovers from connection drops:
 - **3-second auto-reconnect** after unexpected disconnections
@@ -214,6 +222,42 @@ If any show ❌, follow the specific troubleshooting section below.
    // This bypasses WebSocket issues
    io.connect(serverUrl, { transports: ['polling'] })
    ```
+
+### **Background Notifications Reconnection Loop** 🆕
+
+**Symptoms**: 
+- Console shows rapid "Connection rate limit exceeded" errors
+- App becomes unresponsive or slow
+- Occurs when notifications disabled but room is favorited
+- Network tab shows excessive connection attempts
+
+**Root Cause**: Background notification system was connecting unnecessarily when notifications disabled
+
+**✅ RESOLUTION**: This issue has been completely fixed in the latest version!
+
+**What Was Fixed**:
+- Smart connection management only connects when notifications actually enabled
+- Rate limiting with exponential backoff (2s → 4s → 8s → 16s → 30s) prevents server overload  
+- Connection state validation prevents duplicate connections
+- Automatic disconnection when no active notification subscriptions
+- Enhanced error handling with specific rate limit detection
+
+**Verification**:
+```javascript
+// Check if fix is active (in browser console):
+console.log('Background notification fix active:', 
+  typeof window.backgroundNotificationManager !== 'undefined')
+// Should show: true
+```
+
+**If Still Experiencing Issues**:
+```javascript
+// Manual cleanup (in browser console):
+if (window.backgroundNotificationManager) {
+  window.backgroundNotificationManager.cleanup()
+}
+location.reload()
+```
 
 ---
 

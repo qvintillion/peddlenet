@@ -13,9 +13,10 @@ import type { Message } from '@/lib/types';
 import { QRModal } from '@/components/QRModal';
 import { NetworkStatus, ConnectionError } from '@/components/NetworkStatus';
 import { RoomCodeDisplay } from '@/components/RoomCode';
-import { NotificationSettings } from '@/components/NotificationSettings';
+import { ChatRoomSettings } from '@/components/ChatRoomSettings';
 import { ConnectionTest } from '@/components/ConnectionTest';
 import { NotificationTest } from '@/components/NotificationTest';
+import { FavoriteButton } from '@/components/FavoriteButton';
 // Import QRPeerUtils dynamically to avoid initialization issues
 // import { QRPeerUtils } from '@/utils/qr-peer-utils';
 import { RoomCodeDiagnosticPanel } from '@/components/RoomCodeDiagnostics';
@@ -31,7 +32,7 @@ export default function ChatRoomPage() {
   const [showNetworkInfo, setShowNetworkInfo] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [connectionError, setConnectionError] = useState<{type: string, message: string} | null>(null);
@@ -396,9 +397,14 @@ export default function ChatRoomPage() {
         <div className="flex items-center justify-between mb-2">
           <button
             onClick={() => router.push('/')}
-            className="text-purple-400 hover:text-purple-300 text-xs sm:text-sm flex items-center"
+            className="p-2 rounded-lg hover:bg-gray-800/50 transition min-h-[44px] min-w-[44px] flex items-center justify-center"
+            aria-label="Go to homepage"
           >
-            ← Home
+            <img 
+              src="/peddlenet-logo.svg" 
+              alt="PeddleNet - Go Home" 
+              className="w-[42px] h-[32px]"
+            />
           </button>
           <p className="text-sm text-purple-300">PeddleNet Room</p>
           {process.env.NODE_ENV === 'development' && (
@@ -449,12 +455,16 @@ export default function ChatRoomPage() {
                 <rect x="14" y="14" width="2" height="2"/>
               </svg>
             </button>
+            <FavoriteButton 
+              roomId={roomId} 
+              displayName={displayName}
+            />
             <button
-              onClick={() => setShowNotifications(!showNotifications)}
+              onClick={() => setShowSettings(!showSettings)}
               className="p-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-              title="Notification Settings"
+              title="Room Settings"
             >
-              🔔
+              ⚙️
             </button>
           </div>
         </div>
@@ -517,10 +527,13 @@ export default function ChatRoomPage() {
           <RoomCodeDisplay roomId={roomId} className="mb-2" />
         </div>
 
-        {/* Notification Settings Panel */}
-        {showNotifications && (
-          <div className="mb-3">
-            <NotificationSettings roomId={roomId} />
+        {/* Room Settings Panel */}
+        {showSettings && (
+          <div className="mb-3 max-h-[50vh] overflow-y-auto">
+            <ChatRoomSettings 
+              roomId={roomId} 
+              onClose={() => setShowSettings(false)}
+            />
           </div>
         )}
 

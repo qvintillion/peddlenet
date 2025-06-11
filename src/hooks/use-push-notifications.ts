@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { backgroundNotificationManager } from './use-background-notifications';
 
 export interface PushNotificationSettings {
   enabled: boolean;
@@ -82,7 +83,32 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
       try {
         const registration = await navigator.serviceWorker.getRegistration();
         const hasPermission = Notification.permission === 'granted';
-        setIsSubscribed(!!registration && hasPermission);
+        const hasServiceWorkerRegistration = !!registration;
+        
+        // For room-specific usage, also check if notifications are enabled for this room
+        let roomNotificationsEnabled = true;
+        if (roomId) {
+          const bgState = backgroundNotificationManager.getState();
+          const roomSubscription = bgState.subscriptions.get(roomId);
+          roomNotificationsEnabled = roomSubscription ? roomSubscription.subscribed : true;
+          console.log('🔔 Room-specific notification status for', roomId, ':', roomNotificationsEnabled);
+        }
+        
+        // Only consider subscribed if:
+        // 1. Service worker is registered
+        // 2. Permission is granted  
+        // 3. Notifications are enabled for this specific room (if roomId provided)
+        const finalSubscriptionStatus = hasServiceWorkerRegistration && hasPermission && roomNotificationsEnabled;
+        
+        console.log('🔔 Push notification subscription check:', {
+          roomId,
+          hasServiceWorkerRegistration,
+          hasPermission,
+          roomNotificationsEnabled,
+          finalSubscriptionStatus
+        });
+        
+        setIsSubscribed(finalSubscriptionStatus);
       } catch (error) {
         console.warn('Failed to check subscription status:', error);
         setIsSubscribed(false);
@@ -90,7 +116,16 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
     };
 
     checkStatus();
-  }, [isSupported, permission]);
+    
+    // Also listen for background notification changes if we have a roomId
+    if (roomId) {
+      const unsubscribe = backgroundNotificationManager.addListener(() => {
+        checkStatus(); // Re-check when background notifications change
+      });
+      
+      return unsubscribe;
+    }
+  }, [isSupported, permission, roomId]);
 
   const requestPermission = useCallback(async (): Promise<NotificationPermission> => {
     if (!isSupported) return 'denied';
@@ -116,6 +151,15 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
       }
       
       await navigator.serviceWorker.ready;
+      
+      // If we have a roomId, also enable background notifications for this room
+      if (roomId) {
+        backgroundNotificationManager.initialize();
+        const storedName = localStorage.getItem('displayName') || 'User';
+        backgroundNotificationManager.subscribeToRoom(roomId, storedName);
+        console.log('🔔 Also enabled background notifications for room:', roomId);
+      }
+      
       setIsSubscribed(true);
       
       console.log('✅ Successfully subscribed to notifications');
@@ -125,17 +169,23 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
       setIsSubscribed(false);
       return false;
     }
-  }, [isSupported, permission]);
+  }, [isSupported, permission, roomId]);
 
   const unsubscribeFromNotifications = useCallback(async (): Promise<boolean> => {
     try {
+      // If we have a roomId, also disable background notifications for this room
+      if (roomId) {
+        backgroundNotificationManager.unsubscribeFromRoom(roomId);
+        console.log('🔔 Also disabled background notifications for room:', roomId);
+      }
+      
       setIsSubscribed(false);
       return true;
     } catch (error) {
       console.error('Failed to unsubscribe from notifications:', error);
       return false;
     }
-  }, []);
+  }, [roomId]);
 
   const updateSettings = useCallback((newSettings: Partial<PushNotificationSettings>) => {
     const updatedSettings = { ...globalSettings, ...newSettings };

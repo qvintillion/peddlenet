@@ -33,6 +33,7 @@ npm run dev
 
 - **🔗 Instant QR Connections:** Scan to join rooms in 5-10 seconds
 - **💬 Real-time Messaging:** WebSocket-based with polling fallback
+- **💜 Smart Favorites System:** Heart-based room bookmarking with notification integration
 - **📱 Mobile Optimized:** Works seamlessly across devices
 - **🔄 Auto-Reconnection:** Intelligent reconnection without manual refresh
 - **🔄 Message Persistence:** Survives page refreshes and reconnections
@@ -70,6 +71,26 @@ npm run dev
 
 ## 🔧 Recent Updates (June 2025)
 
+### **✅ CRITICAL: Background Notifications Reconnection Loop Fixed** (June 10, 2025)
+- **✅ CRITICAL FIX: Infinite reconnection loops eliminated** - Fixed background notifications causing rate limit errors
+- **✅ Smart connection management** - Only connects when notifications are actually enabled for rooms
+- **✅ Rate limiting implemented** - Exponential backoff (2s → 4s → 8s → 16s → 30s) prevents server overload
+- **✅ Connection state validation** - Prevents duplicate connections and unnecessary server requests
+- **✅ Resource optimization** - Automatic disconnection when no active notification subscriptions
+- **✅ Mobile reliability** - Reduced background network activity improving battery life
+- **✅ Error handling enhanced** - Specific rate limit detection with appropriate recovery strategies
+- **✅ Memory leak prevention** - Proper timer cleanup and component lifecycle management
+
+### **💜 Enhanced Favorites System Implementation** (June 10, 2025)
+- **✅ Beautiful heart-based favorites** - ❤️/🤍 toggle buttons in every chat room header
+- **✅ Smart notification integration** - Favoriting automatically enables notifications for room
+- **✅ Horizontal scrolling cards** - Beautiful favorites display with room codes and timestamps
+- **✅ Real-time status indicators** - Clear 🔔 On / 🔕 Off notification status for each room
+- **✅ Cross-component synchronization** - Favorites state synchronized across entire application
+- **✅ Quick room access** - Prominent 'Enter' buttons for instant festival coordination
+- **✅ Comprehensive management** - Remove/clear functionality with safety confirmation dialogs
+- **✅ Mobile optimized design** - Perfect for festival ground usage with touch-friendly interface
+
 ### **✅ CRITICAL: JavaScript Initialization Errors Fixed** (June 9, 2025)
 - **✅ CRITICAL FIX: Production stability complete** - Eliminated "Cannot access 'E' before initialization" errors
 - **✅ Fixed Temporal Dead Zone (TDZ)** violations in production JavaScript bundles
@@ -82,6 +103,13 @@ npm run dev
 
 ### **Latest UI & Connection Improvements** (June 2025)
 - ✅ **Interface cleanup** - Removed redundant invite button for cleaner message input
+- ✅ **Streamlined UI elements** - Removed public room feature banner and redundant helper text
+- ✅ **Brand consistency** - Changed "Creating as:" to "Peddling as:" for better brand alignment
+- ✅ **Original logo integration** - Authentic PeddleNet branding throughout the app
+- ✅ **Interactive navigation** - Logo serves as home button in chat rooms
+- ✅ **"Enter" room buttons** - Changed "Rejoin" to "Enter" for better UX clarity
+- ✅ **Responsive settings panel** - Settings now scroll properly on mobile devices
+- ✅ **Notification status indicators** - Replaced toggles with clear read-only status in JoinedRooms
 - ✅ **Auto-reconnection system** - Intelligent recovery from connection drops without manual refresh
 - ✅ **Mobile connection reliability** - 80% fewer false "server disconnected" errors
 - ✅ **Smart error detection** - Only shows disconnect errors after proven connectivity
@@ -103,6 +131,12 @@ npm run dev
 - **Prominent QR invitation** - Single, clear invite button in header
 - **Better visual hierarchy** - Reduced clutter and improved information flow
 - **Mobile-optimized layout** - Less cramped footer area on small screens
+- **Clean interface design** - Removed redundant banners and helper text
+- **Brand consistency** - Updated all user-facing text to match PeddleNet branding
+- **Notification clarity** - Clear status indicators replace complex toggles
+- **Original logo integration** - Authentic PeddleNet branding with interactive navigation
+- **Responsive settings** - Settings panel now scrolls properly on all devices
+- **Intuitive button text** - "Enter" instead of "Rejoin" for better user understanding
 
 ### **Infrastructure Consolidation SUCCESS**
 - ✅ **Unified production backend** - Consolidated duplicate servers for 50% cost reduction
@@ -289,6 +323,13 @@ The diagnostics page will show:
 **Room Code Registration Failing:**
 - Deploy updated server: `npm run deploy:firebase:complete`
 - The production server needs the latest endpoints
+
+**Background Notification Connection Loops:**
+- ✅ **Fixed with smart connection management** - Eliminated infinite reconnection loops
+- Only connects when notifications are actually enabled for rooms
+- Rate limiting with exponential backoff prevents server overload
+- Automatic disconnection when no active notification subscriptions
+- No more "Connection rate limit exceeded" errors
 
 **False "Server Disconnected" Errors:**
 - ✅ **Fixed with smart detection** - 80% fewer false alerts

@@ -33,3 +33,8 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;             /* Chrome, Safari, Opera */
 }
+
+/* Toggle switches */
+.dot {
+  transition: transform 0.2s ease;
+}

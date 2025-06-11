@@ -362,7 +362,428 @@ AND id NOT IN (
 );
 ```
 
-## 🔔 Notification Architecture
+## ❤️ Favorites System Architecture
+
+### **Overview**
+
+The Favorites system is Festival Chat's central room management feature that combines bookmarking, quick access, and intelligent notification management. It transforms the app from a simple chat interface into a comprehensive festival communication hub.
+
+### **Component Architecture**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Favorites System Architecture                    │
+├─────────────────────────────────────────────────────────────┤
+│  Homepage (JoinedRooms.tsx)           Chat Room (FavoriteButton.tsx)  │
+│  ┌─────────────────────────────┐     ┌─────────────────────────────┐  │
+│  │ Favorites Cards Display      │     │ ❤️ Add/Remove Toggle      │  │
+│  │ - Horizontal scrolling       │     │ - Instant favorites update │  │
+│  │ - Notification status        │ ↔️  │ - Auto notification sync   │  │
+│  │ - Quick "Enter" buttons      │     │ - Visual feedback          │  │
+│  │ - Remove (×) buttons         │     │ - localStorage updates     │  │
+│  └─────────────────────────────┘     └─────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────┤
+│                        Data Storage Layer                             │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │ localStorage['favoriteRooms'] ↔️ RoomCodeManager.getRecentRoomCodes() │  │
+│  │ - Simple array of room IDs    ↔️ - Room metadata + codes          │  │
+│  │ - Cross-tab synchronization   ↔️ - Timestamp tracking             │  │
+│  └─────────────────────────────────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────┤
+│                    Notification Integration                           │
+│  ┌─────────────────────────────────────────────────────────┐  │
+│  │ useBackgroundNotifications() ↔️ usePushNotifications()       │  │
+│  │ - Real-time status sync       ↔️ - Room-specific toggle         │  │
+│  │ - Cross-room notifications    ↔️ - Service worker integration   │  │
+│  └─────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### **Core Components**
+
+#### **1. JoinedRooms Component (Homepage Display)**
+```typescript
+// Main favorites interface component
+export function JoinedRooms({ className = '' }: FavoritesProps) {
+  const { subscriptions, unsubscribeFromRoom } = useBackgroundNotifications();
+  const [favoritesKey, setFavoritesKey] = useState(0); // Force re-renders
+  
+  // Combine favorites list with room metadata
+  const favoriteRooms = useMemo(() => {
+    const recentRooms = RoomCodeManager.getRecentRoomCodes();
+    const favorites = JSON.parse(localStorage.getItem('favoriteRooms') || '[]');
+    
+    return recentRooms
+      .filter(room => favorites.includes(room.roomId))
+      .map(room => {
+        const subscription = subscriptions.find(sub => sub.roomId === room.roomId);
+        return {
+          ...room,
+          isSubscribed: subscription ? subscription.subscribed : false
+        };
+      });
+  }, [favoritesKey, subscriptions]);
+}
+```
+
+**Key Features:**
+- **Horizontal Card Layout**: Touch-optimized scrolling interface
+- **Real-time Status**: Live notification status indicators
+- **Quick Actions**: One-tap room entry and removal
+- **Performance Optimized**: Memoized rendering prevents unnecessary updates
+
+#### **2. FavoriteButton Component (In-Chat Toggle)**
+```typescript
+// Add/remove favorites button in chat interface
+export function FavoriteButton({ roomId, displayName }: FavoriteButtonProps) {
+  const [isFavorite, setIsFavorite] = useState(false);
+  const { subscribeToRoom, unsubscribeFromRoom } = useBackgroundNotifications();
+  
+  const handleToggleFavorite = () => {
+    const favorites = JSON.parse(localStorage.getItem('favoriteRooms') || '[]');
+    
+    if (isFavorite) {
+      // Remove from favorites AND disable notifications
+      const updatedFavorites = favorites.filter((id: string) => id !== roomId);
+      localStorage.setItem('favoriteRooms', JSON.stringify(updatedFavorites));
+      unsubscribeFromRoom(roomId);
+    } else {
+      // Add to favorites AND enable notifications
+      const updatedFavorites = [...favorites, roomId];
+      localStorage.setItem('favoriteRooms', JSON.stringify(updatedFavorites));
+      subscribeToRoom(roomId, displayName);
+    }
+    
+    // Notify other components via custom event
+    window.dispatchEvent(new CustomEvent('favoritesChanged'));
+  };
+}
+```
+
+**Key Features:**
+- **Instant Feedback**: Visual state changes immediately
+- **Automatic Notification Management**: Subscribes/unsubscribes automatically
+- **Cross-Component Communication**: Custom events for real-time updates
+- **Persistent State**: localStorage integration for durability
+
+### **Data Flow Architecture**
+
+#### **Adding a Room to Favorites**
+```
+1. User clicks ❤️ button in chat room
+   ↓
+2. FavoriteButton.handleToggleFavorite()
+   ↓
+3. localStorage['favoriteRooms'] updated
+   ↓
+4. backgroundNotificationManager.subscribeToRoom()
+   ↓
+5. window.dispatchEvent('favoritesChanged')
+   ↓
+6. JoinedRooms component re-renders
+   ↓
+7. New favorite card appears on homepage
+   ↓
+8. Notification status shows "🔔 On"
+```
+
+#### **Removing a Room from Favorites**
+```
+1. User clicks × button on favorites card OR ❤️ in chat
+   ↓
+2. Confirmation dialog (for card removal)
+   ↓
+3. localStorage['favoriteRooms'] updated (remove roomId)
+   ↓
+4. backgroundNotificationManager.unsubscribeFromRoom()
+   ↓
+5. window.dispatchEvent('favoritesChanged')
+   ↓
+6. JoinedRooms component re-renders
+   ↓
+7. Favorite card disappears from homepage
+   ↓
+8. Notifications disabled for that room
+```
+
+### **Storage Architecture**
+
+#### **localStorage Schema**
+```typescript
+// Favorites storage (simple array)
+localStorage['favoriteRooms'] = JSON.stringify([
+  'mainstage-vip',
+  'backstage-crew', 
+  'vip-lounge-42'
+]);
+
+// Room metadata storage (managed by RoomCodeManager)
+localStorage['peddlenet_recent_rooms'] = JSON.stringify([
+  {
+    roomId: 'mainstage-vip',
+    code: 'magic-stage-42',
+    timestamp: 1699123456789,
+    lastVisited: 1699123456789
+  },
+  // ... more rooms
+]);
+
+// Notification subscriptions (managed by BackgroundNotificationManager)
+localStorage['background_notification_subscriptions'] = JSON.stringify([
+  {
+    roomId: 'mainstage-vip',
+    displayName: 'John',
+    subscribed: true,
+    lastSeen: 1699123456789
+  },
+  // ... more subscriptions
+]);
+```
+
+#### **Data Relationship**
+```typescript
+// How components combine the data
+interface FavoriteRoom {
+  roomId: string;        // From favoriteRooms array
+  code: string;          // From RoomCodeManager.getRecentRoomCodes()
+  timestamp: number;     // From RoomCodeManager (last visited)
+  isSubscribed: boolean; // From BackgroundNotificationManager
+}
+
+// The magic happens in the memoized favoriteRooms calculation
+const favoriteRooms = useMemo(() => {
+  const recentRooms = RoomCodeManager.getRecentRoomCodes();
+  const favorites = JSON.parse(localStorage.getItem('favoriteRooms') || '[]');
+  
+  return recentRooms
+    .filter(room => favorites.includes(room.roomId))  // Only favorited rooms
+    .map(room => {
+      const subscription = subscriptions.find(sub => sub.roomId === room.roomId);
+      return {
+        ...room,
+        isSubscribed: subscription ? subscription.subscribed : false
+      };
+    });
+}, [favoritesKey, subscriptions]);
+```
+
+### **Event-Driven Updates**
+
+#### **Cross-Component Communication**
+```typescript
+// Custom event system for real-time synchronization
+interface FavoritesEventSystem {
+  // Event dispatching (from FavoriteButton and JoinedRooms)
+  dispatch: () => window.dispatchEvent(new CustomEvent('favoritesChanged'));
+  
+  // Event listening (in JoinedRooms)
+  listen: () => {
+    const handleFavoritesChange = () => setFavoritesKey(prev => prev + 1);
+    window.addEventListener('favoritesChanged', handleFavoritesChange);
+    return () => window.removeEventListener('favoritesChanged', handleFavoritesChange);
+  };
+}
+
+// Usage in components
+useEffect(() => {
+  const cleanup = listen();
+  return cleanup;
+}, []);
+```
+
+**Benefits:**
+- **Real-time Updates**: Changes instantly reflect across all components
+- **Loose Coupling**: Components don't need direct references to each other
+- **Performance**: Only triggers re-renders when needed
+- **Reliability**: Works across browser tabs and page refreshes
+
+### **Mobile Optimization Architecture**
+
+#### **Touch-Friendly Interface**
+```css
+/* CSS architecture for mobile optimization */
+.favorite-card {
+  min-width: 160px;           /* Prevents cards from being too narrow */
+  touch-action: manipulation; /* Optimizes touch response */
+}
+
+.favorite-card button {
+  min-height: 44px;           /* iOS/Android minimum touch target */
+  min-width: 44px;
+}
+
+.favorites-container {
+  overflow-x: auto;           /* Horizontal scrolling */
+  -webkit-overflow-scrolling: touch; /* Smooth iOS scrolling */
+  scrollbar-width: none;      /* Hide scrollbars on mobile */
+}
+```
+
+#### **Responsive Layout**
+```typescript
+// Responsive design patterns
+const mobileOptimizations = {
+  cardWidth: {
+    mobile: 'min-w-[160px]',     // Minimum width for readability
+    tablet: 'min-w-[180px]',     // Slightly larger for tablets
+    desktop: 'min-w-[200px]'     // Full width for desktop
+  },
+  spacing: {
+    mobile: 'space-x-3',         // Tight spacing for mobile
+    desktop: 'space-x-4'         // More spacious for desktop
+  },
+  scrolling: {
+    mobile: 'overflow-x-auto pb-3', // Account for scroll indicators
+    desktop: 'overflow-x-hidden'    // No horizontal scroll needed
+  }
+};
+```
+
+### **Performance Architecture**
+
+#### **Optimization Strategies**
+```typescript
+// 1. Memoization prevents unnecessary re-renders
+const favoriteRooms = useMemo(() => {
+  // Heavy computation only runs when dependencies change
+  return computeFavoriteRooms(subscriptions, favoritesKey);
+}, [subscriptions, favoritesKey]);
+
+// 2. Ref-based subscription tracking
+const subscriptionsRef = useRef(subscriptions);
+useEffect(() => {
+  subscriptionsRef.current = subscriptions;
+}, [subscriptions]);
+
+// 3. Debounced localStorage updates
+const debouncedUpdateFavorites = useCallback(
+  debounce((newFavorites: string[]) => {
+    localStorage.setItem('favoriteRooms', JSON.stringify(newFavorites));
+  }, 300),
+  []
+);
+```
+
+#### **Memory Management**
+```typescript
+// Cleanup strategies
+interface MemoryManagement {
+  // Event listeners are properly removed
+  componentCleanup: () => {
+    return () => {
+      window.removeEventListener('favoritesChanged', handler);
+      backgroundNotificationManager.removeListener(listener);
+    };
+  };
+  
+  // Stale data cleanup
+  dataCleanup: () => {
+    // Remove rooms not visited in 7+ days
+    const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    const activeFavorites = favorites.filter(room => room.timestamp > cutoff);
+  };
+}
+```
+
+### **Integration Points**
+
+#### **Room Code System Integration**
+```typescript
+// Deep integration with room code management
+class FavoritesRoomCodeIntegration {
+  // Favorites leverage existing room code infrastructure
+  static getFavoriteRoomData(roomId: string) {
+    const recentRooms = RoomCodeManager.getRecentRoomCodes();
+    const roomData = recentRooms.find(room => room.roomId === roomId);
+    return {
+      roomId: roomData?.roomId || roomId,
+      code: roomData?.code || 'unknown-code',
+      timestamp: roomData?.timestamp || Date.now()
+    };
+  }
+  
+  // Room codes stay consistent for sharing
+  static getShareableCode(roomId: string): string {
+    return RoomCodeManager.generateRoomCode(roomId);
+  }
+}
+```
+
+#### **Notification System Integration**
+```typescript
+// Seamless notification management
+class FavoritesNotificationIntegration {
+  // Adding to favorites automatically enables notifications
+  static addToFavorites(roomId: string, displayName: string) {
+    // 1. Update favorites list
+    const favorites = this.getFavoritesList();
+    favorites.push(roomId);
+    localStorage.setItem('favoriteRooms', JSON.stringify(favorites));
+    
+    // 2. Enable notifications
+    backgroundNotificationManager.subscribeToRoom(roomId, displayName);
+    
+    // 3. Sync UI
+    window.dispatchEvent(new CustomEvent('favoritesChanged'));
+  }
+  
+  // Removing from favorites disables notifications
+  static removeFromFavorites(roomId: string) {
+    // 1. Update favorites list
+    const favorites = this.getFavoritesList().filter(id => id !== roomId);
+    localStorage.setItem('favoriteRooms', JSON.stringify(favorites));
+    
+    // 2. Disable notifications
+    backgroundNotificationManager.unsubscribeFromRoom(roomId);
+    
+    // 3. Sync UI
+    window.dispatchEvent(new CustomEvent('favoritesChanged'));
+  }
+}
+```
+
+### **Future Scalability**
+
+#### **Planned Enhancements**
+```typescript
+// Architecture designed for future features
+interface FutureEnhancements {
+  // Cloud sync for cross-device favorites
+  cloudSync: {
+    syncToCloud: (favorites: string[]) => Promise<void>;
+    syncFromCloud: () => Promise<string[]>;
+    mergeStrategy: 'union' | 'replace' | 'smart';
+  };
+  
+  // Advanced categorization
+  categories: {
+    userDefined: string[];     // Custom categories
+    automatic: string[];       // AI-generated categories
+    filters: string[];         // Filter by category
+  };
+  
+  // Analytics integration
+  analytics: {
+    trackFavoriteUsage: (roomId: string) => void;
+    optimizeRecommendations: () => string[];
+    exportUsageData: () => FavoriteUsageData;
+  };
+}
+```
+
+### **Key Architectural Benefits**
+
+1. **🎯 Unified Experience**: Seamlessly integrates room management with notifications
+2. **📱 Mobile-First**: Touch-optimized interface with responsive design
+3. **⚡ Performance**: Memoized rendering and efficient event handling
+4. **🔄 Real-Time**: Instant updates across all components and browser tabs
+5. **💾 Persistent**: Survives page refreshes and browser restarts
+6. **🔧 Extensible**: Architecture ready for future enhancements
+7. **🧠 Intelligent**: Smart integration with existing room code and notification systems
+
+**The Favorites system architecture transforms Festival Chat from a simple messaging app into a comprehensive festival communication hub, providing the foundation for advanced room management while maintaining simplicity and performance.** 🎪❤️
+
+---
 
 ### **Cross-Room Background Notification System** 🎯
 
@@ -554,16 +975,135 @@ class SubscriptionManager {
 }
 ```
 
-#### **Key Features** ✨
+#### **Enhanced Notification Status Synchronization (June 2025)** 🎯
 
-1. **🌍 Global Scope**: Works across all pages, not just chat rooms
-2. **🔄 Persistent Connection**: Background WebSocket maintains subscriptions
-3. **📱 Mobile Optimized**: Aggressive detection for mobile browsers
-4. **💾 Persistence**: Subscriptions survive page refreshes and app restarts
-5. **🎯 Smart Routing**: Room-specific vs global handler priority
-6. **⚡ Instant Delivery**: Real-time notifications via WebSocket
-7. **🔧 Fallback System**: Multiple notification methods for reliability
-8. **🧹 Auto Cleanup**: 24-hour subscription expiry
+**Major Architecture Improvements:**
+
+The notification system underwent significant improvements to ensure proper status synchronization across all UI components and preserve user preferences when navigating between rooms.
+
+**Before (Issues Fixed):**
+```typescript
+// PROBLEMATIC: Always auto-subscribed regardless of preferences
+useRoomBackgroundNotifications(roomId, displayName) {
+  useEffect(() => {
+    // ❌ This always subscribed, ignoring user preferences
+    backgroundNotificationManager.subscribeToRoom(roomId, displayName);
+  }, [roomId, displayName]);
+}
+
+// PROBLEMATIC: Push notifications hook didn't consider room preferences
+const checkStatus = async () => {
+  const registration = await navigator.serviceWorker.getRegistration();
+  const hasPermission = Notification.permission === 'granted';
+  // ❌ Only checked global permission, not room-specific preference
+  setIsSubscribed(!!registration && hasPermission);
+};
+```
+
+**After (Current Architecture):**
+```typescript
+// ✅ ENHANCED: Respects existing preferences before auto-subscribing
+useRoomBackgroundNotifications(roomId, displayName) {
+  useEffect(() => {
+    const currentState = backgroundNotificationManager.getState();
+    const existingSubscription = currentState.subscriptions.get(roomId);
+    
+    // Only auto-subscribe if no preference exists OR notifications are enabled
+    if (!existingSubscription || existingSubscription.subscribed) {
+      backgroundNotificationManager.subscribeToRoom(roomId, displayName);
+    } else {
+      console.log('🔕 Respecting disabled notification preference');
+    }
+  }, [roomId, displayName]);
+}
+
+// ✅ ENHANCED: Considers both global permission AND room preference
+const checkStatus = async () => {
+  const registration = await navigator.serviceWorker.getRegistration();
+  const hasPermission = Notification.permission === 'granted';
+  
+  // Check room-specific preference if roomId provided
+  let roomNotificationsEnabled = true;
+  if (roomId) {
+    const bgState = backgroundNotificationManager.getState();
+    const roomSubscription = bgState.subscriptions.get(roomId);
+    roomNotificationsEnabled = roomSubscription ? roomSubscription.subscribed : true;
+  }
+  
+  // Only subscribed if ALL conditions met
+  const finalStatus = !!registration && hasPermission && roomNotificationsEnabled;
+  setIsSubscribed(finalStatus);
+};
+```
+
+**Key Architectural Changes:**
+
+1. **Preference Persistence**:
+   ```typescript
+   // Enhanced unsubscribeFromRoom - preserves preference instead of deleting
+   unsubscribeFromRoom(roomId: string) {
+     const existingSubscription = this.state.subscriptions.get(roomId);
+     if (existingSubscription) {
+       // ✅ Keep subscription but mark as disabled
+       existingSubscription.subscribed = false;
+       existingSubscription.lastSeen = Date.now();
+     } else {
+       // ✅ Create disabled subscription record for future reference
+       this.state.subscriptions.set(roomId, {
+         roomId, displayName: '', subscribed: false, lastSeen: Date.now()
+       });
+     }
+   }
+   ```
+
+2. **Real-time Status Synchronization**:
+   ```typescript
+   // Push notifications hook now listens to background notification changes
+   useEffect(() => {
+     if (roomId) {
+       const unsubscribe = backgroundNotificationManager.addListener(() => {
+         checkStatus(); // Re-check when background notifications change
+       });
+       return unsubscribe;
+     }
+   }, [roomId]);
+   ```
+
+3. **Unified Subscribe/Unsubscribe**:
+   ```typescript
+   // Room settings toggle now manages both systems together
+   const handleSubscriptionToggle = async () => {
+     if (isSubscribed) {
+       await unsubscribeFromNotifications(); // Push notifications
+       unsubscribeFromRoom(roomId);         // Background notifications
+     } else {
+       if (permission === 'granted') {
+         await subscribeToNotifications();   // Push notifications
+         // Background notifications automatically enabled via room hook
+       }
+     }
+   };
+   ```
+
+**Synchronization Flow:**
+```
+1. User enters room → Check existing preference
+2. If preference exists and disabled → Respect it, don't auto-subscribe
+3. If no preference or enabled → Auto-subscribe
+4. User toggles in room settings → Update both systems immediately
+5. Status change → Notify all listeners → Update UI across all components
+6. User leaves room → Preference preserved for next visit
+7. User re-enters room → Previous preference respected
+```
+
+**Benefits:**
+- ✅ **Consistent UX**: Favorites cards and room settings always match
+- ✅ **Preserved Preferences**: Notification choices persist across sessions
+- ✅ **Real-time Updates**: Status changes immediately reflect everywhere
+- ✅ **Smart Auto-Subscribe**: New rooms enable notifications, returning rooms respect preferences
+- ✅ **Memory Efficient**: Disabled subscriptions don't consume WebSocket resources
+
+**This enhancement ensures the notification system behaves predictably and respects user preferences, creating a polished and reliable user experience.** 🎪📱
 
 #### **Notification Scopes** 🎯
 

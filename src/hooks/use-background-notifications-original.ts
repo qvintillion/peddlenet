@@ -33,33 +33,14 @@ class BackgroundNotificationManager {
   private globalNotificationHandler: ((message: Message) => void) | null = null;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private isInitialized = false;
-  
-  // Rate limiting variables
-  private connectionAttempts = 0;
-  private lastConnectionAttempt = 0;
-  private isConnecting = false;
-  private maxRetries = 5;
-  private baseDelay = 2000; // Start with 2 seconds
-  private maxDelay = 30000; // Cap at 30 seconds
 
   initialize() {
-    if (this.isInitialized) {
-      console.log('🔔 Background notification manager already initialized');
-      return;
-    }
+    if (this.isInitialized) return;
     
     console.log('🔔 Initializing Background Notification Manager');
     this.isInitialized = true;
     this.loadPersistedState();
-    
-    // Only connect if we have active subscriptions
-    const hasActiveSubscriptions = Array.from(this.state.subscriptions.values()).some(sub => sub.subscribed);
-    if (hasActiveSubscriptions) {
-      console.log('🔔 Found active subscriptions, connecting...');
-      this.connect();
-    } else {
-      console.log('🔔 No active subscriptions, deferring connection');
-    }
+    this.connect();
   }
 
   private loadPersistedState() {
@@ -89,77 +70,20 @@ class BackgroundNotificationManager {
     }
   }
 
-  private shouldAttemptConnection(): boolean {
-    const now = Date.now();
-    
-    // Check if we're hitting rate limits
-    if (this.connectionAttempts >= this.maxRetries) {
-      const resetTime = this.lastConnectionAttempt + this.maxDelay;
-      if (now < resetTime) {
-        console.log('🚫 Rate limited - waiting before next connection attempt');
-        return false;
-      } else {
-        // Reset after max delay period
-        this.connectionAttempts = 0;
-      }
-    }
-    
-    // Don't connect if already connecting
-    if (this.isConnecting) {
-      console.log('🚫 Already connecting - skipping duplicate attempt');
-      return false;
-    }
-    
-    // Don't connect if already connected
-    if (this.socket?.connected) {
-      console.log('🚫 Already connected - skipping connection attempt');
-      return false;
-    }
-    
-    // Check if we have any active subscriptions
-    const hasActiveSubscriptions = Array.from(this.state.subscriptions.values()).some(sub => sub.subscribed);
-    if (!hasActiveSubscriptions) {
-      console.log('🚫 No active subscriptions - skipping connection');
-      return false;
-    }
-    
-    return true;
-  }
-
-  private getBackoffDelay(): number {
-    // Exponential backoff with jitter
-    const delay = Math.min(this.baseDelay * Math.pow(2, this.connectionAttempts), this.maxDelay);
-    const jitter = Math.random() * 1000; // Add up to 1 second of jitter
-    return delay + jitter;
-  }
-
   private connect() {
-    if (!this.shouldAttemptConnection()) {
-      return;
-    }
-
-    this.isConnecting = true;
-    this.connectionAttempts++;
-    this.lastConnectionAttempt = Date.now();
+    if (this.socket?.connected) return;
 
     const serverUrl = ServerUtils.getWebSocketServerUrl();
     if (!serverUrl) {
       console.error('❌ No WebSocket server URL for background notifications');
-      this.isConnecting = false;
       return;
     }
 
-    console.log(`🔔 Connecting background notification service (attempt ${this.connectionAttempts}/${this.maxRetries}) to:`, serverUrl);
-
-    // Clean up existing socket first
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-    }
+    console.log('🔔 Connecting background notification service to:', serverUrl);
 
     this.socket = io(serverUrl, {
       transports: ['polling', 'websocket'],
-      timeout: 15000, // Increased timeout
+      timeout: 10000,
       reconnection: false, // Manual reconnection control
       forceNew: true
     });
@@ -167,8 +91,6 @@ class BackgroundNotificationManager {
     this.socket.on('connect', () => {
       console.log('🔔 Background notification service connected');
       this.state.isConnected = true;
-      this.isConnecting = false;
-      this.connectionAttempts = 0; // Reset on successful connection
       this.notifyListeners();
 
       // Re-subscribe to all rooms
@@ -182,30 +104,20 @@ class BackgroundNotificationManager {
     this.socket.on('disconnect', (reason) => {
       console.log('🔔 Background notification service disconnected:', reason);
       this.state.isConnected = false;
-      this.isConnecting = false;
       this.notifyListeners();
 
-      // Only auto-reconnect for non-rate-limit errors and if we have active subscriptions
-      if (reason !== 'io client disconnect' && !reason.includes('rate limit')) {
-        this.scheduleReconnection();
-      }
+      // Auto-reconnect after delay
+      if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = setTimeout(() => {
+        console.log('🔔 Attempting background notification reconnection...');
+        this.connect();
+      }, 5000);
     });
 
     this.socket.on('connect_error', (error) => {
       console.error('🔔 Background notification connection error:', error);
       this.state.isConnected = false;
-      this.isConnecting = false;
       this.notifyListeners();
-
-      // Check if this is a rate limit error
-      const isRateLimit = error.message?.includes('rate limit') || error.message?.includes('Rate limit') || error.message?.includes('Connection rate limit exceeded');
-      
-      if (isRateLimit) {
-        console.warn('🚫 Hit rate limit - backing off aggressively');
-        this.connectionAttempts = this.maxRetries; // Force long backoff
-      }
-      
-      this.scheduleReconnection();
     });
 
     // Listen for messages from any subscribed room
@@ -248,27 +160,6 @@ class BackgroundNotificationManager {
     });
   }
 
-  private scheduleReconnection() {
-    // Clear any existing timer
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-
-    // Don't schedule reconnection if we've hit max retries or no active subscriptions
-    if (!this.shouldAttemptConnection()) {
-      return;
-    }
-
-    const delay = this.getBackoffDelay();
-    console.log(`🔔 Scheduling background notification reconnection in ${Math.round(delay/1000)}s (attempt ${this.connectionAttempts}/${this.maxRetries})`);
-    
-    this.reconnectTimer = setTimeout(() => {
-      console.log('🔔 Attempting scheduled background notification reconnection...');
-      this.connect();
-    }, delay);
-  }
-
   subscribeToRoom(roomId: string, displayName: string, save: boolean = true) {
     if (!roomId || !displayName) return;
 
@@ -295,12 +186,6 @@ class BackgroundNotificationManager {
     }
     
     this.notifyListeners();
-
-    // Connect if not already connected and we now have active subscriptions
-    if (!this.socket?.connected && !this.isConnecting) {
-      console.log('🔔 Starting connection due to new subscription');
-      this.connect();
-    }
 
     // Tell server to include this room in our notification feed
     if (this.socket?.connected) {
@@ -337,30 +222,8 @@ class BackgroundNotificationManager {
       this.socket.emit('unsubscribe-notifications', { roomId });
     }
 
-    // Disconnect if no more active subscriptions
-    const hasActiveSubscriptions = Array.from(this.state.subscriptions.values()).some(sub => sub.subscribed);
-    if (!hasActiveSubscriptions && this.socket?.connected) {
-      console.log('🔔 No more active subscriptions - disconnecting background service');
-      this.disconnect();
-    }
-  }
-
-  private disconnect() {
-    console.log('🔔 Manually disconnecting background notification service');
-    
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-    
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-    }
-    
-    this.state.isConnected = false;
-    this.isConnecting = false;
-    this.notifyListeners();
+    // Keep message handler in case user re-enables notifications later
+    // this.messageHandlers.delete(roomId);
   }
 
   setCurrentRoom(roomId: string | null) {
@@ -430,8 +293,6 @@ class BackgroundNotificationManager {
     this.listeners.clear();
     this.messageHandlers.clear();
     this.isInitialized = false;
-    this.isConnecting = false;
-    this.connectionAttempts = 0;
   }
 }
 
