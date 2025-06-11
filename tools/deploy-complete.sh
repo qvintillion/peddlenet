@@ -2,16 +2,48 @@
 
 # Complete Firebase + Cloud Run Deployment Script
 # Deploys WebSocket server to Cloud Run and rebuilds Firebase with the URL
-# FIXED: Now includes cache-busting and proper hosting deployment
+# ENHANCED: Now includes dev server safety checks and environment protection
 
 set -e
 
-echo "🚀 Complete Firebase + Cloud Run Deployment (Fixed)"
+echo "🚀 Complete Firebase + Cloud Run Deployment (Safe)"
 echo "=================================================="
 
 PROJECT_ID="peddlenet-1749130439"
 SERVICE_NAME="peddlenet-websocket-server"
 REGION="us-central1"
+
+# SAFETY: Backup current development environment
+echo "💾 Protecting development environment..."
+if [ -f .env.local ]; then
+    cp .env.local .env.local.backup
+    echo "✅ Backed up .env.local"
+fi
+
+# SAFETY: Check if dev server is running and warn user
+if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo "⚠️ WARNING: Development server running on port 3000"
+    echo "This may cause deployment conflicts."
+    read -p "Stop dev server and continue? (y/N): " stop_dev
+    
+    if [[ $stop_dev =~ ^[Yy]$ ]]; then
+        echo "🛑 Stopping development servers..."
+        pkill -f "next dev" 2>/dev/null || true
+        pkill -f "signaling-server" 2>/dev/null || true
+        sleep 2
+        echo "✅ Development servers stopped"
+    else
+        echo "❌ Deployment cancelled"
+        exit 1
+    fi
+fi
+
+# SAFETY: Stop WebSocket server if running
+if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo "🛑 Stopping WebSocket server..."
+    pkill -f "signaling-server" 2>/dev/null || true
+    sleep 1
+fi
 
 # Cache bust - clear builds to ensure fresh deployment
 echo "🧹 Cache bust: clearing all builds..."
@@ -90,7 +122,7 @@ else
     echo "⚠️  Cloud Run service health check failed, but continuing..."
 fi
 
-# Update Firebase environment
+# Update Firebase environment (temporarily)
 echo "📝 Updating Firebase environment..."
 cat > .env.firebase << EOF
 # Environment variables for Firebase deployment
@@ -128,6 +160,13 @@ cd ..
 echo "🚀 Deploying to Firebase (hosting + functions)..."
 firebase deploy --only hosting,functions
 
+# SAFETY: Restore development environment
+echo "🔄 Restoring development environment..."
+if [ -f .env.local.backup ]; then
+    mv .env.local.backup .env.local
+    echo "✅ Restored original .env.local"
+fi
+
 # Get Firebase URL for testing
 FIREBASE_URL="https://festival-chat-peddlenet.web.app"
 
@@ -139,8 +178,11 @@ echo "🔌 WebSocket Server: $WEBSOCKET_URL"
 echo "🌐 Client-side code: Deployed"
 echo "⚡ SSR Functions: Deployed"
 echo "🧹 Cache-bust applied - fresh deployment guaranteed"
+echo "🛡️ Development environment protected"
 echo "☁️  Cloud Run Console: https://console.cloud.google.com/run/detail/$REGION/$SERVICE_NAME?project=$PROJECT_ID"
 echo "🎛️  Firebase Console: https://console.firebase.google.com/project/festival-chat-peddlenet"
+echo ""
+echo "📱 To restart development: npm run dev:mobile"
 echo ""
 echo "📱 Test cross-device messaging:"
 echo "   1. Visit $FIREBASE_URL on desktop"

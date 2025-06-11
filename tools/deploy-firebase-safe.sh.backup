@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Safe Firebase Deploy - Protects development environment
+# This script preserves your dev environment while deploying
+
+set -e
+
+echo "🛡️ SAFE Firebase Deploy"
+echo "======================="
+
+# 1. BACKUP current development environment
+echo "💾 Backing up development environment..."
+if [ -f .env.local ]; then
+    cp .env.local .env.local.backup
+    echo "✅ Backed up .env.local to .env.local.backup"
+fi
+
+# 2. CHECK if dev server is running and warn user
+if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo "⚠️ WARNING: Development server is running on port 3000"
+    echo "This may cause conflicts during deployment."
+    read -p "Stop dev server and continue? (y/N): " stop_dev
+    
+    if [[ $stop_dev =~ ^[Yy]$ ]]; then
+        echo "🛑 Stopping development servers..."
+        pkill -f "next dev" 2>/dev/null || true
+        pkill -f "signaling-server" 2>/dev/null || true
+        sleep 2
+        echo "✅ Development servers stopped"
+    else
+        echo "❌ Deployment cancelled. Please stop dev server manually."
+        exit 1
+    fi
+fi
+
+# 3. CHECK if WebSocket server is running
+if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo "🛑 Stopping WebSocket server on port 3001..."
+    pkill -f "signaling-server" 2>/dev/null || true
+    sleep 1
+fi
+
+# 4. CLEAN build artifacts to prevent conflicts
+echo "🧹 Cleaning build artifacts..."
+rm -rf .next/ > /dev/null 2>&1 || true
+rm -rf functions/.next/ > /dev/null 2>&1 || true
+rm -rf functions/lib/ > /dev/null 2>&1 || true
+
+# 5. SET UP staging environment (temporarily)
+echo "📝 Setting up staging environment..."
+if [ -f .env.firebase ]; then
+    cp .env.firebase .env.local
+    echo "✅ Using staging environment variables"
+else
+    echo "⚠️ No .env.firebase found, using existing environment"
+fi
+
+# 6. BUILD and DEPLOY
+echo "🏗️ Building Next.js..."
+npm run build
+
+echo "🔧 Building Functions..."
+cd functions
+npm run build
+cd ..
+
+echo "🚀 Deploying to Firebase..."
+firebase deploy --only hosting,functions
+
+# 7. RESTORE development environment
+echo "🔄 Restoring development environment..."
+if [ -f .env.local.backup ]; then
+    mv .env.local.backup .env.local
+    echo "✅ Restored original .env.local"
+fi
+
+FIREBASE_URL="https://festival-chat-peddlenet.web.app"
+
+echo ""
+echo "🎉 Safe Deploy Complete!"
+echo "======================="
+echo "🔥 Firebase URL: $FIREBASE_URL"
+echo "🛡️ Development environment preserved"
+echo ""
+echo "📱 To restart development:"
+echo "   npm run dev:mobile"
+echo ""
+echo "🧪 To test staging:"
+echo "   Open: $FIREBASE_URL"

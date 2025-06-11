@@ -27,7 +27,8 @@
 ## 🚨 Critical Updates
 
 ### **Recent Fixes (June 2025)**
-- **[CRITICAL-FIX-JUNE-2025.md](./CRITICAL-FIX-JUNE-2025.md)** - ⭐ **Mobile notifications & deployment issues resolved**
+- **[DEVELOPMENT-STABILITY-UX-UPDATE-JUNE-11-2025.md](./DEVELOPMENT-STABILITY-UX-UPDATE-JUNE-11-2025.md)** - ⭐ **Development workflow protection, room navigation, and hydration fixes**
+- **[CRITICAL-FIX-JUNE-2025.md](./CRITICAL-FIX-JUNE-2025.md)** - Mobile notifications & deployment issues resolved
 
 ## 📂 Archive & Historical
 

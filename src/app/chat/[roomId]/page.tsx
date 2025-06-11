@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useWebSocketChat } from '@/hooks/use-websocket-chat';
 import { useMessageNotifications } from '@/hooks/use-push-notifications';
@@ -17,6 +17,8 @@ import { ChatRoomSettings } from '@/components/ChatRoomSettings';
 import { ConnectionTest } from '@/components/ConnectionTest';
 import { NotificationTest } from '@/components/NotificationTest';
 import { FavoriteButton } from '@/components/FavoriteButton';
+import { ChatRoomSwitcher } from '@/components/ChatRoomSwitcher';
+import { useRoomUnreadTracker } from '@/hooks/use-unread-messages';
 // Import QRPeerUtils dynamically to avoid initialization issues
 // import { QRPeerUtils } from '@/utils/qr-peer-utils';
 import { RoomCodeDiagnosticPanel } from '@/components/RoomCodeDiagnostics';
@@ -24,7 +26,37 @@ import { RoomCodeDiagnosticPanel } from '@/components/RoomCodeDiagnostics';
 export default function ChatRoomPage() {
   const params = useParams();
   const router = useRouter();
-  const roomId = params.roomId as string;
+  
+  // Ensure roomId is properly extracted and is a string
+  const roomId = React.useMemo(() => {
+    const id = params.roomId;
+    if (typeof id === 'string') {
+      return id;
+    }
+    if (Array.isArray(id) && id.length > 0) {
+      return id[0];
+    }
+    return '';
+  }, [params.roomId]);
+  
+  // Early return if no valid roomId
+  if (!roomId) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-purple-900 via-black to-purple-900 text-white">
+        <div className="text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold mb-2">Invalid Room</h2>
+          <p className="text-gray-400 mb-4">Room ID not found or invalid.</p>
+          <button
+            onClick={() => router.push('/')}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const [displayName, setDisplayName] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -60,6 +92,9 @@ export default function ChatRoomPage() {
   
   // Track current room for background notification manager
   const { setCurrentRoom } = useBackgroundNotifications();
+  
+  // Track unread messages for this room (mark as read when user is here)
+  useRoomUnreadTracker(roomId, !!displayName);
   
   // Set current room when component mounts and clean up when unmounting
   useEffect(() => {
@@ -134,7 +169,7 @@ export default function ChatRoomPage() {
   const [isSessionRestored, setIsSessionRestored] = useState(false);
   
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !roomId || typeof roomId !== 'string') return;
     
     // Import will be dynamically loaded to avoid initialization issues
     // const { SessionPersistence } = require('@/utils/connection-resilience');
@@ -153,7 +188,7 @@ export default function ChatRoomPage() {
 
   // Get/set display name and restore session
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !roomId || typeof roomId !== 'string') return;
     
     // Clean up stale peer data first using dynamic import
     console.log('🧠 Cleaning up stale peer data for room:', roomId);
@@ -222,7 +257,7 @@ export default function ChatRoomPage() {
 
   // Check for host peer info from QR code
   useEffect(() => {
-    if (typeof window === 'undefined' || !peerId) return;
+    if (typeof window === 'undefined' || !peerId || !roomId || typeof roomId !== 'string') return;
     
     // Check URL params for host peer info
     const urlParams = new URLSearchParams(window.location.search);
@@ -422,7 +457,10 @@ export default function ChatRoomPage() {
 
         {/* Room Title Row with Actions */}
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-white truncate mr-3 min-w-0">🎪 {roomId}</h1>
+          <ChatRoomSwitcher 
+            currentRoomId={roomId}
+            className="flex-1 mr-3"
+          />
           <div className="flex gap-2 shrink-0">
             <button
               onClick={() => setShowQRModal(true)}

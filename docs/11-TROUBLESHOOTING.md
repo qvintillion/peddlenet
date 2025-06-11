@@ -534,6 +534,87 @@ location.reload()
 
 ## 🔧 Development Issues
 
+### **Deployment Conflicts Breaking Dev Server** 🆕
+
+**Symptoms**: Development server becomes unstable or stops working after deploying to staging
+
+**Root Cause**: Port conflicts, environment variable corruption, and resource competition between dev and deployment processes
+
+**✅ RESOLUTION**: This issue has been completely fixed with enhanced deployment safety!
+
+**What Was Fixed**:
+- **Process Conflict Detection** - All deployment scripts now detect and stop conflicting dev servers
+- **Environment Protection** - Automatic backup and restoration of development environment variables
+- **Clean Deployment Process** - Cache busting and resource isolation during builds
+- **Seamless Recovery** - Automatic restoration with clear restart instructions
+
+**Enhanced Deployment Scripts**:
+```bash
+# All now include safety measures - your workflow stays the same!
+npm run deploy:firebase:super-quick  # + Dev server safety
+npm run deploy:firebase:quick        # + Environment protection  
+npm run deploy:firebase:complete     # + Conflict prevention
+```
+
+**What Happens Now During Deployment**:
+```bash
+$ npm run deploy:firebase:quick
+
+⚡ Quick Firebase Functions + Hosting Update (Safe)
+==================================================
+💾 Protecting development environment...
+✅ Backed up .env.local
+⚠️ WARNING: Development server running on port 3000
+This may cause deployment conflicts.
+Stop dev server and continue? (y/N): y
+🛑 Stopping development servers...
+✅ Development servers stopped
+🧹 Cache bust: clearing builds...
+🏗️ Building and deploying...
+🔄 Restoring development environment...
+✅ Restored original .env.local
+🛡️ Development environment protected
+📱 To restart development: npm run dev:mobile
+```
+
+**Manual Recovery (If Needed)**:
+```bash
+# If your dev server is currently broken:
+
+# 1. Kill any conflicting processes
+pkill -f "next dev"
+pkill -f "signaling-server"
+
+# 2. Restore dev environment (if backup exists)
+cp .env.local.backup .env.local
+
+# 3. Clean and restart
+rm -rf .next node_modules/.cache
+npm run dev:mobile
+```
+
+**Benefits of the Fix**:
+- ✅ **No workflow changes** - use same deployment commands
+- ✅ **Automatic conflict prevention** - detects issues before they break things
+- ✅ **Environment protection** - staging variables never corrupt dev setup
+- ✅ **Seamless recovery** - always get back to working development state
+- ✅ **Clear guidance** - exact commands to restart development
+
+**Prevention Tips**:
+```markdown
+✅ NEW SAFETY FEATURES:
+- Deployment scripts handle conflicts automatically
+- Environment variables are protected and restored
+- Clear prompts guide you through safe deployment
+- Automatic cleanup and restart instructions
+
+📚 WORKFLOW GUIDANCE:
+- Continue using your preferred deployment script
+- Answer "y" when prompted to stop dev servers
+- Run `npm run dev:mobile` after deployment completes
+- Enjoy conflict-free development and deployment!
+```
+
 ### **Node.js Version Compatibility** 🆕
 
 **Symptoms**: Package installation failures, better-sqlite3 compilation errors

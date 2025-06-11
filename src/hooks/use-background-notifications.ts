@@ -5,6 +5,7 @@ import { io, Socket } from 'socket.io-client';
 import type { Message } from '@/lib/types';
 import { ServerUtils } from '@/utils/server-utils';
 import { useMessageNotifications } from '@/hooks/use-push-notifications';
+import { unreadMessageManager } from '@/hooks/use-unread-messages';
 
 // Global background notification state
 interface NotificationSubscription {
@@ -223,19 +224,23 @@ class BackgroundNotificationManager {
       const subscription = this.state.subscriptions.get(roomId);
       
       if (subscription && subscription.subscribed) {
+        const normalizedMessage: Message = {
+          id: message.id || `bg-${Date.now()}`,
+          content: message.content || '',
+          sender: message.sender || 'Unknown',
+          timestamp: message.timestamp || Date.now(),
+          type: message.type || 'chat',
+          roomId: roomId,
+          synced: true
+        };
+        
+        // Always track unread messages for background notifications
+        unreadMessageManager.initialize();
+        unreadMessageManager.addUnreadMessage(normalizedMessage);
+        
         // Only notify if we're not currently viewing this room
         if (this.state.currentRoom !== roomId) {
           console.log('🔔 Triggering notification for background room:', roomId);
-          
-          const normalizedMessage: Message = {
-            id: message.id || `bg-${Date.now()}`,
-            content: message.content || '',
-            sender: message.sender || 'Unknown',
-            timestamp: message.timestamp || Date.now(),
-            type: message.type || 'chat',
-            roomId: roomId,
-            synced: true
-          };
           
           // Trigger notification handler for this room
           const handler = this.messageHandlers.get(roomId);
@@ -250,6 +255,8 @@ class BackgroundNotificationManager {
           }
         } else {
           console.log('🔔 Skipping notification - currently viewing room:', roomId);
+          // Even if we're in the room, we should mark it as read since user is actively viewing
+          unreadMessageManager.markRoomAsRead(roomId);
         }
       }
     });
@@ -442,6 +449,12 @@ class BackgroundNotificationManager {
       this.savePersistedState();
     }
     
+    // Mark room as read when user enters it
+    if (roomId) {
+      unreadMessageManager.initialize();
+      unreadMessageManager.markRoomAsRead(roomId);
+    }
+    
     this.notifyListeners();
   }
 
@@ -456,6 +469,12 @@ class BackgroundNotificationManager {
   setGlobalNotificationHandler(handler: (message: Message) => void) {
     console.log('🔔 Setting global notification handler');
     this.globalNotificationHandler = handler;
+    
+    // Try to connect when global handler is set, even without active subscriptions
+    if (!this.socket?.connected && !this.isConnecting) {
+      console.log('🔔 Attempting connection due to global handler registration');
+      this.connect();
+    }
   }
 
   removeGlobalNotificationHandler() {
@@ -594,6 +613,8 @@ export function useRoomBackgroundNotifications(roomId: string, displayName: stri
 // Hook for global notification handling (use this on pages like homepage)
 export function useGlobalBackgroundNotifications() {
   useEffect(() => {
+    console.log('🔔 Setting up global background notifications on homepage');
+    
     // Initialize background notification manager
     backgroundNotificationManager.initialize();
 
@@ -674,8 +695,10 @@ export function useGlobalBackgroundNotifications() {
     };
 
     backgroundNotificationManager.setGlobalNotificationHandler(globalHandler);
+    console.log('✅ Global notification handler registered');
 
     return () => {
+      console.log('🔔 Cleaning up global notification handler');
       backgroundNotificationManager.removeGlobalNotificationHandler();
     };
   }, []);

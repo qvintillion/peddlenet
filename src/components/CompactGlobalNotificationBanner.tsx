@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
 
 interface CompactGlobalNotificationBannerProps {
@@ -9,6 +9,7 @@ interface CompactGlobalNotificationBannerProps {
 
 export function CompactGlobalNotificationBanner({ className = '' }: CompactGlobalNotificationBannerProps) {
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const {
     permission,
     isSupported,
@@ -20,8 +21,49 @@ export function CompactGlobalNotificationBanner({ className = '' }: CompactGloba
     sendTestNotification
   } = usePushNotifications();
 
+  // Fix hydration mismatch by only rendering notification-specific content on client
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Show loading state during hydration to prevent mismatch
+  if (!isClient) {
+    return (
+      <div className={`p-3 rounded-lg border bg-gray-900/20 border-gray-500/30 ${className}`}>
+        <div className="flex items-center space-x-2">
+          <span className="text-lg">🔔</span>
+          <span className="text-sm font-medium text-gray-400">
+            Loading notification settings...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // MOBILE FIX: Show helpful message even for limited support
   if (!isSupported) {
-    return null; // Don't show anything if not supported
+    // Check if we have basic Notification API at least
+    const hasBasicNotifications = typeof window !== 'undefined' && 'Notification' in window;
+    
+    if (hasBasicNotifications) {
+      // Show limited support banner
+      return (
+        <div className={`p-3 rounded-lg border bg-orange-900/20 border-orange-500/30 ${className}`}>
+          <div className="flex items-center space-x-2">
+            <span className="text-lg">⚠️</span>
+            <span className="text-sm font-medium text-orange-400">
+              Limited notification support detected
+            </span>
+          </div>
+          <p className="text-xs text-orange-300 mt-1">
+            Basic notifications may work, but full features unavailable in this browser.
+          </p>
+        </div>
+      );
+    }
+    
+    // No notification support at all
+    return null;
   }
 
   const handleGlobalPermissionRequest = async () => {

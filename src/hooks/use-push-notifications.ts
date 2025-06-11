@@ -53,10 +53,27 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+    // MOBILE FIX: More lenient support detection for mobile browsers
+    // Some mobile browsers support notifications without full PushManager API
+    const hasBasicNotifications = 'Notification' in window;
+    const hasServiceWorker = 'serviceWorker' in navigator;
+    const hasPushManager = 'PushManager' in window;
+    
+    // Consider supported if we have at least basic notifications
+    // Full push support is preferred but not required for basic functionality
+    const supported = hasBasicNotifications && (hasServiceWorker || hasPushManager);
+    
+    console.log('🔔 Notification support check:', {
+      hasBasicNotifications,
+      hasServiceWorker,
+      hasPushManager,
+      supported,
+      userAgent: navigator.userAgent
+    });
+    
     setIsSupported(supported);
 
-    if (supported) {
+    if (supported && hasBasicNotifications) {
       setPermission(Notification.permission);
     }
   }, []);

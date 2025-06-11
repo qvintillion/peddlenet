@@ -71,14 +71,26 @@ npm run dev
 
 ## 🔧 Recent Updates (June 2025)
 
-### **✅ CRITICAL: Infinite Reconnection Loop Fixed** (June 11, 2025)
-- **Smart conflict detection** between background notifications and WebSocket chat hooks
-- **Eliminated "Connection rate limit exceeded" errors** that caused app slowdowns
-- **UI improvements** with streamlined chat interface and floating room code cards
-- **Mobile battery optimization** through reduced background network activity
-- **Enhanced error handling** with proper rate limiting and exponential backoff
+### **✅ CRITICAL: Development Workflow Protection** (June 11, 2025)
+- **Enhanced deployment safety** with automatic dev server conflict detection
+- **Environment protection** - staging deployments no longer corrupt development setup
+- **Process isolation** - eliminates port conflicts between dev and build processes
+- **Seamless recovery** - automatic backup/restore of development environment
+- **Zero workflow changes** - existing deployment commands now include safety measures
 
-**📚 Complete details**: [CRITICAL-FIX-JUNE-2025.md](./docs/CRITICAL-FIX-JUNE-2025.md)
+**📚 Complete details**: [DEVELOPMENT-STABILITY-UX-UPDATE-JUNE-11-2025.md](./docs/DEVELOPMENT-STABILITY-UX-UPDATE-JUNE-11-2025.md)
+
+### **✅ Enhanced Room Navigation** (June 11, 2025)
+- **Always-visible room display** - fresh users now see room ID immediately in header
+- **Smart switcher behavior** - dropdown functionality only when multiple rooms available
+- **Progressive enhancement** - basic display for new users, full features for experienced users
+- **Unread message indicators** - clear visual feedback for active rooms
+
+### **✅ React Hydration Stability** (June 11, 2025)
+- **Fixed hydration mismatches** in notification banner component
+- **Consistent SSR/client rendering** - eliminated flash of different content
+- **Enhanced error handling** - safer dynamic imports with parameter validation
+- **Improved loading states** - smooth transitions during initialization
 
 ### **💜 Enhanced Favorites System** (June 10, 2025)
 - **Heart-based favorites** with ❤️/🤍 toggle buttons in chat headers
@@ -268,6 +280,42 @@ The diagnostics page will show:
 - Test connection stability
 
 ## 🚀 Deployment
+
+### **🛡️ Enhanced Deployment Safety** (June 11, 2025)
+
+All deployment scripts now include comprehensive safety measures to prevent development server conflicts:
+
+**Safety Features:**
+- **🛑 Process conflict detection** - Automatically detects and stops dev servers on ports 3000/3001
+- **💾 Environment protection** - Backs up and restores `.env.local` to prevent corruption
+- **🧹 Clean deployment** - Cache busting and fresh builds guaranteed
+- **🔄 Seamless recovery** - Automatic environment restoration with restart instructions
+
+**Enhanced Scripts:**
+```bash
+# All now include safety measures - no workflow changes needed!
+npm run deploy:firebase:super-quick  # Rapid iteration + dev server safety
+npm run deploy:firebase:quick        # Frontend changes + environment protection  
+npm run deploy:firebase:complete     # Infrastructure updates + conflict prevention
+```
+
+**Example Safe Deploy:**
+```bash
+$ npm run deploy:firebase:quick
+
+⚡ Quick Firebase Functions + Hosting Update (Safe)
+==================================================
+💾 Protecting development environment...
+✅ Backed up .env.local
+⚠️ WARNING: Development server running on port 3000
+Stop dev server and continue? (y/N): y
+🛑 Stopping development servers...
+🏗️ Building and deploying...
+🔄 Restoring development environment...
+✅ Restored original .env.local
+🛡️ Development environment protected
+📱 To restart development: npm run dev:mobile
+```
 
 ### Firebase (Full Stack)
 ```bash

@@ -41,6 +41,16 @@ export default function HomePage() {
     if (typeof window !== 'undefined') {
       const savedName = localStorage.getItem('displayName');
       if (savedName) setDisplayName(savedName);
+      
+      // Check URL params to set initial mode
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlMode = urlParams.get('mode');
+      if (urlMode === 'join') {
+        setMode('join');
+      } else if (urlMode === 'create') {
+        setMode('create');
+      }
+      // If no mode specified, default to 'create' (already set in useState)
     }
   }, []);
 
@@ -99,7 +109,15 @@ export default function HomePage() {
         {/* Mode Toggle */}
         <div className="flex mb-6 bg-gray-800 rounded-lg p-1">
           <button
-            onClick={() => setMode('create')}
+            onClick={() => {
+              setMode('create');
+              // Update URL to reflect the mode
+              if (typeof window !== 'undefined') {
+                const url = new URL(window.location.href);
+                url.searchParams.set('mode', 'create');
+                window.history.replaceState({}, '', url.toString());
+              }
+            }}
             className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition ${
               mode === 'create'
                 ? 'bg-purple-600 text-white'
@@ -109,7 +127,15 @@ export default function HomePage() {
             🏠 Create Room
           </button>
           <button
-            onClick={() => setMode('join')}
+            onClick={() => {
+              setMode('join');
+              // Update URL to reflect the mode
+              if (typeof window !== 'undefined') {
+                const url = new URL(window.location.href);
+                url.searchParams.set('mode', 'join');
+                window.history.replaceState({}, '', url.toString());
+              }
+            }}
             className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition ${
               mode === 'join'
                 ? 'bg-purple-600 text-white'
@@ -160,7 +186,14 @@ export default function HomePage() {
                 <li>• Your room gets a unique code others can use to join</li>
                 <li>• Share the QR code or room code with your festival crew</li>
                 <li>• Room stays active even if you temporarily disconnect</li>
-                <li>• Already have a room? Use "Join Room" tab above</li>
+                <li>• Already have a room? <button onClick={() => {
+                  setMode('join');
+                  if (typeof window !== 'undefined') {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('mode', 'join');
+                    window.history.replaceState({}, '', url.toString());
+                  }
+                }} className="text-purple-400 hover:text-purple-300 underline">Use "Join Room" tab</button></li>
               </ul>
             </div>
           </form>
