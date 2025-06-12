@@ -101,9 +101,6 @@ class BackgroundNotificationManager {
 
   private loadPersistedState() {
     try {
-      // SSR guard
-      if (typeof window === 'undefined') return;
-      
       const saved = localStorage.getItem('background_notification_subscriptions');
       if (saved) {
         const data = JSON.parse(saved);
@@ -122,9 +119,6 @@ class BackgroundNotificationManager {
 
   private savePersistedState() {
     try {
-      // SSR guard
-      if (typeof window === 'undefined') return;
-      
       const subscriptions = Array.from(this.state.subscriptions.values());
       localStorage.setItem('background_notification_subscriptions', JSON.stringify(subscriptions));
     } catch (error) {
@@ -239,8 +233,9 @@ class BackgroundNotificationManager {
       pingTimeout: 60000,
       pingInterval: 30000,
       
-      // Extra headers for connection identification
+      // Extra headers for CORS
       extraHeaders: {
+        'Access-Control-Request-Headers': 'content-type',
         'X-Connection-Type': 'background-notifications'
       }
     });
@@ -580,78 +575,30 @@ class BackgroundNotificationManager {
 }
 
 // Global singleton instance
-let backgroundNotificationManager: BackgroundNotificationManager | null = null;
-
-// Function to get or create the manager safely
-function getBackgroundNotificationManager(): BackgroundNotificationManager {
-  if (typeof window === 'undefined') {
-    // Return a mock manager for SSR
-    return {
-      initialize: () => {},
-      getState: () => ({
-        isConnected: false,
-        subscriptions: new Map(),
-        currentRoom: null
-      }),
-      addListener: () => () => {},
-      subscribeToRoom: () => {},
-      unsubscribeFromRoom: () => {},
-      setCurrentRoom: () => {},
-      setMessageHandler: () => {},
-      removeMessageHandler: () => {},
-      setGlobalNotificationHandler: () => {},
-      removeGlobalNotificationHandler: () => {},
-      getCoordinationStatus: () => ({
-        hasActiveChatConnections: false,
-        canConnectBackground: false,
-        isConnected: false,
-        isConnecting: false,
-        connectionAttempts: 0,
-        isUserDisconnected: false
-      })
-    } as any;
-  }
-  
-  if (!backgroundNotificationManager) {
-    backgroundNotificationManager = new BackgroundNotificationManager();
-  }
-  return backgroundNotificationManager;
-}
+const backgroundNotificationManager = new BackgroundNotificationManager();
 
 // Hook for components to use background notifications
 export function useBackgroundNotifications() {
-  const [state, setState] = useState<BackgroundNotificationState>(() => {
-    // SSR-safe initialization
-    if (typeof window === 'undefined') {
-      return {
-        isConnected: false,
-        subscriptions: new Map(),
-        currentRoom: null
-      };
-    }
-    return getBackgroundNotificationManager().getState();
-  });
+  const [state, setState] = useState<BackgroundNotificationState>(
+    backgroundNotificationManager.getState()
+  );
 
   useEffect(() => {
-    // Only initialize on client side
-    if (typeof window === 'undefined') return;
-    
-    const manager = getBackgroundNotificationManager();
-    manager.initialize();
-    const unsubscribe = manager.addListener(setState);
+    backgroundNotificationManager.initialize();
+    const unsubscribe = backgroundNotificationManager.addListener(setState);
     return unsubscribe;
   }, []);
 
   const subscribeToRoom = useCallback((roomId: string, displayName: string) => {
-    getBackgroundNotificationManager().subscribeToRoom(roomId, displayName);
+    backgroundNotificationManager.subscribeToRoom(roomId, displayName);
   }, []);
 
   const unsubscribeFromRoom = useCallback((roomId: string) => {
-    getBackgroundNotificationManager().unsubscribeFromRoom(roomId);
+    backgroundNotificationManager.unsubscribeFromRoom(roomId);
   }, []);
 
   const setCurrentRoom = useCallback((roomId: string | null) => {
-    getBackgroundNotificationManager().setCurrentRoom(roomId);
+    backgroundNotificationManager.setCurrentRoom(roomId);
   }, []);
 
   return {
@@ -661,7 +608,7 @@ export function useBackgroundNotifications() {
     subscribeToRoom,
     unsubscribeFromRoom,
     setCurrentRoom,
-    coordinationStatus: getBackgroundNotificationManager().getCoordinationStatus()
+    coordinationStatus: backgroundNotificationManager.getCoordinationStatus()
   };
 }
 
@@ -671,19 +618,16 @@ export function useRoomBackgroundNotifications(roomId: string, displayName: stri
 
   useEffect(() => {
     if (!roomId || !displayName) return;
-    // SSR guard
-    if (typeof window === 'undefined') return;
 
-    const manager = getBackgroundNotificationManager();
-    manager.initialize();
+    backgroundNotificationManager.initialize();
 
-    const currentState = manager.getState();
+    const currentState = backgroundNotificationManager.getState();
     const existingSubscription = currentState.subscriptions.get(roomId);
     
     // More intelligent subscription logic
     if (!existingSubscription || existingSubscription.subscribed) {
       console.log('🔔 Auto-subscribing to enhanced background notifications for room:', roomId);
-      manager.subscribeToRoom(roomId, displayName);
+      backgroundNotificationManager.subscribeToRoom(roomId, displayName);
     } else {
       console.log('🔕 Skipping auto-subscription - notifications disabled for room:', roomId);
     }
@@ -693,33 +637,29 @@ export function useRoomBackgroundNotifications(roomId: string, displayName: stri
       triggerNotification(message);
     };
 
-    manager.setMessageHandler(roomId, messageHandler);
+    backgroundNotificationManager.setMessageHandler(roomId, messageHandler);
 
     return () => {
-      manager.removeMessageHandler(roomId);
+      backgroundNotificationManager.removeMessageHandler(roomId);
     };
   }, [roomId, displayName, triggerNotification]);
 
   return {
-    coordinationStatus: getBackgroundNotificationManager().getCoordinationStatus()
+    coordinationStatus: backgroundNotificationManager.getCoordinationStatus()
   };
 }
 
 // Hook for global notification handling (homepage, etc.)
 export function useGlobalBackgroundNotifications() {
   useEffect(() => {
-    // SSR guard
-    if (typeof window === 'undefined') return;
-    
     console.log('🔔 Setting up enhanced global background notifications');
     
-    const manager = getBackgroundNotificationManager();
-    manager.initialize();
+    backgroundNotificationManager.initialize();
 
     const globalHandler = (message: Message) => {
       console.log('🔔 Enhanced global notification handler triggered:', message);
       
-      const state = manager.getState();
+      const state = backgroundNotificationManager.getState();
       const subscription = state.subscriptions.get(message.roomId);
       
       if (subscription) {
@@ -776,19 +716,19 @@ export function useGlobalBackgroundNotifications() {
       }
     };
 
-    manager.setGlobalNotificationHandler(globalHandler);
+    backgroundNotificationManager.setGlobalNotificationHandler(globalHandler);
     console.log('✅ Enhanced global notification handler registered');
 
     return () => {
       console.log('🔔 Cleaning up enhanced global notification handler');
-      manager.removeGlobalNotificationHandler();
+      backgroundNotificationManager.removeGlobalNotificationHandler();
     };
   }, []);
 
   return {
-    coordinationStatus: getBackgroundNotificationManager().getCoordinationStatus()
+    coordinationStatus: backgroundNotificationManager.getCoordinationStatus()
   };
 }
 
 // Export the manager and coordinator for advanced use cases
-export { getBackgroundNotificationManager as backgroundNotificationManager, ConnectionCoordinator };
+export { backgroundNotificationManager, ConnectionCoordinator };

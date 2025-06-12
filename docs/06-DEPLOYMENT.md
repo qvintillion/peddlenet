@@ -177,6 +177,46 @@ firebase deploy --only hosting,functions
 
 ## 🔄 Development Workflow
 
+### **🏠 FIXED: Proper Environment Separation (June 12, 2025)**
+
+**✅ ISSUE RESOLVED:** Local development no longer requires staging server deployment!
+
+**Four-Tier Environment Configuration:**
+- **`.env.local`** → Development (localhost:3001)
+- **`.env.preview`** → Preview Channels (Firebase Preview Channels + Preview WebSocket server)
+- **`.env.staging`** → Final Staging (staging WebSocket server)
+- **`.env.production`** → Production (production WebSocket server)
+
+**Environment Switching:**
+```bash
+# Check current environment
+npm run env:show
+
+# Switch to development (localhost:3001)
+npm run env:dev
+
+# Switch to staging (staging WebSocket server)
+npm run env:staging
+
+# Switch to production (production WebSocket server)
+npm run env:production
+```
+
+**Four-Tier Deployment Workflow:**
+```bash
+# 1. Local Development
+npm run dev:mobile
+
+# 2. Preview Channels (quick testing)
+npm run preview:deploy feature-name
+
+# 3. Final Staging (comprehensive validation)
+npm run deploy:firebase:complete
+
+# 4. Production Deployment
+./deploy.sh
+```
+
 ### **Daily Development**
 ```bash
 # Start development with mobile support

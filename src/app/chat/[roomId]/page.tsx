@@ -23,9 +23,30 @@ import { useRoomUnreadTracker } from '@/hooks/use-unread-messages';
 // import { QRPeerUtils } from '@/utils/qr-peer-utils';
 import { RoomCodeDiagnosticPanel } from '@/components/RoomCodeDiagnostics';
 
+// Disable static generation for chat pages to avoid SSR issues
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export default function ChatRoomPage() {
   const params = useParams();
   const router = useRouter();
+  
+  // Disable Next.js automatic scroll restoration for this page
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Disable automatic scroll restoration since we use fixed positioning
+      if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+      }
+    }
+    
+    return () => {
+      // Restore default scroll behavior when leaving the page
+      if (typeof window !== 'undefined' && 'scrollRestoration' in history) {
+        history.scrollRestoration = 'auto';
+      }
+    };
+  }, []);
   
   // Ensure roomId is properly extracted and is a string
   const roomId = React.useMemo(() => {
@@ -373,6 +394,7 @@ export default function ChatRoomPage() {
     <div 
       className="flex flex-col h-screen bg-gradient-to-br from-purple-900 via-black to-purple-900 text-white fixed inset-0 overflow-hidden supports-[height:100svh]:h-[100svh]"
       data-chat-active={roomId && displayName ? "true" : "false"}
+      data-scroll-restore="false"
     >
       {/* Ensure proper mobile viewport */}
       <style jsx global>{`
@@ -444,7 +466,6 @@ export default function ChatRoomPage() {
               className="w-[42px] h-[32px]"
             />
           </button>
-          <p className="text-sm text-purple-300">PeddleNet Room</p>
           {process.env.NODE_ENV === 'development' && (
             <button
               onClick={() => setShowDebug(!showDebug)}

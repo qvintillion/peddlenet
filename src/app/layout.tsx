@@ -16,6 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://peddlenet.app'),
   title: "PeddleNet - Instant P2P Messaging",
   description: "Connect with people nearby without internet using instant P2P chat rooms perfect for festivals and events",
   icons: {

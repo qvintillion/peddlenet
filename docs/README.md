@@ -27,6 +27,7 @@
 ## 🚨 Critical Updates
 
 ### **Recent Fixes (June 2025)**
+- **[ROOM-SWITCHER-UI-FIX-JUNE-12-2025.md](./ROOM-SWITCHER-UI-FIX-JUNE-12-2025.md)** - ⭐ **Critical UI transparency fix with React Portal solution**
 - **[NOTIFICATION-FIXES-JUNE-11-2025.md](./NOTIFICATION-FIXES-JUNE-11-2025.md)** - ⭐ **Notification toggle fixes and reconnection loop prevention**
 - **[DEVELOPMENT-STABILITY-UX-UPDATE-JUNE-11-2025.md](./DEVELOPMENT-STABILITY-UX-UPDATE-JUNE-11-2025.md)** - ⭐ **Development workflow protection, room navigation, and hydration fixes**
 - **[CRITICAL-FIX-JUNE-2025.md](./CRITICAL-FIX-JUNE-2025.md)** - Mobile notifications & deployment issues resolved

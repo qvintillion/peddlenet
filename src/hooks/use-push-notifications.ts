@@ -44,7 +44,13 @@ if (typeof window !== 'undefined') {
 }
 
 export function usePushNotifications(roomId?: string): UsePushNotificationsReturn {
-  const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [permission, setPermission] = useState<NotificationPermission>(() => {
+    // SSR-safe initialization
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      return 'default';
+    }
+    return Notification.permission;
+  });
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [settings, setSettings] = useState<PushNotificationSettings>(globalSettings);
@@ -116,7 +122,7 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
         let roomNotificationsEnabled = true;
         if (roomId) {
           try {
-            const bgState = backgroundNotificationManager.getState();
+            const bgState = backgroundNotificationManager().getState();
             const roomSubscription = bgState.subscriptions.get(roomId);
             roomNotificationsEnabled = roomSubscription ? roomSubscription.subscribed : true;
             console.log('🔔 Room-specific notification status for', roomId, ':', roomNotificationsEnabled);
@@ -154,7 +160,7 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
     
     // Also listen for background notification changes if we have a roomId
     if (roomId) {
-      const unsubscribe = backgroundNotificationManager.addListener(() => {
+      const unsubscribe = backgroundNotificationManager().addListener(() => {
         checkStatus(); // Re-check when background notifications change
       });
       
@@ -201,9 +207,9 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
       // If we have a roomId, also enable background notifications for this room
       if (roomId) {
         try {
-          backgroundNotificationManager.initialize();
+          backgroundNotificationManager().initialize();
           const storedName = localStorage.getItem('displayName') || 'User';
-          backgroundNotificationManager.subscribeToRoom(roomId, storedName);
+          backgroundNotificationManager().subscribeToRoom(roomId, storedName);
           console.log('🔔 Also enabled background notifications for room:', roomId);
         } catch (bgError) {
           console.warn('🔔 Background notification setup failed:', bgError.message);
@@ -233,7 +239,7 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
     try {
       // If we have a roomId, also disable background notifications for this room
       if (roomId) {
-        backgroundNotificationManager.unsubscribeFromRoom(roomId);
+        backgroundNotificationManager().unsubscribeFromRoom(roomId);
         console.log('🔔 Also disabled background notifications for room:', roomId);
       }
       

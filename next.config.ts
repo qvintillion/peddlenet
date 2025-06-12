@@ -26,6 +26,7 @@ const nextConfig = {
     unoptimized: true,
   },
   
+
   // Simplified webpack configuration to fix TDZ issues
   webpack: (config, { isServer, dev }) => {
     // Only apply optimizations in production

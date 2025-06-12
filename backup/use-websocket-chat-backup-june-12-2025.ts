@@ -8,7 +8,7 @@ import { NetworkUtils } from '@/utils/network-utils';
 import { MessagePersistence } from '@/utils/message-persistence';
 import { ServerUtils } from '@/utils/server-utils';
 
-// Enhanced connection resilience with Cloud Run optimizations
+// Enhanced connection resilience with adaptive timing
 const createEnhancedConnectionResilience = () => {
   let circuitBreaker = {
     isOpen: false,
@@ -23,11 +23,10 @@ const createEnhancedConnectionResilience = () => {
     lastAttemptTime: 0
   };
   
-  const FAILURE_THRESHOLD = 3;
-  const RECOVERY_TIMEOUT = 8000;
-  const SUCCESS_THRESHOLD = 2;
-  const MAX_BACKOFF = 12000;
-  const COLD_START_BACKOFF = 2000;
+  const FAILURE_THRESHOLD = 3; // Reduced from 5 for faster detection
+  const RECOVERY_TIMEOUT = 10000; // Reduced from 15s for faster recovery
+  const SUCCESS_THRESHOLD = 2; // Require 2 successes to close circuit
+  const MAX_BACKOFF = 15000; // Max 15 seconds (reduced from 30s)
   
   return {
     shouldAllowConnection(): boolean {
@@ -50,7 +49,7 @@ const createEnhancedConnectionResilience = () => {
       const now = Date.now();
       circuitBreaker.successCount++;
       circuitBreaker.lastSuccessTime = now;
-      backoffState.currentAttempt = 0;
+      backoffState.currentAttempt = 0; // Reset backoff on success
       
       if (circuitBreaker.isOpen && circuitBreaker.successCount >= SUCCESS_THRESHOLD) {
         circuitBreaker.isOpen = false;
@@ -72,35 +71,42 @@ const createEnhancedConnectionResilience = () => {
       }
     },
     
-    getExponentialBackoffDelay(attempt?: number, isColdStart?: boolean): number {
-      if (isColdStart) {
-        const jitter = Math.random() * 500;
-        const delay = COLD_START_BACKOFF + jitter;
-        console.log(`❄️ Cold start backoff: ${Math.round(delay)}ms`);
-        return delay;
-      }
-      
+    getExponentialBackoffDelay(attempt?: number): number {
       const currentAttempt = attempt !== undefined ? attempt : backoffState.currentAttempt;
-      const baseDelay = 1000;
+      const baseDelay = 1000; // Start with 1 second
       const jitter = Math.random() * 500;
       
-      const delay = Math.min(baseDelay * Math.pow(1.5, currentAttempt) + jitter, MAX_BACKOFF);
+      const delay = Math.min(baseDelay * Math.pow(1.8, currentAttempt) + jitter, MAX_BACKOFF);
       backoffState.currentAttempt = currentAttempt + 1;
       backoffState.lastAttemptTime = Date.now();
       
-      console.log(`⏱️ Enhanced backoff: attempt ${currentAttempt}, delay ${Math.round(delay)}ms`);
+      console.log(`⏱️ Exponential backoff: attempt ${currentAttempt}, delay ${Math.round(delay)}ms`);
       return delay;
     },
     
+    // Adaptive timing based on connection success rate
     getAdaptiveTimeout(): number {
       const recentFailures = circuitBreaker.failureCount;
-      const baseTimeout = 15000; // Increased for Cloud Run cold starts
+      const baseTimeout = 8000;
       
-      if (recentFailures > 1) {
-        return Math.min(baseTimeout * 1.8, 30000); // Up to 30s for cold starts
+      // Increase timeout if we've had recent failures
+      if (recentFailures > 2) {
+        return Math.min(baseTimeout * 1.5, 15000);
       }
       
       return baseTimeout;
+    },
+    
+    getState() {
+      return { 
+        ...circuitBreaker, 
+        backoff: { ...backoffState },
+        thresholds: {
+          failure: FAILURE_THRESHOLD,
+          recovery: RECOVERY_TIMEOUT,
+          success: SUCCESS_THRESHOLD
+        }
+      };
     },
     
     reset(): void {
@@ -115,21 +121,27 @@ const createEnhancedConnectionResilience = () => {
         currentAttempt: 0,
         lastAttemptTime: 0
       };
-      console.log('🔄 Circuit breaker reset for Cloud Run compatibility');
-    },
-    
-    getState() {
-      return {
-        circuitBreaker: { ...circuitBreaker },
-        backoffState: { ...backoffState }
-      };
+      console.log('🔄 Enhanced circuit breaker manually reset');
     }
   };
 };
 
+// Create enhanced instance
 const EnhancedConnectionResilience = createEnhancedConnectionResilience();
 
-// Health monitoring with Cloud Run awareness
+// Global access for debugging
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    try {
+      (window as any).EnhancedConnectionResilience = EnhancedConnectionResilience;
+      console.log('🔧 Enhanced Connection Resilience v2.0 loaded - Adaptive timing and improved stability');
+    } catch (error) {
+      console.warn('Enhanced ConnectionResilience initialization failed:', error);
+    }
+  }, 0);
+}
+
+// Health monitoring for connections
 const createHealthMonitor = () => {
   let healthState = {
     lastPing: 0,
@@ -137,8 +149,7 @@ const createHealthMonitor = () => {
     pingCount: 0,
     pongCount: 0,
     averageLatency: 0,
-    connectionQuality: 'unknown' as 'excellent' | 'good' | 'poor' | 'unknown',
-    coldStartDetected: false
+    connectionQuality: 'unknown' as 'excellent' | 'good' | 'poor' | 'unknown'
   };
   
   return {
@@ -154,33 +165,28 @@ const createHealthMonitor = () => {
       healthState.lastPong = now;
       healthState.pongCount++;
       
+      // Calculate rolling average latency
       healthState.averageLatency = healthState.averageLatency === 0 
         ? latency 
         : (healthState.averageLatency * 0.7) + (latency * 0.3);
       
-      // Cloud Run aware quality assessment
-      if (latency < 200) {
+      // Update connection quality
+      if (latency < 100) {
         healthState.connectionQuality = 'excellent';
-        healthState.coldStartDetected = false;
-      } else if (latency < 500) {
+      } else if (latency < 300) {
         healthState.connectionQuality = 'good';
-        healthState.coldStartDetected = false;
-      } else if (latency < 2000) {
-        healthState.connectionQuality = 'poor';
-        healthState.coldStartDetected = latency > 1000;
       } else {
         healthState.connectionQuality = 'poor';
-        healthState.coldStartDetected = true;
       }
       
-      if (healthState.coldStartDetected) {
-        console.log(`❄️ Cold start detected: ${latency}ms latency`);
-      }
+      console.log(`🏥 Health: ${latency}ms latency, avg: ${Math.round(healthState.averageLatency)}ms, quality: ${healthState.connectionQuality}`);
     },
     
     isHealthy(): boolean {
       const now = Date.now();
       const timeSinceLastPong = now - healthState.lastPong;
+      
+      // Consider unhealthy if no pong in last 60 seconds
       return timeSinceLastPong < 60000 && healthState.connectionQuality !== 'poor';
     },
     
@@ -210,6 +216,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
   const autoReconnectTimer = useRef<NodeJS.Timeout | null>(null);
   const healthCheckTimer = useRef<NodeJS.Timeout | null>(null);
   
+  // Connection state management
   const effectiveDisplayName = displayName && displayName.trim() && displayName !== 'Anonymous' ? displayName.trim() : null;
   const myPeerId = useRef<string>(generateCompatibleUUID());
   const connectionId = useRef<string>(Math.random().toString(36).substring(7));
@@ -226,7 +233,9 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
                    connectionQuality === 'poor' ? 'weak' as const : 'none' as const,
   };
 
+  // Enhanced health check system
   const startHealthMonitoring = useCallback((socket: Socket) => {
+    // Clear any existing health check
     if (healthCheckTimer.current) {
       clearInterval(healthCheckTimer.current);
     }
@@ -235,10 +244,12 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       if (socket && socket.connected) {
         healthMonitor.current.recordPing();
         socket.emit('health-ping', { timestamp: Date.now() });
+      } else {
+        console.log('🏥 Health check: Socket disconnected');
       }
-    }, 20000); // Every 20 seconds for Cloud Run
+    }, 15000); // Health check every 15 seconds
     
-    console.log('🏥 Health monitoring started (Cloud Run optimized)');
+    console.log('🏥 Health monitoring started');
   }, []);
 
   const stopHealthMonitoring = useCallback(() => {
@@ -249,10 +260,11 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     }
   }, []);
 
-  // Enhanced Cloud Run compatible connection
+  // Enhanced connect to server function
   const connectToServer = useCallback(async () => {
+    // Enhanced circuit breaker check
     if (!EnhancedConnectionResilience.shouldAllowConnection()) {
-      console.log(`🚫 [${connectionId.current}] Circuit breaker blocking connection`);
+      console.log(`🚫 [${connectionId.current}] Enhanced circuit breaker blocking connection attempt`);
       return;
     }
     
@@ -261,21 +273,22 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       return;
     }
     
+    // Prevent rapid reconnection attempts
     const now = Date.now();
     const timeSinceLastSuccess = now - lastSuccessfulConnection.current;
-    if (timeSinceLastSuccess < 3000 && socketRef.current?.connected) {
-      console.log(`⏳ [${connectionId.current}] Too soon since last connection`);
+    if (timeSinceLastSuccess < 2000 && socketRef.current?.connected) {
+      console.log(`⏳ [${connectionId.current}] Too soon since last connection, waiting...`);
       return;
     }
     
     if (connectionCooldown && roomConnectionRef.current === roomId) {
-      console.log(`⏳ [${connectionId.current}] In cooldown`);
+      console.log(`⏳ [${connectionId.current}] In enhanced cooldown, waiting...`);
       return;
     }
     
     // Handle room switching
     if (socketRef.current?.connected && roomConnectionRef.current !== roomId) {
-      console.log(`🔄 [${connectionId.current}] Room switching:`, roomConnectionRef.current, '→', roomId);
+      console.log(`🔄 [${connectionId.current}] Enhanced room switching:`, roomConnectionRef.current, '→', roomId);
       stopHealthMonitoring();
       socketRef.current.disconnect();
       socketRef.current = null;
@@ -291,10 +304,11 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       socketRef.current = null;
     }
 
+    // Enhanced server URL detection
     const serverUrl = ServerUtils.getWebSocketServerUrl();
     const envInfo = ServerUtils.getEnvironmentInfo();
     
-    console.log('🔍 Enhanced Cloud Run connection details:');
+    console.log('🔍 Enhanced server connection details:');
     console.log('  - WebSocket URL:', serverUrl);
     console.log('  - Environment:', envInfo.environment);
     console.log('  - Adaptive timeout:', EnhancedConnectionResilience.getAdaptiveTimeout());
@@ -306,14 +320,13 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     }
 
     setIsRetrying(true);
-    console.log(`🔌 [${connectionId.current}] Enhanced Cloud Run connection to:`, serverUrl, 'as:', effectiveDisplayName);
+    console.log(`🔌 [${connectionId.current}] Enhanced connection to:`, serverUrl, 'as:', effectiveDisplayName);
 
     const adaptiveTimeout = EnhancedConnectionResilience.getAdaptiveTimeout();
     
-    // CRITICAL: Cloud Run optimized Socket.IO configuration
     const socket = io(serverUrl, {
-      // CRITICAL: Polling first for Cloud Run compatibility
-      transports: ['polling', 'websocket'],
+      // Enhanced mobile-optimized transport configuration
+      transports: ['polling', 'websocket'], // Polling first for better mobile compatibility
       timeout: adaptiveTimeout,
       forceNew: true,
       autoConnect: true,
@@ -322,34 +335,29 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       reconnection: false,
       reconnectionAttempts: 0,
       
-      // Cloud Run optimized transport settings
+      // Enhanced transport settings
       upgrade: true,
-      rememberUpgrade: false, // Don't remember for cold starts
+      rememberUpgrade: false, // Don't remember upgrades for mobile network changes
       
-      // Enhanced timeouts for Cloud Run cold starts
-      pingTimeout: 60000,
-      pingInterval: 25000,
+      // Optimized timeouts to match enhanced server
+      pingTimeout: 30000,
+      pingInterval: 15000,
       
-      // CORS and credentials for Cloud Run
-      withCredentials: true,
+      // Enhanced connection efficiency
+      withCredentials: false,
       closeOnBeforeunload: false,
       forceBase64: false,
       
       // Enhanced error handling
-      allowUpgrades: true,
-      
-      // CRITICAL: Extra headers for connection identification
-      extraHeaders: {
-        'X-Connection-Type': 'websocket-chat'
-      }
+      allowUpgrades: true
     });
 
     socketRef.current = socket;
 
-    // Enhanced connection event handlers with Cloud Run awareness
+    // Enhanced connection event handlers
     socket.on('connect', () => {
       const now = Date.now();
-      console.log(`🚀 [${connectionId.current}] Cloud Run connection established as:`, effectiveDisplayName);
+      console.log(`🚀 [${connectionId.current}] Enhanced connection established as:`, effectiveDisplayName);
       console.log(`   Transport: ${socket.io.engine.transport.name}, Upgraded: ${socket.io.engine.upgraded}`);
       
       setIsConnected(true);
@@ -371,17 +379,17 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
         displayName: effectiveDisplayName
       });
       
-      // Enhanced message history handling with longer timeout for cold starts
+      // Enhanced message history handling
       setTimeout(() => {
         const localMessages = MessagePersistence.getRoomMessages(roomId);
         if (localMessages.length > 0) {
-          console.log('⏰ Cloud Run history timeout, using local fallback:', localMessages.length);
+          console.log('⏰ Enhanced history timeout, using local fallback:', localMessages.length);
           setMessages(prev => prev.length === 0 ? localMessages : prev);
         }
-      }, 5000); // Increased timeout for Cloud Run cold starts
+      }, 3000); // Increased timeout for server response
     });
 
-    // Enhanced disconnect handling with Cloud Run cold start detection
+    // Enhanced disconnect handling with cold start detection
     socket.on('disconnect', (reason) => {
       console.log(`🔌 [${connectionId.current}] Enhanced disconnect:`, reason);
       console.log(`   Transport: ${socket.io.engine?.transport?.name || 'unknown'}`);
@@ -391,37 +399,38 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       roomConnectionRef.current = '';
       stopHealthMonitoring();
       
-      // Enhanced Cloud Run disconnect reason analysis
-      const isCloudRunColdStart = reason === 'transport close' || 
-                                  reason === 'ping timeout' ||
-                                  reason === 'transport error';
-      
+      // Enhanced disconnect reason analysis with Cloud Run detection
       const isUnexpected = reason !== 'client namespace disconnect' && 
+                          reason !== 'transport close' &&
                           reason !== 'io client disconnect';
       
+      // Special handling for Cloud Run cold starts
+      const isCloudRunColdStart = reason === 'transport close' || reason === 'ping timeout';
+      
       if (isCloudRunColdStart) {
-        console.log(`❄️ [${connectionId.current}] Cloud Run cold start detected - rapid reconnection`);
+        console.log(`❄️ [${connectionId.current}] Detected Cloud Run cold start - will retry with shorter delay`);
       } else if (isUnexpected) {
-        console.log(`⚠️ [${connectionId.current}] Unexpected disconnect:`, reason);
+        console.log(`⚠️ [${connectionId.current}] Unexpected enhanced disconnect:`, reason);
         EnhancedConnectionResilience.recordFailure();
       }
       
-      // Enhanced auto-reconnect with Cloud Run awareness
+      // Enhanced auto-reconnect with cold start awareness
       if (shouldAutoReconnect && effectiveDisplayName && !reason.includes('server')) {
+        // Use shorter delay for cold starts since server just needs to wake up
         const backoffDelay = isCloudRunColdStart ? 
-          EnhancedConnectionResilience.getExponentialBackoffDelay(0, true) : // Special cold start handling
+          Math.min(2000 + Math.random() * 1000, 5000) : // 2-5s for cold starts
           EnhancedConnectionResilience.getExponentialBackoffDelay(); // Normal backoff
           
-        console.log(`🔄 [${connectionId.current}] Cloud Run auto-reconnect in ${backoffDelay}ms...`);
+        console.log(`🔄 [${connectionId.current}] Enhanced auto-reconnect in ${backoffDelay}ms...`);
         
         autoReconnectTimer.current = setTimeout(() => {
-          console.log(`🔄 [${connectionId.current}] Attempting Cloud Run auto-reconnect...`);
+          console.log(`🔄 [${connectionId.current}] Attempting enhanced auto-reconnect...`);
           connectToServer();
         }, backoffDelay);
       }
     });
 
-    // Enhanced error handling with CORS debugging
+    // Enhanced error handling
     socket.on('connect_error', (error) => {
       console.error('Enhanced connection error:', {
         message: error.message,
@@ -431,11 +440,6 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
         transport: error.transport
       });
       
-      // CRITICAL: Check for CORS errors
-      if (error.message.includes('CORS') || error.message.includes('Access-Control')) {
-        console.error('🚨 CORS ERROR DETECTED - Server needs CORS fix!');
-      }
-      
       setIsConnected(false);
       setIsRetrying(false);
       isConnectingRef.current = false;
@@ -443,25 +447,19 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       // Enhanced error categorization
       const isRetryableError = !error.message.includes('rate limit') && 
                               !error.message.includes('throttle') &&
-                              !error.message.includes('forbidden') &&
-                              !error.message.includes('CORS');
+                              !error.message.includes('forbidden');
       
       if (isRetryableError) {
         EnhancedConnectionResilience.recordFailure();
+      } else {
+        console.log('🕰️ Non-retryable error detected, not counting as circuit breaker failure');
       }
       
       // Enhanced backoff with error-specific delays
       const isRateLimit = error.message.includes('rate limit') || error.message.includes('throttle');
-      const isCorsError = error.message.includes('CORS') || error.message.includes('Access-Control');
-      
-      let backoffDelay;
-      if (isCorsError) {
-        backoffDelay = 10000; // 10 second delay for CORS errors
-      } else if (isRateLimit) {
-        backoffDelay = Math.min(5000 + Math.random() * 3000, 10000); // 5-10s for rate limits
-      } else {
-        backoffDelay = EnhancedConnectionResilience.getExponentialBackoffDelay();
-      }
+      const backoffDelay = isRateLimit ? 
+        Math.min(3000 + Math.random() * 2000, 8000) : // 3-8s for rate limits
+        EnhancedConnectionResilience.getExponentialBackoffDelay();
         
       setConnectionCooldown(true);
       setRetryCount(prev => prev + 1);
@@ -470,6 +468,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
         setConnectionCooldown(false);
         console.log(`🔄 [${connectionId.current}] Enhanced cooldown ended`);
         
+        // Enhanced auto-retry logic
         if (shouldAutoReconnect && effectiveDisplayName && isRetryableError) {
           console.log(`🔄 [${connectionId.current}] Enhanced auto-retry after error...`);
           connectToServer();
@@ -483,8 +482,10 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       const metrics = healthMonitor.current.getHealthMetrics();
       setConnectionQuality(metrics.connectionQuality);
       
+      // Check if connection is degrading
       if (!metrics.isHealthy && isConnected) {
-        console.log('🏥 Connection health degraded, monitoring...');
+        console.log('🏥 Connection health degraded, considering reconnection...');
+        // Don't auto-reconnect immediately, but prepare for it
       }
     });
 
@@ -493,14 +494,15 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       console.log('🛑 Server shutdown notification:', data);
       setShouldAutoReconnect(false);
       
+      // Attempt reconnection after suggested delay
       setTimeout(() => {
         setShouldAutoReconnect(true);
         console.log('🔄 Attempting reconnection after server maintenance...');
         connectToServer();
-      }, data.reconnectDelay || 15000); // Longer delay for Cloud Run
+      }, data.reconnectDelay || 10000);
     });
 
-    // Standard message handling (unchanged)
+    // Enhanced message handling
     socket.on('message-history', (messageHistory: Message[]) => {
       console.log('📚 Enhanced message history received:', messageHistory.length);
       
@@ -544,6 +546,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
         return updated;
       });
       
+      // Enhanced message handler notifications (simple approach)
       messageHandlersRef.current.forEach(handler => {
         try {
           handler(normalizedMessage);
@@ -553,12 +556,13 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       });
     });
 
-    // Enhanced peer management
+    // Enhanced peer management with better logging for anonymous users
     socket.on('room-peers', (peers: any[]) => {
       console.log('Enhanced room peers total:', peers.length);
       const uniquePeerNames = Array.from(new Set(peers.map(p => p.displayName)))
         .filter(name => name !== effectiveDisplayName && name && name.trim());
       
+      // Separate anonymous vs named users for clearer logging
       const namedUsers = uniquePeerNames.filter(name => !name.startsWith('User_'));
       const anonymousUsers = uniquePeerNames.filter(name => name.startsWith('User_'));
       
@@ -574,6 +578,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     });
 
     socket.on('peer-joined', (peer: any) => {
+      // Validate peer data before processing
       if (!peer || !peer.displayName || !peer.displayName.trim()) {
         console.warn('Invalid peer data received:', peer);
         return;
@@ -581,7 +586,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       
       const isAnonymous = peer.displayName.startsWith('User_');
       const logMessage = isAnonymous 
-        ? `📝 Anonymous user joined: ${peer.displayName}`
+        ? `📝 Anonymous user joined: ${peer.displayName} (temporary connection)`
         : `👋 User joined: ${peer.displayName}`;
       
       console.log(logMessage, peer.isReconnection ? '(reconnection)' : '(new)');
@@ -595,6 +600,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     });
 
     socket.on('peer-left', (peer: any) => {
+      // Validate peer data before processing
       if (!peer || !peer.displayName) {
         console.warn('Invalid peer data received for leave:', peer);
         return;
@@ -602,7 +608,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       
       const isAnonymous = peer.displayName.startsWith('User_');
       const logMessage = isAnonymous 
-        ? `📝 Anonymous user left: ${peer.displayName}`
+        ? `📝 Anonymous user left: ${peer.displayName} (likely setting proper name)`
         : `👋 User left: ${peer.displayName}`;
       
       console.log(logMessage, 'reason:', peer.reason);
@@ -626,7 +632,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     
     if (roomId && effectiveDisplayName && !isConnectingRef.current && 
         !(socketRef.current?.connected && roomConnectionRef.current === roomId)) {
-      console.log(`🚀 [${connectionId.current}] Enhanced Cloud Run initialization for:`, effectiveDisplayName);
+      console.log(`🚀 [${connectionId.current}] Enhanced initialization for:`, effectiveDisplayName);
       connectToServer();
     }
 
@@ -690,10 +696,11 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     };
   }, []);
 
-  // Enhanced force reconnect with Cloud Run reset
+  // Enhanced force reconnect
   const forceReconnect = useCallback(async () => {
-    console.log('🔄 Enhanced Cloud Run force reconnect with full reset...');
+    console.log('🔄 Enhanced force reconnect with full reset...');
     
+    // Clear all timers
     if (autoReconnectTimer.current) {
       clearTimeout(autoReconnectTimer.current);
       autoReconnectTimer.current = null;
@@ -720,10 +727,10 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     roomConnectionRef.current = '';
     lastSuccessfulConnection.current = 0;
     
-    // Attempt fresh connection with small delay for Cloud Run
+    // Attempt fresh connection
     setTimeout(() => {
       connectToServer();
-    }, 2000);
+    }, 1000);
     
     return true;
   }, [connectToServer, stopHealthMonitoring]);
@@ -752,19 +759,9 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       timers: {
         autoReconnect: !!autoReconnectTimer.current,
         healthCheck: !!healthCheckTimer.current
-      },
-      cloudRun: {
-        optimized: true,
-        coldStartDetection: healthMonitor.current.getHealthMetrics().coldStartDetected
       }
     };
   }, [isConnected, isRetrying, retryCount, connectionCooldown, connectionQuality]);
-
-  // Make debugging available globally
-  if (typeof window !== 'undefined') {
-    (window as any).EnhancedConnectionResilience = EnhancedConnectionResilience;
-    (window as any).getConnectionDiagnostics = getConnectionDiagnostics;
-  }
 
   return {
     peerId: myPeerId.current,

@@ -73,7 +73,7 @@ const io = new Server(server, {
     origin: getCorsOrigins(),
     methods: ["GET", "POST", "OPTIONS", "PUT", "DELETE"],
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "X-Connection-Type"]
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
   },
   // CRITICAL: Polling FIRST for Cloud Run compatibility
   transports: ['polling', 'websocket'], // Polling first for better Cloud Run support
@@ -141,7 +141,7 @@ app.use((req, res, next) => {
   }
   
   res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,PUT,DELETE');
-  res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,X-Connection-Type');
+  res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Max-Age', '86400'); // 24 hours preflight cache
   
@@ -159,7 +159,7 @@ app.use(cors({
   origin: getCorsOrigins(),
   methods: ["GET", "POST", "OPTIONS", "PUT", "DELETE"],
   credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "X-Connection-Type"]
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"]
 }));
 
 app.use(express.json());

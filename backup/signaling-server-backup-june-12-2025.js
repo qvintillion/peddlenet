@@ -1,4 +1,4 @@
-// signaling-server.js - Universal server with CRITICAL CORS & Cold Start Fixes
+// signaling-server.js - Universal server for all environments (dev, staging, production)
 // Auto-detects environment and adapts configuration accordingly
 const express = require('express');
 const { createServer } = require('http');
@@ -16,24 +16,21 @@ const isDevelopment = NODE_ENV === 'development' || PLATFORM === 'local';
 const isStaging = PLATFORM === 'firebase' || NODE_ENV === 'staging';
 const isProduction = PLATFORM === 'github' || PLATFORM === 'cloudrun' || NODE_ENV === 'production';
 
-console.log(`🎪 PeddleNet Universal Server Starting... (CORS FIXED)`);
+console.log(`🎪 PeddleNet Universal Server Starting...`);
 console.log(`📍 Environment: ${NODE_ENV}`);
 console.log(`🏗️ Platform: ${PLATFORM}`);
 console.log(`🎯 Mode: ${isDevelopment ? 'DEVELOPMENT' : isStaging ? 'STAGING' : 'PRODUCTION'}`);
 
-// CRITICAL FIX: Enhanced CORS origins with proper Cloud Run support
+// Enhanced CORS for development (includes local IPs)
 function getCorsOrigins() {
   const baseOrigins = [
     "http://localhost:3000",
-    "https://localhost:3000",
     "https://peddlenet.app",
-    "https://www.peddlenet.app",
     "https://*.vercel.app",
     "https://*.ngrok.io",
     "https://*.ngrok-free.app",
     "https://*.firebaseapp.com",
     "https://*.web.app",
-    // Explicit patterns for better Cloud Run compatibility
     /^https:\/\/[a-zA-Z0-9-]+\.ngrok(-free)?\.app$/,
     /^https:\/\/[a-zA-Z0-9-]+\.ngrok\.io$/,
     /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/,
@@ -67,102 +64,27 @@ function getCorsOrigins() {
   return baseOrigins;
 }
 
-// CRITICAL FIX: Enhanced Socket.IO configuration with Cloud Run optimizations
+// Production-optimized Socket.IO configuration
 const io = new Server(server, {
   cors: {
     origin: getCorsOrigins(),
-    methods: ["GET", "POST", "OPTIONS", "PUT", "DELETE"],
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "X-Connection-Type"]
+    methods: ["GET", "POST"],
+    credentials: true
   },
-  // CRITICAL: Polling FIRST for Cloud Run compatibility
-  transports: ['polling', 'websocket'], // Polling first for better Cloud Run support
-  
-  // Enhanced timeouts for Cloud Run cold starts
+  // Production optimizations for reliability
   pingTimeout: 60000,           // 60 seconds before considering connection dead
   pingInterval: 25000,          // Ping every 25 seconds
   upgradeTimeout: 30000,        // 30 seconds to upgrade connection
-  connectTimeout: 45000,        // 45 seconds to establish initial connection
-  
-  // Cloud Run optimizations
-  allowUpgrades: true,          // Allow WebSocket upgrades after polling
+  allowUpgrades: true,          // Allow WebSocket upgrades
   maxHttpBufferSize: 1e6,       // 1MB buffer for messages
   allowEIO3: true,              // Backward compatibility
-  cookie: false,                // Disable cookies for Cloud Run
-  serveClient: false,           // Don't serve Socket.IO client files
-  
-  // Connection state recovery for mobile devices & cold starts
+  transports: ['websocket', 'polling'], // Fallback transport methods
+  // Connection state recovery for mobile devices
   connectionStateRecovery: {
     maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutes
     skipMiddlewares: true,
-  },
-  
-  // Enhanced error handling
-  allowRequest: (req, callback) => {
-    const origin = req.headers.origin;
-    const corsOrigins = getCorsOrigins();
-    
-    // Check if origin is allowed
-    const isAllowed = corsOrigins.some(allowedOrigin => {
-      if (typeof allowedOrigin === 'string') {
-        return allowedOrigin === origin;
-      } else if (allowedOrigin instanceof RegExp) {
-        return allowedOrigin.test(origin);
-      }
-      return false;
-    });
-    
-    if (isAllowed || !origin) {
-      callback(null, true);
-    } else {
-      console.warn(`🚫 CORS rejected origin: ${origin}`);
-      callback('CORS policy violation', false);
-    }
   }
 });
-
-// CRITICAL FIX: Enhanced CORS middleware for all routes
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const corsOrigins = getCorsOrigins();
-  
-  // Check if origin is allowed
-  const isAllowed = corsOrigins.some(allowedOrigin => {
-    if (typeof allowedOrigin === 'string') {
-      return allowedOrigin === origin;
-    } else if (allowedOrigin instanceof RegExp) {
-      return allowedOrigin.test(origin);
-    }
-    return false;
-  });
-  
-  if (isAllowed || !origin) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-  }
-  
-  res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,PUT,DELETE');
-  res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,X-Connection-Type');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Max-Age', '86400'); // 24 hours preflight cache
-  
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-  
-  next();
-});
-
-// Standard CORS middleware as backup
-app.use(cors({
-  origin: getCorsOrigins(),
-  methods: ["GET", "POST", "OPTIONS", "PUT", "DELETE"],
-  credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "X-Connection-Type"]
-}));
-
-app.use(express.json());
 
 // Store room and connection information
 const rooms = new Map();
@@ -171,9 +93,7 @@ const connectionStats = {
   totalConnections: 0,
   currentConnections: 0,
   peakConnections: 0,
-  startTime: Date.now(),
-  coldStarts: 0,
-  corsRejections: 0
+  startTime: Date.now()
 };
 
 // Room code mapping for server-side lookup
@@ -217,77 +137,14 @@ function generateRoomCodeOnServer(roomId) {
   return `${adjectives[adjIndex]}-${nouns[nounIndex]}-${number}`;
 }
 
-// CRITICAL: Cloud Run health check endpoint
-app.get('/_ah/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'healthy',
-    timestamp: Date.now(),
-    uptime: process.uptime(),
-    service: 'PeddleNet WebSocket Server'
-  });
-});
-
-// Enhanced health check endpoint with CORS debugging
-app.get('/health', (req, res) => {
-  // Ensure CORS headers are set
-  const origin = req.headers.origin;
-  if (origin) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  
-  const uptime = process.uptime();
-  const memoryUsage = process.memoryUsage();
-  
-  res.json({ 
-    status: 'ok',
-    service: 'PeddleNet Universal Server',
-    version: '2.0.1-cors-fixed',
-    uptime: Math.floor(uptime),
-    uptimeHuman: formatUptime(uptime),
-    connections: {
-      current: connectionStats.currentConnections,
-      peak: connectionStats.peakConnections,
-      total: connectionStats.totalConnections,
-      coldStarts: connectionStats.coldStarts,
-      corsRejections: connectionStats.corsRejections
-    },
-    rooms: {
-      active: rooms.size,
-      totalPeers: Array.from(rooms.values()).reduce((sum, room) => sum + room.size, 0)
-    },
-    memory: {
-      used: Math.round(memoryUsage.heapUsed / 1024 / 1024) + 'MB',
-      total: Math.round(memoryUsage.heapTotal / 1024 / 1024) + 'MB'
-    },
-    cors: {
-      enabled: true,
-      allowedOrigins: ['https://peddlenet.app', 'http://localhost:3000'],
-      requestOrigin: origin || 'none'
-    },
-    environment: NODE_ENV,
-    platform: PLATFORM,
-    timestamp: Date.now()
-  });
-});
-
-// CRITICAL: Keep-alive strategy for Cloud Run (prevent cold starts)
-if (isProduction && PLATFORM === 'cloudrun') {
-  console.log('🔥 Enabling Cloud Run keep-alive strategy');
-  
-  // Ping self every 4 minutes to prevent cold starts (Cloud Run timeout is 5 min)
-  setInterval(async () => {
-    try {
-      const PORT = process.env.PORT || 3001;
-      const response = await fetch(`http://localhost:${PORT}/_ah/health`, {
-        method: 'GET',
-        timeout: 5000
-      });
-      console.log('🏥 Keep-alive ping successful:', response.status);
-    } catch (error) {
-      console.warn('Keep-alive ping failed:', error.message);
-    }
-  }, 4 * 60 * 1000); // Every 4 minutes
-}
+// Middleware - Configure CORS for all routes
+app.use(cors({
+  origin: getCorsOrigins(),
+  methods: ["GET", "POST", "OPTIONS"],
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+app.use(express.json());
 
 // Room code resolution endpoint
 app.get('/resolve-room-code/:code', (req, res) => {
@@ -382,13 +239,41 @@ app.get('/room-stats/:roomId', (req, res) => {
   });
 });
 
+// Enhanced health check endpoint
+app.get('/health', (req, res) => {
+  const uptime = process.uptime();
+  const memoryUsage = process.memoryUsage();
+  
+  res.json({ 
+    status: 'ok',
+    uptime: Math.floor(uptime),
+    uptimeHuman: formatUptime(uptime),
+    connections: {
+      current: connectionStats.currentConnections,
+      peak: connectionStats.peakConnections,
+      total: connectionStats.totalConnections
+    },
+    rooms: {
+      active: rooms.size,
+      totalPeers: Array.from(rooms.values()).reduce((sum, room) => sum + room.size, 0)
+    },
+    memory: {
+      used: Math.round(memoryUsage.heapUsed / 1024 / 1024) + 'MB',
+      total: Math.round(memoryUsage.heapTotal / 1024 / 1024) + 'MB'
+    },
+    environment: isDevelopment ? 'development' : 'production',
+    timestamp: Date.now(),
+    version: '2.0.0-universal'
+  });
+});
+
 // Basic signaling endpoint
 app.get('/signaling-proxy', (req, res) => {
   res.json({
     signalingAvailable: true,
     endpoint: '/socket.io/',
-    version: '2.0.1-cors-fixed',
-    features: ['peer-discovery', 'connection-assistance', 'room-management', 'messaging-fix', 'cors-fix', 'cold-start-fix'],
+    version: '1.2.1-shutdown-fix',
+    features: ['peer-discovery', 'connection-assistance', 'room-management', 'messaging-fix', 'shutdown-fix'],
     timestamp: Date.now()
   });
 });
@@ -411,11 +296,7 @@ if (isDevelopment) {
       rooms: roomData,
       roomCodes: roomCodeData,
       environment: 'development',
-      stats: connectionStats,
-      cors: {
-        allowedOrigins: getCorsOrigins(),
-        rejections: connectionStats.corsRejections
-      }
+      stats: connectionStats
     });
   });
 }
@@ -447,7 +328,6 @@ if (isDevelopment) {
       activeRooms: rooms.size,
       currentConnections: connectionStats.currentConnections,
       peakConnections: connectionStats.peakConnections,
-      coldStarts: connectionStats.coldStarts,
       timestamp: Date.now(),
       environment: 'production'
     });
@@ -485,16 +365,14 @@ if (isDevelopment) {
 app.get('/', (req, res) => {
   res.json({
     service: 'PeddleNet Universal Signaling Server',
-    version: '2.0.1-cors-fixed',
+    version: '2.0.0-universal',
     status: 'running',
     environment: NODE_ENV,
     platform: PLATFORM,
     mode: isDevelopment ? 'development' : isStaging ? 'staging' : 'production',
-    description: 'Universal WebRTC signaling server with CORS and cold start fixes',
-    fixes: ['cors-headers', 'cloud-run-optimization', 'polling-first-transport', 'keep-alive-strategy'],
+    description: 'Universal WebRTC signaling server that adapts to all environments',
     endpoints: {
       health: '/health',
-      cloudRunHealth: '/_ah/health',
       signaling: '/socket.io/',
       ...(isDevelopment && { 
         debug: '/debug/rooms',
@@ -503,19 +381,6 @@ app.get('/', (req, res) => {
       })
     },
     timestamp: Date.now()
-  });
-});
-
-// Enhanced Socket.IO connection handling with better error tracking
-io.engine.on('connection_error', (err) => {
-  connectionStats.corsRejections++;
-  console.error('🚨 Socket.IO connection error:', {
-    message: err.message,
-    code: err.code,
-    context: err.context,
-    type: err.type,
-    origin: err.req?.headers?.origin,
-    userAgent: err.req?.headers['user-agent']?.substring(0, 100)
   });
 });
 
@@ -529,19 +394,9 @@ io.on('connection', (socket) => {
   );
 
   devLog(`🔗 Client connected: ${socket.id} (${connectionStats.currentConnections} active)`);
-  devLog(`🔗 Connection transport: ${socket.conn?.transport?.name || 'unknown'}`);
 
   // Store user data
   socket.userData = null;
-
-  // Enhanced health ping for connection monitoring
-  socket.on('health-ping', (data) => {
-    socket.emit('health-pong', {
-      timestamp: Date.now(),
-      serverTime: Date.now(),
-      received: data.timestamp
-    });
-  });
 
   // Join room with auto room code generation
   socket.on('join-room', ({ roomId, peerId, displayName }) => {
@@ -726,12 +581,6 @@ io.on('connection', (socket) => {
     connectionStats.currentConnections--;
     devLog(`🔌 Client disconnected: ${socket.id} (${connectionStats.currentConnections} active, reason: ${reason})`);
     
-    // Track cold start disconnections
-    if (reason === 'transport close' || reason === 'ping timeout') {
-      connectionStats.coldStarts++;
-      devLog(`❄️ Cold start disconnect detected (${connectionStats.coldStarts} total)`);
-    }
-    
     // Clean up notification subscriptions for this socket
     if (socket.notificationSubscriptions) {
       socket.notificationSubscriptions.forEach(roomId => {
@@ -801,11 +650,10 @@ setInterval(() => {
 // Start server
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
-  devLog(`🎵 PeddleNet Universal Server v2.0.1-cors-fixed running on port ${PORT}`);
+  devLog(`🎵 PeddleNet Universal Server v2.0.0 running on port ${PORT}`);
   devLog(`🔍 Health check: http://localhost:${PORT}/health`);
-  devLog(`🔧 Cloud Run health: http://localhost:${PORT}/_ah/health`);
-  devLog(`🔔 Features: CORS Fix + Cold Start Prevention + Enhanced Error Tracking`);
-  devLog(`🎯 CRITICAL FIXES: CORS headers + polling-first transport + keep-alive`);
+  devLog(`🔔 Features: Universal Environment Detection + WebSocket + Chat + Notifications + Room Codes`);
+  devLog(`🎯 CRITICAL FIX: Messages now appear on sending device!`);
   
   if (isDevelopment) {
     devLog(`🐛 Debug endpoint: http://localhost:${PORT}/debug/rooms`);

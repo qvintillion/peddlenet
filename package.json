@@ -51,7 +51,12 @@
     "package:check-health": "chmod +x scripts/check-package-health.sh && ./scripts/check-package-health.sh",
     "package:test-server": "chmod +x scripts/test-server-package.sh && ./scripts/test-server-package.sh",
     "package:test-all": "chmod +x scripts/test-all-package-fixes.sh && ./scripts/test-all-package-fixes.sh",
-    "package:test-better-sqlite3": "chmod +x scripts/test-better-sqlite3.sh && ./scripts/test-better-sqlite3.sh"
+    "package:test-better-sqlite3": "chmod +x scripts/test-better-sqlite3.sh && ./scripts/test-better-sqlite3.sh",
+    "env:show": "chmod +x scripts/env-switch.sh && ./scripts/env-switch.sh show",
+    "env:dev": "chmod +x scripts/env-switch.sh && ./scripts/env-switch.sh dev",
+    "env:preview": "chmod +x scripts/env-switch.sh && ./scripts/env-switch.sh preview",
+    "env:staging": "chmod +x scripts/env-switch.sh && ./scripts/env-switch.sh staging",
+    "env:production": "chmod +x scripts/env-switch.sh && ./scripts/env-switch.sh production"
   },
   "dependencies": {
     "@zxing/library": "^0.21.3",

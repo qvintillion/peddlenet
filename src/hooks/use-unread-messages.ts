@@ -27,6 +27,9 @@ class UnreadMessageManager {
 
   private loadPersistedCounts() {
     try {
+      // SSR guard
+      if (typeof window === 'undefined') return;
+      
       const saved = localStorage.getItem('peddlenet_unread_counts');
       if (saved) {
         const data = JSON.parse(saved);
@@ -45,6 +48,9 @@ class UnreadMessageManager {
 
   private savePersistedCounts() {
     try {
+      // SSR guard
+      if (typeof window === 'undefined') return;
+      
       const counts = Array.from(this.unreadCounts.values());
       localStorage.setItem('peddlenet_unread_counts', JSON.stringify(counts));
     } catch (error) {
@@ -144,9 +150,18 @@ const unreadMessageManager = new UnreadMessageManager();
 
 // Hook for components to track unread messages
 export function useUnreadMessages() {
-  const [unreadCounts, setUnreadCounts] = useState<Map<string, UnreadMessageCount>>(new Map());
+  const [unreadCounts, setUnreadCounts] = useState<Map<string, UnreadMessageCount>>(() => {
+    // SSR-safe initialization
+    if (typeof window === 'undefined') {
+      return new Map();
+    }
+    return new Map();
+  });
 
   useEffect(() => {
+    // Only initialize on client side
+    if (typeof window === 'undefined') return;
+    
     // Initialize manager
     unreadMessageManager.initialize();
     

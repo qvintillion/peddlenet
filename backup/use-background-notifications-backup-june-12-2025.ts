@@ -21,41 +21,7 @@ interface BackgroundNotificationState {
   currentRoom: string | null;
 }
 
-// Connection coordinator to prevent conflicts
-class ConnectionCoordinator {
-  private static activeChatConnections = new Set<string>();
-  private static backgroundConnection: Socket | null = null;
-  
-  static registerChatConnection(connectionId: string) {
-    this.activeChatConnections.add(connectionId);
-    console.log('🔗 Registered chat connection:', connectionId, `(${this.activeChatConnections.size} active)`);
-    
-    // If background connection exists, defer it
-    if (this.backgroundConnection?.connected) {
-      console.log('🔔 Deferring background notifications due to active chat');
-      this.backgroundConnection.disconnect();
-    }
-  }
-  
-  static unregisterChatConnection(connectionId: string) {
-    this.activeChatConnections.delete(connectionId);
-    console.log('🔗 Unregistered chat connection:', connectionId, `(${this.activeChatConnections.size} active)`);
-  }
-  
-  static hasActiveChatConnections(): boolean {
-    return this.activeChatConnections.size > 0;
-  }
-  
-  static setBackgroundConnection(socket: Socket | null) {
-    this.backgroundConnection = socket;
-  }
-  
-  static canConnectBackground(): boolean {
-    return !this.hasActiveChatConnections();
-  }
-}
-
-// Enhanced background notification manager with better coordination
+// Singleton background connection manager
 class BackgroundNotificationManager {
   private socket: Socket | null = null;
   private state: BackgroundNotificationState = {
@@ -67,16 +33,15 @@ class BackgroundNotificationManager {
   private messageHandlers: Map<string, (message: Message) => void> = new Map();
   private globalNotificationHandler: ((message: Message) => void) | null = null;
   private reconnectTimer: NodeJS.Timeout | null = null;
-  private deferredConnectionTimer: NodeJS.Timeout | null = null;
   private isInitialized = false;
-  private isUserDisconnected = false;
+  private isUserDisconnected = false; // Track if user deliberately unsubscribed from all rooms
   
-  // Enhanced rate limiting
+  // Rate limiting variables
   private connectionAttempts = 0;
   private lastConnectionAttempt = 0;
   private isConnecting = false;
-  private maxRetries = 3; // Reduced for faster coordination
-  private baseDelay = 3000; // Start with 3 seconds
+  private maxRetries = 5;
+  private baseDelay = 2000; // Start with 2 seconds
   private maxDelay = 30000; // Cap at 30 seconds
 
   initialize() {
@@ -85,25 +50,22 @@ class BackgroundNotificationManager {
       return;
     }
     
-    console.log('🔔 Initializing Enhanced Background Notification Manager');
+    console.log('🔔 Initializing Background Notification Manager');
     this.isInitialized = true;
     this.loadPersistedState();
     
-    // Only connect if we have active subscriptions AND no chat connections
+    // Only connect if we have active subscriptions
     const hasActiveSubscriptions = Array.from(this.state.subscriptions.values()).some(sub => sub.subscribed);
-    if (hasActiveSubscriptions && ConnectionCoordinator.canConnectBackground()) {
-      console.log('🔔 Found active subscriptions and no chat conflicts, connecting...');
+    if (hasActiveSubscriptions) {
+      console.log('🔔 Found active subscriptions, connecting...');
       this.connect();
     } else {
-      console.log('🔔 Deferring connection:', hasActiveSubscriptions ? 'chat conflict' : 'no subscriptions');
+      console.log('🔔 No active subscriptions, deferring connection');
     }
   }
 
   private loadPersistedState() {
     try {
-      // SSR guard
-      if (typeof window === 'undefined') return;
-      
       const saved = localStorage.getItem('background_notification_subscriptions');
       if (saved) {
         const data = JSON.parse(saved);
@@ -122,9 +84,6 @@ class BackgroundNotificationManager {
 
   private savePersistedState() {
     try {
-      // SSR guard
-      if (typeof window === 'undefined') return;
-      
       const subscriptions = Array.from(this.state.subscriptions.values());
       localStorage.setItem('background_notification_subscriptions', JSON.stringify(subscriptions));
     } catch (error) {
@@ -135,36 +94,37 @@ class BackgroundNotificationManager {
   private shouldAttemptConnection(): boolean {
     const now = Date.now();
     
-    // CRITICAL: Don't attempt if user deliberately disconnected
+    // CRITICAL FIX: Don't attempt connection if user deliberately disconnected
     if (this.isUserDisconnected) {
-      console.log('🚫 User deliberately unsubscribed - not attempting connection');
+      console.log('🚫 User deliberately unsubscribed from all rooms - not attempting connection');
       return false;
     }
     
-    // CRITICAL: Don't attempt if there are active chat connections
-    if (ConnectionCoordinator.hasActiveChatConnections()) {
-      console.log('🚫 Active chat connections detected - deferring background notifications');
-      this.scheduleDeferredConnection();
-      return false;
-    }
-    
-    // Rate limiting check
+    // Check if we're hitting rate limits
     if (this.connectionAttempts >= this.maxRetries) {
       const resetTime = this.lastConnectionAttempt + this.maxDelay;
       if (now < resetTime) {
         console.log('🚫 Rate limited - waiting before next connection attempt');
         return false;
       } else {
-        this.connectionAttempts = 0; // Reset after delay
+        // Reset after max delay period
+        this.connectionAttempts = 0;
       }
     }
     
-    // Don't connect if already connecting or connected
-    if (this.isConnecting || this.socket?.connected) {
+    // Don't connect if already connecting
+    if (this.isConnecting) {
+      console.log('🚫 Already connecting - skipping duplicate attempt');
       return false;
     }
     
-    // Check for active subscriptions
+    // Don't connect if already connected
+    if (this.socket?.connected) {
+      console.log('🚫 Already connected - skipping connection attempt');
+      return false;
+    }
+    
+    // Check if we have any active subscriptions
     const hasActiveSubscriptions = Array.from(this.state.subscriptions.values()).some(sub => sub.subscribed);
     if (!hasActiveSubscriptions) {
       console.log('🚫 No active subscriptions - skipping connection');
@@ -174,32 +134,22 @@ class BackgroundNotificationManager {
     return true;
   }
 
-  private scheduleDeferredConnection() {
-    // Clear existing deferred timer
-    if (this.deferredConnectionTimer) {
-      clearTimeout(this.deferredConnectionTimer);
-    }
-    
-    // Schedule a deferred connection check in 30 seconds
-    this.deferredConnectionTimer = setTimeout(() => {
-      console.log('🔔 Checking for deferred background notification connection...');
-      if (this.shouldAttemptConnection()) {
-        this.connect();
-      } else {
-        this.scheduleDeferredConnection(); // Keep checking
-      }
-    }, 30000);
-  }
-
   private getBackoffDelay(): number {
-    // Enhanced exponential backoff with jitter
+    // Exponential backoff with jitter
     const delay = Math.min(this.baseDelay * Math.pow(2, this.connectionAttempts), this.maxDelay);
-    const jitter = Math.random() * 1000;
+    const jitter = Math.random() * 1000; // Add up to 1 second of jitter
     return delay + jitter;
   }
 
   private connect() {
     if (!this.shouldAttemptConnection()) {
+      return;
+    }
+
+    // CRITICAL FIX: Check for active chat connections to prevent conflicts
+    if (this.isActiveWebSocketChatConnected()) {
+      console.log('🚫 Active WebSocket chat connection detected - deferring background notifications');
+      this.scheduleConflictAvoidanceReconnection();
       return;
     }
 
@@ -216,37 +166,18 @@ class BackgroundNotificationManager {
 
     console.log(`🔔 Connecting background notification service (attempt ${this.connectionAttempts}/${this.maxRetries}) to:`, serverUrl);
 
-    // Clean up existing socket
+    // Clean up existing socket first
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
     }
 
-    // CRITICAL: Enhanced Cloud Run compatible configuration
     this.socket = io(serverUrl, {
-      // CRITICAL: Use polling first for Cloud Run compatibility
       transports: ['polling', 'websocket'],
-      timeout: 20000, // Longer timeout for background connections
+      timeout: 15000, // Increased timeout
       reconnection: false, // Manual reconnection control
-      forceNew: true,
-      
-      // Enhanced settings for background connections
-      withCredentials: true,
-      upgrade: true,
-      rememberUpgrade: false,
-      
-      // Longer intervals for background connections (less aggressive)
-      pingTimeout: 60000,
-      pingInterval: 30000,
-      
-      // Extra headers for connection identification
-      extraHeaders: {
-        'X-Connection-Type': 'background-notifications'
-      }
+      forceNew: true
     });
-
-    // Register with coordinator
-    ConnectionCoordinator.setBackgroundConnection(this.socket);
 
     this.socket.on('connect', () => {
       console.log('🔔 Background notification service connected');
@@ -258,7 +189,7 @@ class BackgroundNotificationManager {
       // Re-subscribe to all rooms
       this.state.subscriptions.forEach((sub, roomId) => {
         if (sub.subscribed) {
-          this.subscribeToRoom(roomId, sub.displayName, false);
+          this.subscribeToRoom(roomId, sub.displayName, false); // Don't save again
         }
       });
     });
@@ -269,12 +200,8 @@ class BackgroundNotificationManager {
       this.isConnecting = false;
       this.notifyListeners();
 
-      // Only auto-reconnect for certain reasons and if we should
-      const shouldReconnect = reason !== 'io client disconnect' && 
-                             !reason.includes('rate limit') &&
-                             !this.isUserDisconnected;
-      
-      if (shouldReconnect) {
+      // Only auto-reconnect for non-rate-limit errors and if we have active subscriptions
+      if (reason !== 'io client disconnect' && !reason.includes('rate limit')) {
         this.scheduleReconnection();
       }
     });
@@ -285,22 +212,18 @@ class BackgroundNotificationManager {
       this.isConnecting = false;
       this.notifyListeners();
 
-      // Enhanced error handling
-      const isCorsError = error.message?.includes('CORS') || error.message?.includes('Access-Control');
-      const isRateLimit = error.message?.includes('rate limit');
+      // Check if this is a rate limit error
+      const isRateLimit = error.message?.includes('rate limit') || error.message?.includes('Rate limit') || error.message?.includes('Connection rate limit exceeded');
       
-      if (isCorsError) {
-        console.error('🚨 CORS error in background notifications - server needs fix');
-        this.connectionAttempts = this.maxRetries; // Stop trying
-      } else if (isRateLimit) {
-        console.warn('🚫 Background notifications hit rate limit');
-        this.connectionAttempts = this.maxRetries; // Stop trying temporarily
+      if (isRateLimit) {
+        console.warn('🚫 Hit rate limit - backing off aggressively');
+        this.connectionAttempts = this.maxRetries; // Force long backoff
       }
       
       this.scheduleReconnection();
     });
 
-    // Enhanced message handling with better coordination
+    // Listen for messages from any subscribed room
     this.socket.on('chat-message', (message: any) => {
       console.log('🔔 Background notification received message:', message);
       
@@ -318,7 +241,7 @@ class BackgroundNotificationManager {
           synced: true
         };
         
-        // Always track unread messages
+        // Always track unread messages for background notifications
         unreadMessageManager.initialize();
         unreadMessageManager.addUnreadMessage(normalizedMessage);
         
@@ -326,15 +249,20 @@ class BackgroundNotificationManager {
         if (this.state.currentRoom !== roomId) {
           console.log('🔔 Triggering notification for background room:', roomId);
           
-          // Use room-specific handler first, then global
+          // Trigger notification handler for this room
           const handler = this.messageHandlers.get(roomId);
           if (handler) {
+            console.log('🔔 Using room-specific handler for:', roomId);
             handler(normalizedMessage);
           } else if (this.globalNotificationHandler) {
+            console.log('🔔 Using global notification handler for:', roomId);
             this.globalNotificationHandler(normalizedMessage);
+          } else {
+            console.warn('🔔 No notification handler available for room:', roomId);
           }
         } else {
-          // Mark as read if we're viewing the room
+          console.log('🔔 Skipping notification - currently viewing room:', roomId);
+          // Even if we're in the room, we should mark it as read since user is actively viewing
           unreadMessageManager.markRoomAsRead(roomId);
         }
       }
@@ -342,17 +270,19 @@ class BackgroundNotificationManager {
   }
 
   private scheduleReconnection() {
+    // Clear any existing timer
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
 
+    // Don't schedule reconnection if we've hit max retries or no active subscriptions
     if (!this.shouldAttemptConnection()) {
       return;
     }
 
     const delay = this.getBackoffDelay();
-    console.log(`🔔 Scheduling background notification reconnection in ${Math.round(delay/1000)}s`);
+    console.log(`🔔 Scheduling background notification reconnection in ${Math.round(delay/1000)}s (attempt ${this.connectionAttempts}/${this.maxRetries})`);
     
     this.reconnectTimer = setTimeout(() => {
       console.log('🔔 Attempting scheduled background notification reconnection...');
@@ -360,15 +290,66 @@ class BackgroundNotificationManager {
     }, delay);
   }
 
+  // CRITICAL FIX: Detect active WebSocket chat connections to prevent conflicts
+  private isActiveWebSocketChatConnected(): boolean {
+    try {
+      // Check if there's an active WebSocket connection in the global window
+      // This is a heuristic to detect if the main chat WebSocket is already connected
+      if (typeof window === 'undefined') return false;
+      
+      // Look for active socket.io connections that might be from the chat hook
+      const globalSocketIO = (window as any).io;
+      if (globalSocketIO && globalSocketIO.managers) {
+        for (const [url, manager] of Object.entries(globalSocketIO.managers as any)) {
+          if (manager && manager.engine && manager.engine.readyState === 'open') {
+            console.log('🔍 Detected active WebSocket manager:', url);
+            return true;
+          }
+        }
+      }
+      
+      // Additional check: Look for DOM elements that might indicate active chat
+      const chatContainer = document.querySelector('[data-chat-active]');
+      if (chatContainer) {
+        console.log('🔍 Detected active chat container');
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.warn('Error checking for active WebSocket connections:', error);
+      return false;
+    }
+  }
+
+  // CRITICAL FIX: Schedule reconnection with conflict avoidance
+  private scheduleConflictAvoidanceReconnection() {
+    // Clear any existing timer
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    // Wait longer when avoiding conflicts (30 seconds)
+    const conflictAvoidanceDelay = 30000;
+    console.log(`🔔 Scheduling conflict-avoidance reconnection in ${conflictAvoidanceDelay/1000}s`);
+    
+    this.reconnectTimer = setTimeout(() => {
+      console.log('🔔 Attempting conflict-avoidance background notification reconnection...');
+      this.connect();
+    }, conflictAvoidanceDelay);
+  }
+
   subscribeToRoom(roomId: string, displayName: string, save: boolean = true) {
     if (!roomId || !displayName) return;
 
     console.log('🔔 Subscribing to background notifications for room:', roomId);
 
-    // Reset user disconnected flag when subscribing
+    // CRITICAL FIX: Reset user disconnected flag when subscribing to a room
     this.isUserDisconnected = false;
+    console.log('🔔 Reset user disconnected flag - user has active subscriptions again');
 
-    // Update or create subscription
+    // Update existing subscription or create new one
     const existingSubscription = this.state.subscriptions.get(roomId);
     if (existingSubscription) {
       existingSubscription.subscribed = true;
@@ -390,13 +371,13 @@ class BackgroundNotificationManager {
     
     this.notifyListeners();
 
-    // Connect if conditions are right
-    if (!this.socket?.connected && !this.isConnecting && ConnectionCoordinator.canConnectBackground()) {
+    // Connect if not already connected and we now have active subscriptions
+    if (!this.socket?.connected && !this.isConnecting) {
       console.log('🔔 Starting connection due to new subscription');
       this.connect();
     }
 
-    // Subscribe on server if connected
+    // Tell server to include this room in our notification feed
     if (this.socket?.connected) {
       this.socket.emit('subscribe-notifications', {
         roomId,
@@ -408,14 +389,16 @@ class BackgroundNotificationManager {
   unsubscribeFromRoom(roomId: string) {
     console.log('🔔 Unsubscribing from background notifications for room:', roomId);
     
+    // Keep the subscription but mark it as unsubscribed to preserve user preference
     const existingSubscription = this.state.subscriptions.get(roomId);
     if (existingSubscription) {
       existingSubscription.subscribed = false;
       existingSubscription.lastSeen = Date.now();
     } else {
+      // Create a new subscription record marked as unsubscribed
       this.state.subscriptions.set(roomId, {
         roomId,
-        displayName: '',
+        displayName: '', // Will be updated when user enters room
         subscribed: false,
         lastSeen: Date.now()
       });
@@ -424,7 +407,7 @@ class BackgroundNotificationManager {
     this.savePersistedState();
     this.notifyListeners();
 
-    // Unsubscribe on server if connected
+    // Tell server to stop sending notifications for this room
     if (this.socket?.connected) {
       this.socket.emit('unsubscribe-notifications', { roomId });
     }
@@ -434,19 +417,20 @@ class BackgroundNotificationManager {
     if (!hasActiveSubscriptions) {
       console.log('🔔 No more active subscriptions - disconnecting background service');
       this.disconnect();
+      
+      // CRITICAL FIX: Mark this as a deliberate user action to prevent auto-reconnection
       this.isUserDisconnected = true;
+      console.log('🔔 Marked as user-initiated disconnection to prevent auto-reconnection');
     }
     
-    // Clear timers to prevent conflicts
+    // IMPORTANT: Clear any reconnection attempts to prevent conflicts
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
-    }
-    if (this.deferredConnectionTimer) {
-      clearTimeout(this.deferredConnectionTimer);
-      this.deferredConnectionTimer = null;
+      console.log('🔔 Cleared reconnection timer to prevent conflicts');
     }
     
+    // Reset connection state to prevent interference with main chat connections
     this.connectionAttempts = 0;
     this.isConnecting = false;
   }
@@ -459,21 +443,14 @@ class BackgroundNotificationManager {
       this.reconnectTimer = null;
     }
     
-    if (this.deferredConnectionTimer) {
-      clearTimeout(this.deferredConnectionTimer);
-      this.deferredConnectionTimer = null;
-    }
-    
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
     }
     
-    ConnectionCoordinator.setBackgroundConnection(null);
-    
     this.state.isConnected = false;
     this.isConnecting = false;
-    this.connectionAttempts = 0;
+    this.connectionAttempts = 0; // Reset connection attempts on manual disconnect
     this.notifyListeners();
   }
 
@@ -481,12 +458,14 @@ class BackgroundNotificationManager {
     console.log('🔔 Setting current room for notifications:', roomId);
     this.state.currentRoom = roomId;
     
+    // Update last seen time if we have a subscription
     if (roomId && this.state.subscriptions.has(roomId)) {
       const sub = this.state.subscriptions.get(roomId)!;
       sub.lastSeen = Date.now();
       this.savePersistedState();
     }
     
+    // Mark room as read when user enters it
     if (roomId) {
       unreadMessageManager.initialize();
       unreadMessageManager.markRoomAsRead(roomId);
@@ -507,8 +486,8 @@ class BackgroundNotificationManager {
     console.log('🔔 Setting global notification handler');
     this.globalNotificationHandler = handler;
     
-    // Try to connect when global handler is set
-    if (!this.socket?.connected && !this.isConnecting && ConnectionCoordinator.canConnectBackground()) {
+    // Try to connect when global handler is set, even without active subscriptions
+    if (!this.socket?.connected && !this.isConnecting) {
       console.log('🔔 Attempting connection due to global handler registration');
       this.connect();
     }
@@ -546,112 +525,49 @@ class BackgroundNotificationManager {
       this.reconnectTimer = null;
     }
     
-    if (this.deferredConnectionTimer) {
-      clearTimeout(this.deferredConnectionTimer);
-      this.deferredConnectionTimer = null;
-    }
-    
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
     }
-    
-    ConnectionCoordinator.setBackgroundConnection(null);
     
     this.listeners.clear();
     this.messageHandlers.clear();
     this.isInitialized = false;
     this.isConnecting = false;
     this.connectionAttempts = 0;
-    this.isUserDisconnected = false;
-  }
-
-  // Method to check connection coordination status
-  getCoordinationStatus() {
-    return {
-      hasActiveChatConnections: ConnectionCoordinator.hasActiveChatConnections(),
-      canConnectBackground: ConnectionCoordinator.canConnectBackground(),
-      isConnected: this.state.isConnected,
-      isConnecting: this.isConnecting,
-      connectionAttempts: this.connectionAttempts,
-      isUserDisconnected: this.isUserDisconnected
-    };
+    this.isUserDisconnected = false; // Reset user disconnected state on cleanup
   }
 }
 
 // Global singleton instance
-let backgroundNotificationManager: BackgroundNotificationManager | null = null;
-
-// Function to get or create the manager safely
-function getBackgroundNotificationManager(): BackgroundNotificationManager {
-  if (typeof window === 'undefined') {
-    // Return a mock manager for SSR
-    return {
-      initialize: () => {},
-      getState: () => ({
-        isConnected: false,
-        subscriptions: new Map(),
-        currentRoom: null
-      }),
-      addListener: () => () => {},
-      subscribeToRoom: () => {},
-      unsubscribeFromRoom: () => {},
-      setCurrentRoom: () => {},
-      setMessageHandler: () => {},
-      removeMessageHandler: () => {},
-      setGlobalNotificationHandler: () => {},
-      removeGlobalNotificationHandler: () => {},
-      getCoordinationStatus: () => ({
-        hasActiveChatConnections: false,
-        canConnectBackground: false,
-        isConnected: false,
-        isConnecting: false,
-        connectionAttempts: 0,
-        isUserDisconnected: false
-      })
-    } as any;
-  }
-  
-  if (!backgroundNotificationManager) {
-    backgroundNotificationManager = new BackgroundNotificationManager();
-  }
-  return backgroundNotificationManager;
-}
+const backgroundNotificationManager = new BackgroundNotificationManager();
 
 // Hook for components to use background notifications
 export function useBackgroundNotifications() {
-  const [state, setState] = useState<BackgroundNotificationState>(() => {
-    // SSR-safe initialization
-    if (typeof window === 'undefined') {
-      return {
-        isConnected: false,
-        subscriptions: new Map(),
-        currentRoom: null
-      };
-    }
-    return getBackgroundNotificationManager().getState();
-  });
+  const [state, setState] = useState<BackgroundNotificationState>(
+    backgroundNotificationManager.getState()
+  );
 
   useEffect(() => {
-    // Only initialize on client side
-    if (typeof window === 'undefined') return;
+    // Initialize on first use
+    backgroundNotificationManager.initialize();
     
-    const manager = getBackgroundNotificationManager();
-    manager.initialize();
-    const unsubscribe = manager.addListener(setState);
+    // Subscribe to state changes
+    const unsubscribe = backgroundNotificationManager.addListener(setState);
+    
     return unsubscribe;
   }, []);
 
   const subscribeToRoom = useCallback((roomId: string, displayName: string) => {
-    getBackgroundNotificationManager().subscribeToRoom(roomId, displayName);
+    backgroundNotificationManager.subscribeToRoom(roomId, displayName);
   }, []);
 
   const unsubscribeFromRoom = useCallback((roomId: string) => {
-    getBackgroundNotificationManager().unsubscribeFromRoom(roomId);
+    backgroundNotificationManager.unsubscribeFromRoom(roomId);
   }, []);
 
   const setCurrentRoom = useCallback((roomId: string | null) => {
-    getBackgroundNotificationManager().setCurrentRoom(roomId);
+    backgroundNotificationManager.setCurrentRoom(roomId);
   }, []);
 
   return {
@@ -660,70 +576,79 @@ export function useBackgroundNotifications() {
     currentRoom: state.currentRoom,
     subscribeToRoom,
     unsubscribeFromRoom,
-    setCurrentRoom,
-    coordinationStatus: getBackgroundNotificationManager().getCoordinationStatus()
+    setCurrentRoom
   };
 }
 
-// Hook for room-specific notification handling with better coordination
+// Hook for room-specific notification handling
 export function useRoomBackgroundNotifications(roomId: string, displayName: string) {
   const { triggerNotification } = useMessageNotifications(roomId, displayName);
 
   useEffect(() => {
     if (!roomId || !displayName) return;
-    // SSR guard
-    if (typeof window === 'undefined') return;
 
-    const manager = getBackgroundNotificationManager();
-    manager.initialize();
+    // Initialize background notification manager
+    backgroundNotificationManager.initialize();
 
-    const currentState = manager.getState();
+    // Check if this room already has a subscription preference
+    const currentState = backgroundNotificationManager.getState();
     const existingSubscription = currentState.subscriptions.get(roomId);
     
-    // More intelligent subscription logic
+    // Only auto-subscribe if:
+    // 1. No existing subscription exists, OR
+    // 2. Existing subscription is explicitly set to subscribed = true
+    // This prevents re-subscribing when user has explicitly disabled notifications
     if (!existingSubscription || existingSubscription.subscribed) {
-      console.log('🔔 Auto-subscribing to enhanced background notifications for room:', roomId);
-      manager.subscribeToRoom(roomId, displayName);
+      console.log('🔔 Auto-subscribing to background notifications for room:', roomId, 
+                  existingSubscription ? '(existing subscription active)' : '(new room)');
+      backgroundNotificationManager.subscribeToRoom(roomId, displayName);
     } else {
       console.log('🔕 Skipping auto-subscription - notifications disabled for room:', roomId);
     }
 
+    // Always set up message handler regardless of subscription status
+    // This allows us to handle notifications if the user re-enables them later
     const messageHandler = (message: Message) => {
-      console.log('🔔 Enhanced background notification handler triggered for room:', roomId, message);
+      console.log('🔔 Background notification handler triggered for room:', roomId, message);
       triggerNotification(message);
     };
 
-    manager.setMessageHandler(roomId, messageHandler);
+    backgroundNotificationManager.setMessageHandler(roomId, messageHandler);
 
     return () => {
-      manager.removeMessageHandler(roomId);
+      // Clean up message handler but keep subscription active
+      backgroundNotificationManager.removeMessageHandler(roomId);
     };
   }, [roomId, displayName, triggerNotification]);
 
   return {
-    coordinationStatus: getBackgroundNotificationManager().getCoordinationStatus()
+    // This hook mainly sets up the background notification subscription
+    // The actual notification triggering is handled internally
   };
 }
 
-// Hook for global notification handling (homepage, etc.)
+// Hook for global notification handling (use this on pages like homepage)
 export function useGlobalBackgroundNotifications() {
   useEffect(() => {
-    // SSR guard
-    if (typeof window === 'undefined') return;
+    console.log('🔔 Setting up global background notifications on homepage');
     
-    console.log('🔔 Setting up enhanced global background notifications');
-    
-    const manager = getBackgroundNotificationManager();
-    manager.initialize();
+    // Initialize background notification manager
+    backgroundNotificationManager.initialize();
 
+    // Create a global notification handler that can trigger notifications for any room
     const globalHandler = (message: Message) => {
-      console.log('🔔 Enhanced global notification handler triggered:', message);
+      console.log('🔔 Global notification handler triggered:', message);
       
-      const state = manager.getState();
+      // Get subscription info to get display name
+      const state = backgroundNotificationManager.getState();
       const subscription = state.subscriptions.get(message.roomId);
       
       if (subscription) {
-        // Enhanced global notifications with better error handling
+        // Create a temporary notification trigger for this message
+        console.log('🔔 Creating temporary notification trigger for:', message.roomId);
+        
+        // We need to create a notification trigger without a specific room context
+        // This is a bit of a hack, but it works for global notifications
         if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
           navigator.serviceWorker.ready.then(registration => {
             return registration.showNotification(`New Message in "${message.roomId}"`, {
@@ -743,14 +668,20 @@ export function useGlobalBackgroundNotifications() {
                 content: message.content
               },
               actions: [
-                { action: 'open', title: 'Open Chat' },
-                { action: 'dismiss', title: 'Dismiss' }
+                {
+                  action: 'open',
+                  title: 'Open Chat'
+                },
+                {
+                  action: 'dismiss',
+                  title: 'Dismiss'
+                }
               ]
             });
           }).then(() => {
-            console.log('✅ Enhanced global notification shown successfully');
+            console.log('✅ Global notification shown successfully');
           }).catch(error => {
-            console.error('❌ Enhanced global notification failed:', error);
+            console.error('❌ Global notification failed:', error);
             
             // Fallback to direct notification
             try {
@@ -767,28 +698,32 @@ export function useGlobalBackgroundNotifications() {
                 notification.close();
               };
               
-              console.log('✅ Enhanced global fallback notification shown');
+              console.log('✅ Global fallback notification shown');
             } catch (fallbackError) {
-              console.error('❌ Enhanced global fallback notification failed:', fallbackError);
+              console.error('❌ Global fallback notification failed:', fallbackError);
             }
           });
+        } else {
+          console.warn('⚠️ Notification requirements not met for global handler');
         }
+      } else {
+        console.warn('🔔 No subscription found for room:', message.roomId);
       }
     };
 
-    manager.setGlobalNotificationHandler(globalHandler);
-    console.log('✅ Enhanced global notification handler registered');
+    backgroundNotificationManager.setGlobalNotificationHandler(globalHandler);
+    console.log('✅ Global notification handler registered');
 
     return () => {
-      console.log('🔔 Cleaning up enhanced global notification handler');
-      manager.removeGlobalNotificationHandler();
+      console.log('🔔 Cleaning up global notification handler');
+      backgroundNotificationManager.removeGlobalNotificationHandler();
     };
   }, []);
 
   return {
-    coordinationStatus: getBackgroundNotificationManager().getCoordinationStatus()
+    // This hook sets up global notification handling
   };
 }
 
-// Export the manager and coordinator for advanced use cases
-export { getBackgroundNotificationManager as backgroundNotificationManager, ConnectionCoordinator };
+// Export the manager for advanced use cases
+export { backgroundNotificationManager };
