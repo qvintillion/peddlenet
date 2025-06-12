@@ -1,54 +1,67 @@
-// sqlite-persistence.js - Message persistence with better-sqlite3 (no deprecated dependencies)
-// Development fallback to sqlite3 if better-sqlite3 fails
-let Database;
-try {
-  Database = require('better-sqlite3');
-  console.log('📦 Using better-sqlite3 for persistence');
-} catch (err) {
-  console.warn('⚠️ better-sqlite3 not available, falling back to sqlite3');
-  const sqlite3 = require('sqlite3').verbose();
-  // Create a wrapper to make sqlite3 behave like better-sqlite3
-  Database = class {
-    constructor(path) {
-      this.path = path;
-      this.db = new sqlite3.Database(path);
-    }
-    
-    exec(sql) {
-      this.db.exec(sql);
-    }
-    
-    prepare(sql) {
-      return {
-        run: (...params) => {
-          this.db.run(sql, params);
-        },
-        all: (...params) => {
-          return new Promise((resolve, reject) => {
-            this.db.all(sql, params, (err, rows) => {
-              if (err) reject(err);
-              else resolve(rows);
-            });
-          });
-        },
-        get: (...params) => {
-          return new Promise((resolve, reject) => {
-            this.db.get(sql, params, (err, row) => {
-              if (err) reject(err);
-              else resolve(row);
-            });
-          });
-        }
-      };
-    }
-    
-    close() {
-      this.db.close();
-    }
-  };
-}
+// sqlite-persistence.js - Message persistence with sqlite3 (production-ready)
+const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+
+// Create a wrapper to make sqlite3 behave consistently
+class Database {
+  constructor(dbPath) {
+    this.path = dbPath;
+    this.db = new sqlite3.Database(dbPath);
+  }
+  
+  exec(sql) {
+    return new Promise((resolve, reject) => {
+      this.db.exec(sql, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
+  
+  prepare(sql) {
+    const stmt = this.db.prepare(sql);
+    return {
+      run: (...params) => {
+        return new Promise((resolve, reject) => {
+          stmt.run(params, function(err) {
+            if (err) reject(err);
+            else resolve({ changes: this.changes, lastID: this.lastID });
+          });
+        });
+      },
+      all: (...params) => {
+        return new Promise((resolve, reject) => {
+          stmt.all(params, (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+          });
+        });
+      },
+      get: (...params) => {
+        return new Promise((resolve, reject) => {
+          stmt.get(params, (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          });
+        });
+      },
+      finalize: () => {
+        return new Promise((resolve) => {
+          stmt.finalize(() => resolve());
+        });
+      }
+    };
+  }
+  
+  close() {
+    return new Promise((resolve) => {
+      this.db.close(() => {
+        resolve();
+      });
+    });
+  }
+}
 
 class MessagePersistence {
   constructor(dbPath) {
@@ -86,11 +99,10 @@ class MessagePersistence {
     if (this.isInitialized) return;
 
     try {
-      // better-sqlite3 is synchronous, so no need for promises here
       this.db = new Database(this.dbPath);
-      console.log('📁 Connected to SQLite database (better-sqlite3):', this.dbPath);
+      console.log('📁 Connected to SQLite database (sqlite3):', this.dbPath);
       
-      this.createTables();
+      await this.createTables();
       this.isInitialized = true;
       console.log('✅ Database initialized successfully');
     } catch (err) {
@@ -99,7 +111,7 @@ class MessagePersistence {
     }
   }
 
-  createTables() {
+  async createTables() {
     const sql = `
       CREATE TABLE IF NOT EXISTS rooms (
         id TEXT PRIMARY KEY,
@@ -124,7 +136,7 @@ class MessagePersistence {
       CREATE INDEX IF NOT EXISTS idx_rooms_last_activity ON rooms (last_activity);
     `;
 
-    this.db.exec(sql);
+    await this.db.exec(sql);
     console.log('📋 Database tables ready');
   }
 
@@ -138,7 +150,7 @@ class MessagePersistence {
       `);
       
       const now = Date.now();
-      stmt.run(roomId, now, now);
+      await stmt.run(roomId, now, now);
       console.log(`🏠 Room created/verified: ${roomId}`);
     } catch (err) {
       console.error('Error creating room:', err);
@@ -158,7 +170,7 @@ class MessagePersistence {
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
       
-      stmt.run(
+      await stmt.run(
         message.id,
         roomId,
         message.content,
@@ -188,7 +200,7 @@ class MessagePersistence {
         WHERE id = ?
       `);
       
-      stmt.run(Date.now(), roomId);
+      await stmt.run(Date.now(), roomId);
     } catch (err) {
       console.error('Error updating room activity:', err);
       throw err;
@@ -207,7 +219,7 @@ class MessagePersistence {
         LIMIT ?
       `);
 
-      const rows = stmt.all(roomId, limit);
+      const rows = await stmt.all(roomId, limit);
       
       const messages = rows.map(row => ({
         id: row.id,
@@ -240,7 +252,7 @@ class MessagePersistence {
         ORDER BY r.last_activity DESC
       `);
 
-      return stmt.all();
+      return await stmt.all();
     } catch (err) {
       console.error('Error fetching rooms:', err);
       throw err;
@@ -257,7 +269,7 @@ class MessagePersistence {
         WHERE id = ?
       `);
       
-      stmt.run(count, Date.now(), roomId);
+      await stmt.run(count, Date.now(), roomId);
     } catch (err) {
       console.error('Error updating participant count:', err);
       throw err;
@@ -278,7 +290,7 @@ class MessagePersistence {
         )
       `);
 
-      deleteMessagesStmt.run(cutoffTime);
+      await deleteMessagesStmt.run(cutoffTime);
 
       // Then delete old rooms
       const deleteRoomsStmt = this.db.prepare(`
@@ -286,7 +298,7 @@ class MessagePersistence {
         WHERE last_activity < ? AND participant_count = 0
       `);
 
-      const result = deleteRoomsStmt.run(cutoffTime);
+      const result = await deleteRoomsStmt.run(cutoffTime);
       console.log(`🧹 Cleaned up ${result.changes} old rooms`);
       return result.changes;
     } catch (err) {
@@ -307,7 +319,7 @@ class MessagePersistence {
           (SELECT MAX(last_activity) FROM rooms) as latest_activity
       `);
 
-      const row = stmt.get();
+      const row = await stmt.get();
       
       return {
         totalRooms: row.total_rooms || 0,
@@ -325,7 +337,7 @@ class MessagePersistence {
     if (this.db) {
       try {
         console.log('🔒 Closing SQLite database...');
-        this.db.close();
+        await this.db.close();
         console.log('✅ Database connection closed');
         this.db = null;
         this.isInitialized = false;

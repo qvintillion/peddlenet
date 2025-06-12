@@ -2,16 +2,17 @@
   "name": "peddlenet-signaling-server",
   "version": "1.1.0",
   "description": "Production WebRTC signaling server for PeddleNet P2P festival chat",
-  "main": "signaling-server-production.js",
+  "main": "signaling-server.js",
   "scripts": {
-    "start": "node signaling-server-production.js",
+    "start": "node signaling-server.js",
     "dev": "node signaling-server.js",
     "test": "node -e \"console.log('Signaling server package ready')\""
   },
   "dependencies": {
     "express": "^5.1.0",
     "socket.io": "^4.8.1",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "sqlite3": "^5.1.7"
   },
   "engines": {
     "node": ">=18.0.0"

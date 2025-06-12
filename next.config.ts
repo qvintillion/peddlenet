@@ -15,6 +15,11 @@ const nextConfig = {
   output: undefined,
   trailingSlash: false,
   
+  // Skip static generation for diagnostic pages during build
+  experimental: {
+    skipTrailingSlashRedirect: true,
+  },
+  
   // Image optimization off for compatibility
   images: {
     unoptimized: true,

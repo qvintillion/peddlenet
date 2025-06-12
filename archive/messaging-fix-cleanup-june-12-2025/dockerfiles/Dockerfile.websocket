@@ -1,0 +1,36 @@
+# Production Dockerfile for enhanced server with sqlite3 only
+FROM node:18-alpine
+
+# Install basic dependencies (no build tools needed for sqlite3)
+RUN apk add --no-cache \
+    dumb-init \
+    curl
+
+# Create app user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S signaling -u 1001
+
+WORKDIR /app
+
+# Copy package.json first (uses sqlite3 only)
+COPY deployment/package.json ./package.json
+
+# Install dependencies (sqlite3 compiles easily in Alpine)
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy the enhanced server code (the one that works in local dev)
+COPY signaling-server-sqlite-enhanced.js ./signaling-server.js
+COPY sqlite-persistence.js ./sqlite-persistence.js
+
+# Change ownership
+RUN chown -R signaling:nodejs /app
+
+# Switch to non-root user
+USER signaling
+
+# Expose port
+EXPOSE 3001
+
+# Start application with dumb-init
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "signaling-server.js"]

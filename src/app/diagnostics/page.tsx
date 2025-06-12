@@ -3,6 +3,9 @@
 import { ConnectionTest } from '@/components/ConnectionTest';
 import Link from 'next/link';
 
+// Force dynamic rendering (no static generation)
+export const dynamic = 'force-dynamic';
+
 export default function DiagnosticsPage() {
   return (
     <div className="min-h-screen bg-gray-900 p-4">

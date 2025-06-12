@@ -1,0 +1,36 @@
+steps:
+  # Simple Docker build with minimal dependencies
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'Dockerfile.minimal', '-t', 'gcr.io/$PROJECT_ID/peddlenet-websocket-server', '.']
+
+  # Push the image  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/peddlenet-websocket-server']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'peddlenet-websocket-server'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/peddlenet-websocket-server'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--port'
+      - '3001'
+      - '--set-env-vars'
+      - 'NODE_ENV=production'
+
+images:
+  - 'gcr.io/$PROJECT_ID/peddlenet-websocket-server'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

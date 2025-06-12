@@ -1,0 +1,48 @@
+steps:
+  # Build the container image using Cloud Build
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '-f'
+      - 'deployment/Dockerfile.cloudrun'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/peddlenet-websocket-server'
+      - '.'
+
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/peddlenet-websocket-server'
+
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'peddlenet-websocket-server'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/peddlenet-websocket-server'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--concurrency'
+      - '1000'
+      - '--timeout'
+      - '300'
+      - '--port'
+      - '3001'
+      - '--set-env-vars'
+      - 'NODE_ENV=production'
+
+images:
+  - 'gcr.io/$PROJECT_ID/peddlenet-websocket-server'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+// Force dynamic rendering (no static generation)
+export const dynamic = 'force-dynamic';
+
 export default function P2PDiagnosticPage() {
   const [peer, setPeer] = useState<any>(null);
   const [peerId, setPeerId] = useState<string>('');

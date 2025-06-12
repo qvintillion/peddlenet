@@ -1,0 +1,19 @@
+# Ultra-simple Dockerfile for testing
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package.json directly from deployment directory
+COPY deployment/package.json package.json
+
+# Install dependencies
+RUN npm install
+
+# Copy server file
+COPY signaling-server-production.js server.js
+
+# Expose port
+EXPOSE 3001
+
+# Start server
+CMD ["node", "server.js"]

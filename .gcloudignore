@@ -1,0 +1,51 @@
+# Cloud Build ignore file - only exclude what we don't need for WebSocket server deployment
+
+# Node modules (will be installed during build)
+node_modules/
+functions/node_modules/
+
+# Next.js build artifacts (not needed for WebSocket server)
+.next/
+out/
+build/
+
+# Development files
+.env.local
+.env.development
+.env.test
+
+# Keep .env.firebase for reference but not needed in build
+
+# Firebase emulator files
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Version control
+.git/
+.github/
+
+# IDE/Editor files
+.vscode/
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build cache
+.vercel/
+*.tsbuildinfo
+
+# Archive and backup files (not needed for deployment)
+archive/
+
+# Documentation (not needed for server build)
+docs/
+
+# Keep signaling-server-production.js - this is essential!
+# Keep deployment/ directory - this is essential!
+# Keep package.json files - these are essential!

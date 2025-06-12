@@ -1,0 +1,20 @@
+{
+  "name": "festival-chat-websocket-server-production",
+  "version": "1.2.1",
+  "description": "Production WebSocket signaling server for Festival Chat with Firebase CORS support",
+  "main": "signaling-server-production.js",
+  "scripts": {
+    "start": "node signaling-server-production.js",
+    "health": "curl http://localhost:${PORT:-3001}/health"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "license": "MIT"
+}

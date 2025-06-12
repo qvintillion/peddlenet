@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+// Force dynamic rendering (no static generation)
+export const dynamic = 'force-dynamic';
+
 export default function NetworkComparisonPage() {
   const router = useRouter();
   const [environment, setEnvironment] = useState<any>({});
