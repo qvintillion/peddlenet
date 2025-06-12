@@ -92,34 +92,49 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
     };
   }, []);
 
-  // Check subscription status separately
+  // Check subscription status separately with better error handling
   useEffect(() => {
     if (!isSupported) return;
     
     const checkStatus = async () => {
       try {
-        const registration = await navigator.serviceWorker.getRegistration();
+        // MOBILE FIX: More defensive service worker checking
+        let hasServiceWorkerRegistration = false;
+        try {
+          if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.getRegistration();
+            hasServiceWorkerRegistration = !!registration;
+          }
+        } catch (swError) {
+          console.log('🔔 Service worker check failed (may not be supported):', swError.message);
+          hasServiceWorkerRegistration = false;
+        }
+        
         const hasPermission = Notification.permission === 'granted';
-        const hasServiceWorkerRegistration = !!registration;
         
         // For room-specific usage, also check if notifications are enabled for this room
         let roomNotificationsEnabled = true;
         if (roomId) {
-          const bgState = backgroundNotificationManager.getState();
-          const roomSubscription = bgState.subscriptions.get(roomId);
-          roomNotificationsEnabled = roomSubscription ? roomSubscription.subscribed : true;
-          console.log('🔔 Room-specific notification status for', roomId, ':', roomNotificationsEnabled);
+          try {
+            const bgState = backgroundNotificationManager.getState();
+            const roomSubscription = bgState.subscriptions.get(roomId);
+            roomNotificationsEnabled = roomSubscription ? roomSubscription.subscribed : true;
+            console.log('🔔 Room-specific notification status for', roomId, ':', roomNotificationsEnabled);
+          } catch (bgError) {
+            console.log('🔔 Background notification check failed:', bgError.message);
+            roomNotificationsEnabled = true; // Default to enabled if check fails
+          }
         }
         
-        // Only consider subscribed if:
-        // 1. Service worker is registered
-        // 2. Permission is granted  
-        // 3. Notifications are enabled for this specific room (if roomId provided)
-        const finalSubscriptionStatus = hasServiceWorkerRegistration && hasPermission && roomNotificationsEnabled;
+        // MOBILE FIX: Consider subscribed if we have basic notification support and permission
+        // Service worker is preferred but not always required for basic notifications
+        const hasBasicNotificationSupport = 'Notification' in window;
+        const finalSubscriptionStatus = hasBasicNotificationSupport && hasPermission && roomNotificationsEnabled;
         
         console.log('🔔 Push notification subscription check:', {
           roomId,
           hasServiceWorkerRegistration,
+          hasBasicNotificationSupport,
           hasPermission,
           roomNotificationsEnabled,
           finalSubscriptionStatus
@@ -128,7 +143,10 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
         setIsSubscribed(finalSubscriptionStatus);
       } catch (error) {
         console.warn('Failed to check subscription status:', error);
-        setIsSubscribed(false);
+        // MOBILE FIX: If we can't check, but permission is granted, assume we can notify
+        const fallbackStatus = Notification.permission === 'granted';
+        console.log('🔔 Using fallback subscription status:', fallbackStatus);
+        setIsSubscribed(fallbackStatus);
       }
     };
 
@@ -161,28 +179,51 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
     if (!isSupported || permission !== 'granted') return false;
 
     try {
-      let registration = await navigator.serviceWorker.getRegistration();
-      if (!registration) {
-        registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-        console.log('🔔 Service worker registered for notifications');
+      // MOBILE FIX: Try to register service worker but don't fail if it doesn't work
+      let hasServiceWorker = false;
+      try {
+        if ('serviceWorker' in navigator) {
+          let registration = await navigator.serviceWorker.getRegistration();
+          if (!registration) {
+            registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+            console.log('🔔 Service worker registered for notifications');
+          }
+          
+          await navigator.serviceWorker.ready;
+          hasServiceWorker = true;
+          console.log('✅ Service worker ready for enhanced notifications');
+        }
+      } catch (swError) {
+        console.warn('🔔 Service worker registration failed, using basic notifications:', swError.message);
+        hasServiceWorker = false;
       }
-      
-      await navigator.serviceWorker.ready;
       
       // If we have a roomId, also enable background notifications for this room
       if (roomId) {
-        backgroundNotificationManager.initialize();
-        const storedName = localStorage.getItem('displayName') || 'User';
-        backgroundNotificationManager.subscribeToRoom(roomId, storedName);
-        console.log('🔔 Also enabled background notifications for room:', roomId);
+        try {
+          backgroundNotificationManager.initialize();
+          const storedName = localStorage.getItem('displayName') || 'User';
+          backgroundNotificationManager.subscribeToRoom(roomId, storedName);
+          console.log('🔔 Also enabled background notifications for room:', roomId);
+        } catch (bgError) {
+          console.warn('🔔 Background notification setup failed:', bgError.message);
+        }
       }
       
       setIsSubscribed(true);
       
-      console.log('✅ Successfully subscribed to notifications');
+      console.log('✅ Successfully subscribed to notifications (SW:', hasServiceWorker, ')');
       return true;
     } catch (error) {
       console.error('Failed to subscribe to notifications:', error);
+      
+      // MOBILE FIX: Even if subscription fails, if we have permission, we can still show basic notifications
+      if (permission === 'granted' && 'Notification' in window) {
+        console.log('🔔 Falling back to basic notification support');
+        setIsSubscribed(true);
+        return true;
+      }
+      
       setIsSubscribed(false);
       return false;
     }
@@ -243,17 +284,49 @@ export function usePushNotifications(roomId?: string): UsePushNotificationsRetur
   const sendTestNotification = useCallback(() => {
     if (!isSupported || permission !== 'granted') return;
 
+    console.log('🔔 Sending test notification...');
+
+    // MOBILE FIX: Try service worker first, fallback to basic notification
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.ready.then(registration => {
-        registration.showNotification('Festival Chat Test', {
+        console.log('🔔 Using service worker for test notification');
+        return registration.showNotification('Festival Chat Test', {
           body: 'Test notification - your notifications are working! 🎪',
           icon: '/favicon.ico',
           tag: 'festival-chat-test',
+          vibrate: [200, 100, 200],
+          requireInteraction: true,
           data: { url: roomId ? `/chat/${roomId}` : '/', test: true }
         });
       }).catch(error => {
-        console.error('Failed to show test notification:', error);
+        console.warn('Service worker notification failed, trying basic notification:', error);
+        tryBasicTestNotification();
       });
+    } else {
+      console.log('🔔 No service worker, using basic notification for test');
+      tryBasicTestNotification();
+    }
+    
+    function tryBasicTestNotification() {
+      try {
+        const notification = new Notification('Festival Chat Test', {
+          body: 'Test notification - your notifications are working! 🎪',
+          icon: '/favicon.ico',
+          tag: 'festival-chat-test'
+        });
+        
+        notification.onclick = () => {
+          window.focus();
+          if (roomId) {
+            window.location.href = `/chat/${roomId}`;
+          }
+          notification.close();
+        };
+        
+        console.log('✅ Basic test notification sent');
+      } catch (basicError) {
+        console.error('Both service worker and basic notification failed:', basicError);
+      }
     }
   }, [isSupported, permission, roomId]);
 
@@ -474,67 +547,74 @@ export function useMessageNotifications(roomId: string, displayName: string) {
     if ('serviceWorker' in navigator && 'Notification' in window) {
       console.log('🔔 Method 1: Attempting service worker notification');
       
-      navigator.serviceWorker.ready.then(registration => {
-        console.log('🔔 Service worker ready, showing notification via SW');
-        
-        return registration.showNotification(`New Message in "${roomId}"`, {
-          body: `${message.sender}: ${message.content}`,
-          icon: '/favicon.ico',
-          badge: '/favicon.ico',
-          tag: `festival-chat-${roomId}`,
-          vibrate: [200, 100, 200],
-          requireInteraction: true, // Keep visible until user interacts
-          renotify: true, // Show even if same tag exists
-          timestamp: Date.now(),
-          data: {
-            url: `/chat/${roomId}`,
-            roomId: roomId,
-            messageId: message.id,
-            sender: message.sender,
-            content: message.content
-          },
-          actions: [
-            {
-              action: 'open',
-              title: 'Open Chat'
-            },
-            {
-              action: 'dismiss',
-              title: 'Dismiss'
-            }
-          ]
-        });
-      }).then(() => {
-        console.log('✅ Method 1 SUCCESS: Service worker notification shown');
-      }).catch(error => {
-        console.error('❌ Method 1 FAILED: Service worker notification error:', error);
-        
-        // Method 2: Direct Notification API fallback
-        console.log('🔔 Method 2: Attempting direct notification API');
-        try {
-          const notification = new Notification(`New Message in "${roomId}"`, {
+      // MOBILE FIX: Add timeout to service worker ready check
+      const swTimeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Service worker timeout')), 5000);
+      });
+      
+      Promise.race([navigator.serviceWorker.ready, swTimeout])
+        .then(registration => {
+          console.log('🔔 Service worker ready, showing notification via SW');
+          
+          return registration.showNotification(`New Message in "${roomId}"`, {
             body: `${message.sender}: ${message.content}`,
             icon: '/favicon.ico',
+            badge: '/favicon.ico',
             tag: `festival-chat-${roomId}`,
             vibrate: [200, 100, 200],
-            requireInteraction: true
+            requireInteraction: true, // Keep visible until user interacts
+            renotify: true, // Show even if same tag exists
+            timestamp: Date.now(),
+            data: {
+              url: `/chat/${roomId}`,
+              roomId: roomId,
+              messageId: message.id,
+              sender: message.sender,
+              content: message.content
+            },
+            actions: [
+              {
+                action: 'open',
+                title: 'Open Chat'
+              },
+              {
+                action: 'dismiss',
+                title: 'Dismiss'
+              }
+            ]
           });
+        })
+        .then(() => {
+          console.log('✅ Method 1 SUCCESS: Service worker notification shown');
+        })
+        .catch(error => {
+          console.error('❌ Method 1 FAILED: Service worker notification error:', error);
           
-          notification.onclick = () => {
-            window.focus();
-            window.location.href = `/chat/${roomId}`;
-            notification.close();
-          };
-          
-          console.log('✅ Method 2 SUCCESS: Direct notification shown');
-        } catch (directError) {
-          console.error('❌ Method 2 FAILED: Direct notification error:', directError);
-          
-          // Method 3: Basic Notification API (last resort)
-          console.log('🔔 Method 3: Attempting basic notification API');
-          tryBasicNotification();
-        }
-      });
+          // Method 2: Direct Notification API fallback
+          console.log('🔔 Method 2: Attempting direct notification API');
+          try {
+            const notification = new Notification(`New Message in "${roomId}"`, {
+              body: `${message.sender}: ${message.content}`,
+              icon: '/favicon.ico',
+              tag: `festival-chat-${roomId}`,
+              vibrate: [200, 100, 200]
+            });
+            
+            notification.onclick = () => {
+              window.focus();
+              window.location.href = `/chat/${roomId}`;
+              notification.close();
+            };
+            
+            console.log('✅ Method 2 SUCCESS: Direct notification shown');
+          } catch (directError) {
+            console.error('❌ Method 2 FAILED: Direct notification error:', directError);
+            
+            // Method 3: Basic Notification API (last resort)
+            console.log('🔔 Method 3: Attempting basic notification API');
+            tryBasicNotification();
+          }
+        });
     } else if ('Notification' in window) {
       // Method 2: Direct to Notification API if no service worker
       console.log('🔔 Method 2: Service worker not available, using direct notification');
@@ -553,6 +633,18 @@ export function useMessageNotifications(roomId: string, displayName: string) {
         };
         
         console.log('✅ Method 2 SUCCESS: Direct notification shown (no SW)');
+        
+        // Auto-close after 5 seconds on mobile to prevent notification buildup
+        if (isMobile) {
+          setTimeout(() => {
+            try {
+              notification.close();
+              console.log('📱 Auto-closed mobile notification after 5s');
+            } catch (e) {
+              // Ignore close errors
+            }
+          }, 5000);
+        }
       } catch (error) {
         console.error('❌ Method 2 FAILED: Direct notification error (no SW):', error);
         tryBasicNotification();

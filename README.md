@@ -55,11 +55,10 @@ npm run dev
 ### Backend (Port 3001) 
 - **Server:** Node.js with Express
 - **WebSockets:** Socket.IO server
-- **Database:** SQLite with 24h retention
+- **Storage:** In-memory with automatic cleanup
 - **CORS:** Configured for local network access
-- **Message Storage:** Persistent with room code mapping
-- **Health Endpoint:** `/health` for connection testing
 - **Room Codes:** `/register-room-code` and `/resolve-room-code` endpoints
+- **Health Endpoint:** `/health` for connection testing
 
 ### Connection Flow
 1. **Network Detection:** Auto-detect local IP for mobile access
@@ -71,16 +70,26 @@ npm run dev
 
 ## 🔧 Recent Updates (June 2025)
 
-### **✅ CRITICAL: Messaging Fix Success + Staging Deployment** (June 12, 2025)
-- **🎉 PRODUCTION ISSUE RESOLVED**: Messages now appear immediately on sending device in production
-- **Root cause fixed**: Changed `socket.to()` to `io.to()` for proper message broadcasting  
-- **WebSocket servers deployed**: Fixed servers deployed to preview, staging, and production environments
-- **Production verified**: ✅ Cross-device messaging ✅ Background notifications ✅ All features working
-- **Next step**: Test staging/preview environments to confirm messaging fix deployment
+### **✅ Simple Workflow Restored** (June 12, 2025)
+- **🎯 BACK TO SIMPLE**: Removed over-engineering, restored practical development workflow
+- **Workflow clarified**: Dev for UI changes, Staging for server testing, Production for deployment
+- **One server file**: `signaling-server-production-FIXED.js` used everywhere for simplicity
+- **Clear purpose**: Each environment has obvious, practical use case
+- **Safe testing**: Server changes always tested in staging before production
 
-**📚 Complete resolution details**: [ENVIRONMENT-SYNC-ISSUE-TRACKING.md](./docs/ENVIRONMENT-SYNC-ISSUE-TRACKING.md)  
-**🚀 Deployment guide**: [PRODUCTION-DEPLOYMENT-GUIDE.md](./docs/PRODUCTION-DEPLOYMENT-GUIDE.md)  
-**🔧 Troubleshooting**: [MESSAGING-TROUBLESHOOTING-GUIDE.md](./docs/MESSAGING-TROUBLESHOOTING-GUIDE.md)
+**🎯 Simple Three-Tier Workflow**:
+```bash
+# UI Development & Fast Iteration
+npm run dev:mobile                   # ✅ Works great for UI work
+
+# Server Testing & Real Validation  
+npm run deploy:firebase:complete     # ✅ Test server changes safely
+
+# Production Deployment
+./deploy.sh                          # ✅ Deploy after staging success
+```
+
+**Result**: 🎉 **Simple, practical workflow that matches how you actually work!**
 
 ### **✅ CRITICAL: Development Workflow Protection** (June 11, 2025)
 - **Enhanced deployment safety** with automatic dev server conflict detection
@@ -177,7 +186,7 @@ npm run build:firebase
 │       └── peer-utils.ts             # Connection utilities
 ├── scripts/
 │   └── dev-mobile.sh                 # Mobile development script
-├── signaling-server-sqlite.js        # WebSocket server (updated with room codes)
+├── signaling-server-production-FIXED.js  # WebSocket server (used everywhere)
 ├── next.config.ts                    # Build configuration (updated)
 └── package.json
 ```
@@ -185,20 +194,20 @@ npm run build:firebase
 ## 🛠️ Development Scripts
 
 ```bash
-# Mobile development (recommended)
+# UI Development (recommended for fast iteration)
 npm run dev:mobile        # Auto IP detection + dual server start
 
 # Standard development
 npm run dev               # Frontend only
 npm run server            # Backend only
 
-# Production
+# Testing & Deployment
+npm run deploy:firebase:complete    # Staging: Test server changes
+./deploy.sh                         # Production: Final deployment
+
+# Build commands
 npm run build             # Build for production
 npm run start             # Start production server
-
-# Deployment
-npm run deploy:firebase:complete    # Full stack deployment
-npm run deploy:firebase:quick      # Frontend-only deployment
 ```
 
 ## 🌐 Environment Variables
@@ -212,6 +221,8 @@ npm run deploy:firebase:quick      # Frontend-only deployment
 - `NEXT_PUBLIC_SIGNALING_SERVER`: Production server URL (WSS format)
   - Example: `wss://peddlenet-websocket-server-padyxgyv5a-uc.a.run.app`
   - ServerUtils automatically converts to HTTPS for API calls
+- `NODE_ENV`: Auto-detected by universal server (production/staging/development)
+- `PLATFORM`: Auto-detected by universal server (cloudrun/firebase/local)
 
 ## 🔧 Network Requirements
 
@@ -292,59 +303,52 @@ The diagnostics page will show:
 
 ## 🚀 Deployment
 
-### **🛡️ Enhanced Deployment Safety** (June 11, 2025)
+### **🎯 Simple Three-Tier Workflow**
 
-All deployment scripts now include comprehensive safety measures to prevent development server conflicts:
+**The workflow is designed to be simple and safe:**
 
-**Safety Features:**
-- **🛑 Process conflict detection** - Automatically detects and stops dev servers on ports 3000/3001
-- **💾 Environment protection** - Backs up and restores `.env.local` to prevent corruption
-- **🧹 Clean deployment** - Cache busting and fresh builds guaranteed
-- **🔄 Seamless recovery** - Automatic environment restoration with restart instructions
-
-**Enhanced Scripts:**
+#### **1. Development (UI Changes)**
 ```bash
-# All now include safety measures - no workflow changes needed!
-npm run deploy:firebase:super-quick  # Rapid iteration + dev server safety
-npm run deploy:firebase:quick        # Frontend changes + environment protection  
-npm run deploy:firebase:complete     # Infrastructure updates + conflict prevention
+npm run dev:mobile
 ```
+- **Purpose**: Fast UI iteration and component testing
+- **Environment**: Local (localhost + network IP)
+- **Server**: Uses production server locally (works fine for UI)
+- **Benefits**: Fast startup, good for UI work, mobile QR testing
 
-**Example Safe Deploy:**
-```bash
-$ npm run deploy:firebase:quick
-
-⚡ Quick Firebase Functions + Hosting Update (Safe)
-==================================================
-💾 Protecting development environment...
-✅ Backed up .env.local
-⚠️ WARNING: Development server running on port 3000
-Stop dev server and continue? (y/N): y
-🛑 Stopping development servers...
-🏗️ Building and deploying...
-🔄 Restoring development environment...
-✅ Restored original .env.local
-🛡️ Development environment protected
-📱 To restart development: npm run dev:mobile
-```
-
-### Firebase (Full Stack)
+#### **2. Staging (Server Changes)**
 ```bash
 npm run deploy:firebase:complete
 ```
-Deploys both frontend and backend with all latest features.
+- **Purpose**: Test server changes in real environment before production
+- **Environment**: Firebase hosting + Cloud Run server
+- **Server**: Same production server in real environment
+- **Benefits**: Safe testing, production-like conditions, catch issues early
 
-### Frontend Only (UI Changes)
+#### **3. Production (Final Deployment)**
 ```bash
-npm run deploy:firebase:quick
+./deploy.sh
 ```
+- **Purpose**: Deploy to live GitHub Pages after staging validation
+- **Environment**: GitHub Pages + production WebSocket server
+- **Server**: Same production server, final environment
+- **Benefits**: High confidence, known working configuration
 
-### Custom Server
-```bash
-npm run build
-npm run start
-# Also deploy signaling-server-sqlite.js to your backend
-```
+### **🔧 Universal Server Change Workflow**
+
+When you need to test universal server changes:
+
+1. **Edit** `signaling-server.js` (the universal server)
+2. **Test in staging**: `npm run deploy:firebase:complete`
+3. **Verify auto-detection works** in firebase environment
+4. **If good**: `./deploy.sh` to production
+5. **If issues**: Fix and repeat from step 2
+
+### **📁 Universal File Structure**
+- ✅ **One server**: `signaling-server.js` (universal with auto-detection)
+- ✅ **Smart adaptation**: Automatically optimizes per environment
+- ✅ **Future-ready**: Analytics and mesh endpoints built-in
+- ✅ **Easy maintenance**: One file to rule them all
 
 ## 📊 Performance
 
@@ -361,7 +365,7 @@ npm run start
 ## 🔒 Privacy & Security
 
 - **No Account Required:** Anonymous usage
-- **Local Data Only:** No cloud message storage (messages persist in SQLite for 24h)
+- **Local Data Only:** Messages stored in memory during session
 - **Temporary Rooms:** Automatic cleanup
 - **Network Isolation:** Local WiFi or secure WebSocket connections
 - **No Analytics:** No tracking or data collection
@@ -404,7 +408,33 @@ Room codes provide memorable alternatives to QR scanning with enterprise-grade r
 - **Production Validated:** Manual entry working consistently across all environments
 - **Usage:** Enter manually when QR scanning isn't available or practical
 
-## 🧪 Testing Checklist
+### **🧡 Universal Server Health Check**
+The universal server provides rich environment information:
+
+```json
+{
+  "status": "ok",
+  "service": "PeddleNet Universal Signaling Server",
+  "version": "2.0.0-universal",
+  "environment": "development",
+  "platform": "local",
+  "mode": "development",
+  "description": "Universal WebRTC signaling server that adapts to all environments",
+  "connections": {
+    "current": 5,
+    "peak": 12,
+    "rooms": 3
+  },
+  "endpoints": {
+    "health": "/health",
+    "signaling": "/socket.io/",
+    "debug": "/debug/rooms",
+    "analytics": "/analytics/dashboard"
+  }
+}
+```
+
+## 🎪 Testing Checklist
 
 ### Local Development
 - [ ] `npm run dev:mobile` starts successfully
@@ -418,11 +448,12 @@ Room codes provide memorable alternatives to QR scanning with enterprise-grade r
 ### Production Deployment
 - [ ] `npm run deploy:firebase:complete` succeeds
 - [ ] Frontend loads at Firebase URL
-- [ ] Server health check returns JSON
+- [ ] Universal server health check returns JSON with environment info
 - [ ] WebSocket connections establish
 - [ ] Room codes register successfully
 - [ ] No console errors in browser
 - [ ] Auto-reconnection works in production environment
+- [ ] Server shows correct environment detection (staging/production)
 
 ## 🤝 Contributing
 

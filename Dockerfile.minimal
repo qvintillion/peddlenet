@@ -9,8 +9,8 @@ COPY package.json package-lock.json ./
 # Install only production dependencies 
 RUN npm ci --only=production && npm cache clean --force
 
-# Copy the fixed production server with messaging fix (no SQLite dependencies)
-COPY signaling-server-production-FIXED.js ./server.js
+# Copy the universal server (works for all environments with auto-detection)
+COPY signaling-server.js ./server.js
 
 # Expose port
 EXPOSE 3001

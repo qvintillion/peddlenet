@@ -1,7 +1,7 @@
 {
   "name": "peddlenet-signaling-server",
-  "version": "1.1.0",
-  "description": "Production WebRTC signaling server for PeddleNet P2P festival chat",
+  "version": "2.0.0",
+  "description": "Universal WebRTC signaling server for PeddleNet - auto-detects all environments",
   "main": "signaling-server.js",
   "scripts": {
     "start": "node signaling-server.js",
@@ -11,8 +11,7 @@
   "dependencies": {
     "express": "^5.1.0",
     "socket.io": "^4.8.1",
-    "cors": "^2.8.5",
-    "sqlite3": "^5.1.7"
+    "cors": "^2.8.5"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -22,7 +21,8 @@
     "signaling",
     "p2p",
     "websocket",
-    "festival",
+    "universal",
+    "auto-detection",
     "chat"
   ],
   "license": "MIT",

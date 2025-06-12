@@ -4,7 +4,7 @@
 
 Festival Chat uses a dual-deployment architecture:
 - **Frontend**: Firebase Hosting for global CDN and HTTPS
-- **Backend**: Google Cloud Run for WebSocket server with SQLite persistence
+- **Backend**: Google Cloud Run with Universal WebSocket Server
 
 ## 🛠️ Available Deployment Scripts
 
@@ -33,7 +33,25 @@ npm run deploy:firebase:complete
 **Use when**: Infrastructure changes, Cloud Run updates, first-time deployment  
 **Time**: ~5-8 minutes  
 **What it does**: Updates Cloud Run + rebuilds + deploys everything  
-**Deploys**: Cloud Run + Hosting + Functions  
+**Deploys**: Universal Server + Hosting + Functions  
+
+### **🎭 Staging-Only WebSocket Deploy**
+```bash
+./scripts/deploy-websocket-staging.sh
+```
+**Use when**: Testing server changes in isolation before full deployment  
+**Time**: ~3-4 minutes  
+**What it does**: Deploys universal server to staging Cloud Run only  
+**Deploys**: Universal Server (staging environment)  
+
+### **🏗️ Production WebSocket Deploy**
+```bash
+./scripts/deploy-websocket-cloudbuild.sh
+```
+**Use when**: Production server updates after staging validation  
+**Time**: ~3-4 minutes  
+**What it does**: Deploys universal server to production Cloud Run  
+**Deploys**: Universal Server (production environment)  
 
 ### **🧨 Emergency Options**
 ```bash
@@ -43,6 +61,50 @@ npm run deploy:firebase:cache-bust
 # Nuclear option - complete rebuild
 npm run deploy:firebase:nuclear
 ```
+
+## 🧡 **Universal Server Architecture (2025)**
+
+### **Revolutionary One-Server Approach**
+Festival Chat now uses a **single universal server** that automatically adapts to any environment:
+
+```javascript
+// signaling-server.js - The ONE and ONLY server
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const PLATFORM = process.env.PLATFORM || 'local';
+const isDevelopment = NODE_ENV === 'development' || PLATFORM === 'local';
+const isStaging = PLATFORM === 'firebase' || NODE_ENV === 'staging';
+const isProduction = PLATFORM === 'github' || PLATFORM === 'cloudrun';
+
+console.log(`🎪 PeddleNet Universal Server Starting...`);
+console.log(`📍 Environment: ${NODE_ENV}`);
+console.log(`🏗️ Platform: ${PLATFORM}`);
+console.log(`🎯 Mode: ${isDevelopment ? 'DEVELOPMENT' : isStaging ? 'STAGING' : 'PRODUCTION'}`);
+```
+
+### **Environment Auto-Detection**
+The universal server automatically configures itself based on deployment context:
+
+| Environment | Detection | Features | Used By |
+|-------------|-----------|----------|---------|
+| **Development** | `NODE_ENV=development` or `PLATFORM=local` | Debug endpoints, mock analytics, verbose logging | `npm run dev:mobile` |
+| **Staging** | `PLATFORM=firebase` or `NODE_ENV=staging` | Real analytics, optimized config, staging detection | `npm run deploy:firebase:complete` |
+| **Production** | `PLATFORM=github/cloudrun` or `NODE_ENV=production` | Full optimization, production analytics, max performance | `./scripts/deploy-websocket-cloudbuild.sh` |
+
+### **Universal Deployment Flow**
+```
+Development: signaling-server.js (local detection)
+     ↓
+Staging: signaling-server.js (firebase detection) 
+     ↓
+Production: signaling-server.js (production detection)
+```
+
+**Benefits:**
+- ✅ **No Confusion** - One server file for all environments
+- ✅ **Auto-Configuration** - Smart adaptation based on deployment
+- ✅ **Future-Ready** - Analytics and mesh endpoints built-in
+- ✅ **Clean Deployment** - All scripts reference the same file
+- ✅ **Enhanced Development** - Better debugging and mobile support
 
 ## 🚨 **CRITICAL: Cache Issue Resolution (June 2025)**
 
@@ -121,9 +183,12 @@ firebase deploy --only hosting,functions
 npm run dev:mobile
 
 # Expected output:
+# 🎪 PeddleNet Universal Server Starting...
+# 📍 Environment: development
+# 🎯 Mode: DEVELOPMENT
 # ✅ Detected local IP: 192.168.1.66
-# 🎵 Festival Chat Server running on port 3001
-# 💾 SQLite persistence enabled!
+# 🎵 PeddleNet Universal Server v2.0.0 running on port 3001
+# 🔔 Features: Universal Environment Detection + WebSocket + Chat + Notifications + Room Codes
 ```
 
 ### **🆕 Enhanced Deployment Safety (June 11, 2025)**
@@ -165,59 +230,39 @@ Stop dev server and continue? (y/N): y
 📱 To restart development: npm run dev:mobile
 ```
 
-### **🧹 Clean Signaling Server Architecture**
+### **🧡 Universal Server Deployment Workflow**
 
-**Current Simplified Structure** (after cleanup):
+**Current Simplified Structure**:
 ```
 festival-chat/
-├── signaling-server.js                    # 🟢 ACTIVE: Development
-├── signaling-server-sqlite-enhanced.js    # 🟢 ACTIVE: Production  
-├── sqlite-persistence.js                  # 🟢 ACTIVE: Database helper
-└── archive/                               # 🗂️ Archived backups
-    ├── signaling-server-cloudrun.js       # 📦 Moved to archive
-    ├── signaling-server-firebase.js       # 📦 Moved to archive
-    ├── signaling-server-production.js     # 📦 Moved to archive
-    ├── signaling-server-sqlite.js         # 📦 Moved to archive
-    └── [other archived versions]          # 📦 Safe backups
+├── signaling-server.js            # 🧡 THE UNIVERSAL SERVER
+├── Dockerfile.minimal            # → Uses signaling-server.js
+├── deployment/
+│   ├── cloudbuild-*.yaml        # → All reference signaling-server.js
+│   ├── Dockerfile.cloudrun      # → Uses signaling-server.js
+│   └── package.json             # → Updated for universal server
+├── scripts/
+│   ├── deploy-websocket-*.sh    # → All use signaling-server.js
+│   └── dev-mobile.sh           # → Uses signaling-server.js
+├── package.json                 # → "server": "node signaling-server.js"
+└── archive/                     # 🗂️ All old servers safely archived
+    ├── signaling-server-universal.js
+    ├── signaling-server-dev-FIXED.js
+    └── signaling-server-production-FIXED.js
 ```
 
-**Benefits of Cleanup**:
-- ✅ **Clear separation** - Development vs production environments
-- ✅ **Reduced confusion** - Only 2 active server files (was 6+)
-- ✅ **Better maintenance** - Single source of truth per environment
-- ✅ **Faster development** - No confusion about which file to edit
-- ✅ **Easier collaboration** - Team knows exactly which files are active
+**Benefits of Universal Architecture**:
+- ✅ **One File to Rule Them All** - No confusion about which server to use
+- ✅ **Auto-Environment Detection** - Smart adaptation based on deployment context
+- ✅ **Future-Ready Endpoints** - Analytics and mesh features built-in
+- ✅ **Clean Deployment** - All scripts reference the same universal file
+- ✅ **Enhanced Development** - Better debugging and mobile support
+- ✅ **Maintenance Simplicity** - Single codebase for all environments
 
 **Server Selection Logic**:
-- **Development**: `npm run server` → Uses `signaling-server.js` (in-memory)
-- **Production**: Dockerfile → Uses `signaling-server-sqlite-enhanced.js` (SQLite + optimizations)
-
-### **🆕 SQLite Persistence with Smart Fallback (June 11, 2025)**
-
-**✅ Production Database Optimization**: 
-- **Primary**: `better-sqlite3` for production (faster, synchronous, no deprecation warnings)
-- **Fallback**: `sqlite3` for development compatibility (Node.js v24 support)
-- **Smart Detection**: Automatically uses best available SQLite library
-- **Cross-Platform**: Works on all deployment environments
-
-**Technical Implementation**:
-```javascript
-// Automatic fallback in sqlite-persistence.js:
-try {
-  Database = require('better-sqlite3');  // Production optimized
-  console.log('📦 Using better-sqlite3 for persistence');
-} catch (err) {
-  // Development fallback for Node.js compatibility
-  Database = createSqlite3Wrapper();  // Compatible wrapper
-  console.log('⚠️ Using sqlite3 fallback');
-}
-```
-
-**Benefits**:
-- ✅ **Production**: No Firebase deployment warnings, faster performance
-- ✅ **Development**: Compatible with Node.js v18-24, easy local setup
-- ✅ **Deployment**: Robust across all environments without manual configuration
-- ✅ **Maintenance**: Single codebase works everywhere
+- **Development**: `npm run server` → Uses `signaling-server.js` (auto-detects local)
+- **Staging**: Firebase deployment → Uses `signaling-server.js` (auto-detects firebase)
+- **Production**: Cloud Run deployment → Uses `signaling-server.js` (auto-detects production)
 
 ### **Testing Before Deploy**
 ```bash
@@ -233,7 +278,7 @@ npm run start
 # - Create room and generate QR code
 # - Scan QR on mobile device  
 # - Test bidirectional messaging
-# - Verify message persistence
+# - Verify message persistence (in production mode)
 ```
 
 ## 🏗️ Deployment Architecture
@@ -241,20 +286,20 @@ npm run start
 ### **Production Environment**
 - **Frontend URL**: `https://festival-chat-peddlenet.web.app`
 - **Backend URL**: `wss://peddlenet-websocket-server-[hash]-uc.a.run.app`
-- **Database**: SQLite with 24h message retention
+- **Server**: `signaling-server.js` with auto-detected production mode
+- **Storage**: Environment-appropriate (in-memory for dev, SQLite for production)
 - **SSL**: Automatic HTTPS via Firebase/Cloud Run
-- **Server**: `signaling-server-sqlite-enhanced.js` with full optimizations
 
 ### **Key Components**
 ```
-Production Stack:
+Universal Production Stack:
 ├── Firebase Hosting (Frontend)
 │   ├── Next.js Static Export
 │   ├── PWA Manifest & Service Worker  
 │   └── QR Code Generation
 ├── Google Cloud Run (Backend)
-│   ├── WebSocket Server (signaling-server-sqlite.js)
-│   ├── SQLite Database Persistence
+│   ├── Universal WebSocket Server (signaling-server.js)
+│   ├── Auto-Environment Detection
 │   ├── Room Management & Cleanup
 │   └── CORS Configuration for Firebase
 └── Development Tools
@@ -281,7 +326,7 @@ curl -I https://festival-chat-peddlenet.web.app
 ```bash
 # 1. Check backend health
 curl https://[new-cloud-run-url]/health
-# Should return: {"status":"ok","database":{"totalMessages":X}}
+# Should return: {"status":"ok","version":"2.0.0-universal","environment":"production"}
 
 # 2. Verify WebSocket connection
 # - Open browser console
@@ -292,6 +337,24 @@ curl https://[new-cloud-run-url]/health
 # - Desktop browser + Mobile browser
 # - QR code scanning should work
 # - Real-time messaging should work
+```
+
+### **Universal Server Health Check**
+```json
+{
+  "status": "ok",
+  "service": "PeddleNet Universal Signaling Server",
+  "version": "2.0.0-universal",
+  "environment": "production",
+  "platform": "cloudrun",
+  "mode": "production",
+  "description": "Universal WebRTC signaling server that adapts to all environments",
+  "endpoints": {
+    "health": "/health",
+    "signaling": "/socket.io/"
+  },
+  "timestamp": 1699123456789
+}
 ```
 
 ## 🔧 Troubleshooting Deployments
@@ -331,16 +394,15 @@ npm run deploy:firebase:cache-bust   # Nuclear cache clear
 #### **"Container failed to start and listen on port" in Cloud Run**
 ```bash
 # Cause: Server not binding to Cloud Run's PORT environment variable (8080)
-# Solution: Ensure server uses process.env.PORT directly without fallbacks
+# Solution: Universal server handles this automatically
 
-# ✅ Fixed in signaling-server-sqlite.js:
+# ✅ Fixed in signaling-server.js:
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
+  devLog(`🎵 PeddleNet Universal Server v2.0.0 running on port ${PORT}`);
 });
 
-# ❌ Don't use port fallback arrays in Cloud Run:
-# const FALLBACK_PORTS = [3001, 3002, 3003]; // This breaks Cloud Run
+# Universal server auto-detects Cloud Run environment
 ```
 
 #### **"Server disconnected" in production**
@@ -362,20 +424,24 @@ curl https://[cloud-run-url]/health
 
 #### **Messages don't persist**
 ```bash
-# Cause: Wrong server type deployed
-# Solution: Ensure SQLite server is deployed
-./tools/deploy-complete.sh
-# Should deploy signaling-server-sqlite.js (not production.js)
+# Cause: Development mode uses in-memory storage
+# Solution: Check environment detection
+curl https://[cloud-run-url]/health
+# Should show: "environment": "production", "mode": "production"
+
+# If showing development mode, check deployment:
+npm run deploy:firebase:complete
 ```
 
 #### **Mobile connections fail**  
 ```bash
 # Cause: CORS configuration or network restrictions
 # Verify: Check browser console for CORS errors
-# Solution: CORS should include Firebase domains:
+# Solution: Universal server includes mobile-optimized CORS:
 # - https://festival-chat-peddlenet.web.app
 # - https://*.firebaseapp.com
 # - https://*.web.app
+# - Local IPs for development
 ```
 
 ## 🎯 Deployment Checklist
@@ -384,7 +450,7 @@ curl https://[cloud-run-url]/health
 - [ ] Test `npm run dev:mobile` works locally
 - [ ] Test cross-device messaging (desktop ↔ mobile)
 - [ ] Verify no console errors in browser
-- [ ] Check message persistence works
+- [ ] Check universal server auto-detection
 
 ### **Quick Deploy Checklist** (UI changes only)
 - [ ] Changes are frontend-only (no server modifications)
@@ -394,13 +460,19 @@ curl https://[cloud-run-url]/health
 - [ ] Test: Core messaging functionality still works
 
 ### **Complete Deploy Checklist** (Full stack)
-- [ ] Backend changes require new server deployment
+- [ ] Backend changes require new universal server deployment
 - [ ] Run `npm run build:mobile` successfully  
 - [ ] Deploy: `npm run deploy:firebase:complete`
-- [ ] Verify: Backend health check passes
-- [ ] Verify: Frontend connects to new backend
+- [ ] Verify: Backend health check shows correct environment
+- [ ] Verify: Frontend connects to updated backend
 - [ ] Test: Complete cross-device workflow
 - [ ] Monitor: No errors in browser console
+
+### **Universal Server Validation**
+- [ ] Health endpoint shows correct version: `2.0.0-universal`
+- [ ] Environment detection working: `development`/`staging`/`production`
+- [ ] Platform detection accurate: `local`/`firebase`/`cloudrun`
+- [ ] Features appropriate for environment (debug vs production)
 
 ## 🔄 Rollback Procedures
 
@@ -426,13 +498,14 @@ gcloud run services update-traffic peddlenet-websocket-server \
 - **Message Latency**: Should be <100ms on same network
 - **Cross-device Success**: QR scanning should work reliably
 - **Mobile Compatibility**: iOS Safari + Android Chrome
+- **Environment Detection**: Servers should auto-detect correctly
 
 ### **Health Check URLs**
 ```bash
 # Frontend health (should load instantly)
 https://festival-chat-peddlenet.web.app
 
-# Backend health (should return JSON status)
+# Universal server health (should return JSON status with environment info)
 https://[cloud-run-url]/health
 
 # WebSocket health (check browser console)
@@ -441,20 +514,26 @@ https://[cloud-run-url]/health
 
 ## 🎪 Production Features Enabled
 
+✅ **Universal server architecture** - One server for all environments  
+✅ **Auto-environment detection** - Smart adaptation per deployment  
 ✅ **Real-time messaging** - WebSocket-based with polling fallback  
-✅ **Message persistence** - SQLite database with 24h retention  
+✅ **Message persistence** - Environment-appropriate storage  
 ✅ **Cross-device sync** - Desktop ↔ Mobile messaging  
 ✅ **QR code invitations** - Camera-based room joining  
 ✅ **Connection resilience** - Auto-reconnection and retry logic  
 ✅ **Mobile optimization** - Touch UI and WebRTC compatibility  
 ✅ **PWA features** - Offline support and installable app  
 ✅ **Push notifications** - Background message alerts (user opt-in)  
+✅ **Future-ready endpoints** - Analytics and mesh network foundation  
 
 ---
 
 ## 🚀 Ready for Festival Deployment!
 
-The deployment system is production-ready with:
+The deployment system is production-ready with **universal server architecture**:
+- **✅ One server file for all environments** - No confusion about which server to use
+- **✅ Auto-environment detection** - Smart adaptation based on deployment context
+- **✅ Future features foundation** - Analytics and mesh endpoints ready
 - **✅ FIXED: Cache issue resolution** - All scripts deploy properly
 - **Automated deployment scripts** for quick iteration
 - **Health monitoring** and rollback procedures  
@@ -466,6 +545,6 @@ Use `npm run deploy:firebase:quick` for UI fixes and `npm run deploy:firebase:co
 
 ## 📚 Related Documentation
 
+- **[Universal Server Architecture](./04-ARCHITECTURE.md)** - Technical details of the universal server approach
 - **[Mobile Notification Fix Details](./CRITICAL-FIX-JUNE-2025.md)** - Technical details of mobile notification enhancement
-- **[Cross-Room System](./archive/Cross-Room-Notification-System-Technical-Summary.md)** - Advanced multi-room functionality (archived)
 - **[Troubleshooting Guide](./11-TROUBLESHOOTING.md)** - Common issues and solutions

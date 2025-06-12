@@ -2,7 +2,7 @@
 
 # 🚀 Festival Chat Production Deployment Script
 # =============================================
-# Consolidated deployment script for GitHub (production)
+# Simple deployment script for GitHub (production)
 
 echo "🚀 Deploying Festival Chat to Production"
 echo "========================================"
@@ -36,52 +36,49 @@ git add -A
 echo ""
 echo "📝 Committing changes..."
 
-# Split the commit into title and body for better handling
-COMMIT_TITLE="🎯💻✅ PRODUCTION: Messaging Fix Success + Staging Servers Deployed"
-
 # Create temporary file for commit message
 cat > /tmp/commit_message.txt << 'EOF'
-🎯💻✅ PRODUCTION: Messaging Fix Success + Staging Servers Deployed
+🎉 Universal Server Architecture Complete + Documentation Updated
 
-Production messaging issue resolved with fixed WebSocket servers deployed to all environments.
+Completed the universal server architecture implementation with comprehensive documentation updates, creating a unified system that automatically adapts to any environment.
 
-🎯 CRITICAL: Production Messaging Issue RESOLVED
-• Problem: Messages didn't appear on sender's device in production (worked in dev)
-• Root Cause: socket.to() vs io.to() broadcasting difference between environments
-• Solution: Created signaling-server-production-FIXED.js with correct io.to(roomId) logic
-• Files: signaling-server-production-FIXED.js, Dockerfile.minimal
-• Status: ✅ PRODUCTION NOW WORKING PERFECTLY
+🧡 UNIVERSAL SERVER COMPLETED
+• Single file: signaling-server.js for all environments (dev/staging/production)
+• Auto-detection: NODE_ENV + PLATFORM based environment switching
+• Smart configuration: Adapts CORS, logging, endpoints per environment
+• Future-ready: Analytics and mesh network endpoints built-in
+• Clean deployment: All scripts reference the universal server
 
-🚀 STAGING SERVERS DEPLOYED (Ready for Testing)
-• Updated deploy-websocket-environments.sh to use working Dockerfile.minimal
-• Deployed fixed servers to all environments: preview, staging, production
-• Preview Server: wss://peddlenet-websocket-server-preview-*.run.app (📝 needs testing)
-• Staging Server: wss://peddlenet-websocket-server-staging-*.run.app (📝 needs testing)
-• Production Server: wss://peddlenet-websocket-server-production-*.run.app (✅ verified working)
+🔧 INFRASTRUCTURE CLEANUP
+• Removed redundant server files (archived safely)
+• Updated all deployment scripts and Dockerfiles
+• Fixed package.json scripts to use universal server
+• Updated cloudbuild configs for universal architecture
+• Eliminated quote escaping issues in staging deployment
 
-🔧 INFRASTRUCTURE IMPROVEMENTS
-• Fixed build failures by using minimal dependencies (no SQLite compilation issues)
-• Enhanced deployment script to use proven working configuration
-• Added dynamic = 'force-dynamic' to diagnostic pages preventing static generation errors
-• Streamlined Docker builds with Dockerfile.minimal approach
+📚 DOCUMENTATION OVERHAUL
+• Architecture.md: Updated to reflect universal server approach
+• Deployment.md: Comprehensive universal server deployment guide
+• README.md: Complete universal server benefits and workflow
+• SIMPLE_WORKFLOW_SUMMARY.md: Universal server workflow documentation
+• All docs now explain the one-server approach
 
-📚 COMPREHENSIVE DOCUMENTATION
-• Updated: docs/ENVIRONMENT-SYNC-ISSUE-TRACKING.md (production success + staging deployment status)
-• Updated: docs/PRODUCTION-DEPLOYMENT-GUIDE.md (working configuration documented)
-• Updated: docs/MESSAGING-TROUBLESHOOTING-GUIDE.md (debugging reference)
-• Updated: README.md (production messaging fix success)
+🚀 DEPLOYMENT READY
+• All environments tested and working with universal server
+• Production notifications fixed and validated
+• Staging deployment script syntax errors resolved
+• Complete deployment workflow validated
+• Health endpoints provide rich environment information
 
-🎆 CURRENT STATUS
-• ✅ Production: Working perfectly - sender sees own messages immediately
-• ✅ Dev: Working perfectly (unchanged)
-• 🔄 Staging/Preview: Servers deployed with fix, ready for testing
-• Next step: Test staging environments to confirm messaging fix
+🎯 BENEFITS ACHIEVED
+• One server file eliminates confusion
+• Automatic environment adaptation
+• Future features foundation ready
+• Enhanced development experience
+• Production optimization built-in
+• Clean, maintainable codebase
 
-📝 NEXT STEPS FOR COMPLETE RESOLUTION
-• Test staging: npm run deploy:firebase:complete
-• Test preview: ./scripts/deploy-preview-simple.sh test-messaging
-• Verify messaging works in staging/preview environments
-• Document complete success once all environments confirmed working
+Result: Revolutionary universal server architecture that automatically adapts to any environment - the future of deployment simplicity!
 EOF
 
 git commit -F /tmp/commit_message.txt
@@ -103,34 +100,30 @@ if [ $? -eq 0 ]; then
             echo ""
             echo "🎉 Successfully deployed to GitHub!"
             echo ""
-            echo "📋 Deployment Summary:"
-            echo "🎯 Production Messaging: ✅ FIXED AND WORKING PERFECTLY"
-            echo "🚀 Staging Servers: ✅ DEPLOYED WITH FIX (needs testing)"
-            echo "🔧 Infrastructure: ✅ ENHANCED BUILD PROCESS"
-            echo "📚 Documentation: ✅ COMPREHENSIVE MESSAGING FIX TRACKING"
+            echo "📋 Universal Server Deployment Complete:"
+            echo "🎯 Architecture: ✅ ONE UNIVERSAL SERVER FILE"
+            echo "🔧 Detection: ✅ AUTO-ENVIRONMENT SWITCHING"
+            echo "🚀 Workflow: ✅ DEV → STAGING → PRODUCTION"
+            echo "🧡 Maintenance: ✅ SINGLE FILE TO RULE THEM ALL"
             echo ""
-            echo "🏆 Festival Chat: Production messaging working + staging ready!"
+            echo "🎯 Your Universal Server Workflow:"
             echo ""
-            echo "🚀 Next Steps for Staging Verification:"
-            echo "   npm run deploy:firebase:complete  # Test staging messaging"
-            echo "   ./scripts/deploy-preview-simple.sh test-messaging  # Test preview messaging"
+            echo "📱 Development (UI changes):"
+            echo "   npm run dev:mobile"
+            echo "   • Uses signaling-server.js with local detection"
+            echo "   • Fast iteration on localhost"
             echo ""
-            echo "🎯 Production Messaging Success:"
-            echo "   • Sender sees own messages immediately"
-            echo "   • Cross-device messaging working perfectly"
-            echo "   • Background notifications functional"
-            echo "   • All production features working"
+            echo "🧪 Staging (server testing):"
+            echo "   npm run deploy:firebase:complete"
+            echo "   • Uses signaling-server.js with firebase detection"
+            echo "   • Real environment validation"
             echo ""
-            echo "🔄 Staging/Preview Status:"
-            echo "   • WebSocket servers deployed with messaging fix"
-            echo "   • Ready for testing to confirm messaging works"
-            echo "   • Should now match production behavior"
+            echo "🚀 Production (final deployment):"
+            echo "   ./deploy.sh"
+            echo "   • Uses signaling-server.js with production detection"
+            echo "   • Same file, optimized for production"
             echo ""
-            echo "📋 Current Environment Status:"
-            echo "   • ✅ Dev: Working (localhost)"
-            echo "   • ✅ Production: Working (messaging fixed)"
-            echo "   • 🔄 Staging: Deployed, needs testing"
-            echo "   • 🔄 Preview: Deployed, needs testing"
+            echo "🧡 One server file for all environments!"
         else
             echo "❌ Failed to push to GitHub"
             exit 1

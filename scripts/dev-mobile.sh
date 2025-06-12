@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# dev-mobile.sh - Start development with IP detection and SQLite persistence for mobile access
+# dev-mobile.sh - Start development with IP detection and universal server for mobile access
 
 echo "🌐 Detecting network IP for mobile development..."
 
@@ -33,20 +33,20 @@ fi
 export NEXT_PUBLIC_DETECTED_IP="$LOCAL_IP"
 
 echo ""
-echo "🚀 Starting development servers with SQLite persistence..."
+echo "🚀 Starting development servers with in-memory persistence..."
 echo "📱 Mobile URLs:"
 echo "   App: http://$LOCAL_IP:3000"
 echo "   Diagnostics: http://$LOCAL_IP:3000/diagnostics"
 echo "🔌 Server URL: http://$LOCAL_IP:3001"
 echo "   Health check: http://$LOCAL_IP:3001/health"
 echo "   Debug rooms: http://$LOCAL_IP:3001/debug/rooms"
-echo "💾 Database: ./data/festival-chat.db"
+echo "💾 Database: In-memory (no persistence)"
 echo ""
 echo "📝 Instructions:"
 echo "   1. Connect your mobile device to the same WiFi network"
 echo "   2. Open http://$LOCAL_IP:3000/diagnostics on mobile to test"
 echo "   3. If diagnostics pass, QR codes should work for chat rooms"
-echo "   4. Messages will persist across server restarts!"
+echo "   4. Messages stored in memory (reset on server restart)"
 echo ""
 
 # Check if required packages are installed
@@ -55,26 +55,14 @@ if ! command -v node &> /dev/null; then
     exit 1
 fi
 
-# Check if sqlite3 is installed
+# Dependencies check
 echo "🔍 Checking dependencies..."
-if ! node -e "require('sqlite3')" 2>/dev/null; then
-    echo "📦 Installing SQLite3 dependency..."
-    npm install sqlite3
-fi
 
-# Determine which server file to use - prefer enhanced version
-SERVER_FILE="signaling-server-sqlite-enhanced.js"
+# Use the universal server
+SERVER_FILE="signaling-server.js"
 if [ ! -f "$SERVER_FILE" ]; then
-    echo "⚠️  Enhanced SQLite server not found, falling back to standard SQLite server"
-    SERVER_FILE="signaling-server-sqlite.js"
-    if [ ! -f "$SERVER_FILE" ]; then
-        echo "⚠️  SQLite server not found, falling back to memory-only server"
-        SERVER_FILE="signaling-server.js"
-        if [ ! -f "$SERVER_FILE" ]; then
-            echo "❌ No server file found. Make sure you're in the project root directory."
-            exit 1
-        fi
-    fi
+    echo "❌ Universal server file not found. Make sure you're in the project root directory."
+    exit 1
 fi
 
 echo "🔧 Using server: $SERVER_FILE"
@@ -86,7 +74,7 @@ mkdir -p data
 if command -v concurrently &> /dev/null; then
 # Use concurrently - restart disabled for better development control
 concurrently \
---names "Next,SQLite-Server" \
+--names "Next,Universal-Server" \
 --prefix-colors "blue,green" \
 --kill-others-on-fail \
             "NEXT_PUBLIC_DETECTED_IP=$LOCAL_IP npm run dev" \
@@ -98,7 +86,7 @@ else
     # Try again with concurrently
     if command -v npx concurrently &> /dev/null; then
         npx concurrently \
-            --names "Next,SQLite-Server" \
+            --names "Next,Universal-Server" \
             --prefix-colors "blue,green" \
             "NEXT_PUBLIC_DETECTED_IP=$LOCAL_IP npm run dev" \
             "node $SERVER_FILE"

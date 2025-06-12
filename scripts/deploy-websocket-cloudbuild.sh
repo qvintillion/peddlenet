@@ -6,8 +6,8 @@
 echo "🚀 Deploying WebSocket server with chat-message event fix using Cloud Build..."
 
 # Check if we're in the right directory
-if [ ! -f "signaling-server-production.js" ]; then
-    echo "❌ Error: signaling-server-production.js not found in current directory"
+if [ ! -f "signaling-server.js" ]; then
+    echo "❌ Error: signaling-server.js not found in current directory"
     echo "Please run this script from the project root directory"
     exit 1
 fi
@@ -57,13 +57,13 @@ echo "📍 Service URL: $SERVICE_URL"
 echo "🏥 Health check: $SERVICE_URL/health"
 echo "📊 Stability metrics: $SERVICE_URL/stability"
 echo ""
-echo "🔧 Enhanced messaging & CORS features:"
-echo "   ✅ Chat message events properly handled (client<->server sync)"
-echo "   ✅ Firebase hosting domains fully supported"
-echo "   ✅ Preview channels working with WebSocket connectivity"
+echo "🔧 Universal server features:"
+echo "   ✅ Environment auto-detection (dev/staging/production)"
+echo "   ✅ Single server file for all environments"
+echo "   ✅ Future features foundation ready"
 echo ""
 echo "🧪 Test the updated server with your staging URL:"
 echo "   https://festival-chat-peddlenet--rate-limit-fix-dzkqnpwu.web.app"
 echo ""
-echo "⏱️  Version: 1.2.5-messaging-event-fix"
+echo "⏱️  Version: 2.0.0-universal"
 echo "🛠️  Deployed via: Google Cloud Build"

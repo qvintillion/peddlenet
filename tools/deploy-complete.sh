@@ -1,16 +1,17 @@
 #!/bin/bash
 
-# Complete Firebase + Cloud Run Deployment Script
-# Deploys WebSocket server to Cloud Run and rebuilds Firebase with the URL
+# Complete Firebase + Cloud Run Deployment Script - STAGING VERSION
+# Deploys WebSocket server to STAGING Cloud Run and rebuilds Firebase with the URL
 # ENHANCED: Now includes dev server safety checks and environment protection
+# UPDATED: Automatically targets STAGING environment (not production)
 
 set -e
 
-echo "🚀 Complete Firebase + Cloud Run Deployment (Safe)"
-echo "=================================================="
+echo "🎭 Complete Firebase + Cloud Run Deployment (STAGING)"
+echo "===================================================="
 
-PROJECT_ID="peddlenet-1749130439"
-SERVICE_NAME="peddlenet-websocket-server"
+PROJECT_ID="festival-chat-peddlenet"
+SERVICE_NAME="peddlenet-websocket-server-staging"  # 🎯 STAGING SERVER
 REGION="us-central1"
 
 # SAFETY: Backup current development environment
@@ -51,46 +52,47 @@ rm -rf .next/
 rm -rf functions/.next/
 rm -rf functions/lib/
 
-# Check if user wants to update Cloud Run
-read -p "🤔 Update Cloud Run WebSocket server? (y/N): " update_cloudrun
-update_cloudrun=${update_cloudrun:-n}
+echo ""
+echo "☁️ Step 1: Deploying WebSocket Server to Cloud Run (STAGING)"
+echo "=========================================================="
 
-if [[ $update_cloudrun =~ ^[Yy]$ ]]; then
-    echo ""
-    echo "☁️ Step 1: Deploying WebSocket Server to Cloud Run"
-    echo "=================================================="
-    
-    # Check if gcloud is available
-    if ! command -v gcloud &> /dev/null; then
-        echo "❌ Google Cloud CLI not found. Please install gcloud CLI."
-        exit 1
-    fi
-    
-    # Set project
-    gcloud config set project $PROJECT_ID
-    
-    # Build and deploy to Cloud Run
-    echo "🏗️ Building container image..."
-    gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE_NAME .
-    
-    echo "🚀 Deploying to Cloud Run..."
-    gcloud run deploy $SERVICE_NAME \
-        --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
-        --platform managed \
-        --region $REGION \
-        --allow-unauthenticated \
-        --port 8080 \
-        --memory 512Mi \
-        --cpu 1 \
-        --min-instances 1 \
-        --max-instances 10 \
-        --set-env-vars NODE_ENV=production \
-        --set-env-vars PLATFORM="Google Cloud Run"
-    
-    echo "✅ Cloud Run deployment complete!"
-else
-    echo "⏭️  Skipping Cloud Run deployment"
+# Check if gcloud is available
+if ! command -v gcloud &> /dev/null; then
+    echo "❌ Google Cloud CLI not found. Please install gcloud CLI."
+    exit 1
 fi
+
+# Set project
+gcloud config set project $PROJECT_ID
+
+echo "🎯 Deploying to STAGING WebSocket server: $SERVICE_NAME"
+echo "🛡️ Using proven working configuration (messaging fix included)"
+echo "📦 Docker: Dockerfile.minimal"
+echo "🔌 Server: signaling-server-production-FIXED.js"
+echo ""
+
+# Build and deploy to Cloud Run using proven working configuration
+echo "🏗️ Building container image for STAGING..."
+gcloud builds submit \
+  --config=deployment/cloudbuild-minimal.yaml \
+  --substitutions=_SERVICE_NAME=$SERVICE_NAME,_NODE_ENV=staging
+
+echo "🚀 Deploying to Cloud Run (STAGING)..."
+gcloud run deploy $SERVICE_NAME \
+    --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
+    --platform managed \
+    --region $REGION \
+    --allow-unauthenticated \
+    --port 8080 \
+    --memory 512Mi \
+    --cpu 1 \
+    --min-instances 0 \
+    --max-instances 5 \
+    --set-env-vars NODE_ENV=staging \
+    --set-env-vars PLATFORM="Google Cloud Run - Staging" \
+    --set-env-vars VERSION="1.2.0-messaging-fix-staging"
+
+echo "✅ STAGING Cloud Run deployment complete!"
 
 echo ""
 echo "🔥 Step 2: Configuring Firebase with Cloud Run"
@@ -111,25 +113,28 @@ fi
 # Convert HTTP to WSS for WebSocket
 WEBSOCKET_URL="wss://${SERVICE_URL#https://}"
 
-echo "✅ Found Cloud Run service: $SERVICE_URL"
+echo "✅ Found STAGING Cloud Run service: $SERVICE_URL"
 echo "🔌 WebSocket URL: $WEBSOCKET_URL"
 
 # Test the health endpoint
-echo "🧪 Testing Cloud Run service health..."
+echo "🧪 Testing STAGING service health..."
 if curl -s --fail "$SERVICE_URL/health" > /dev/null; then
-    echo "✅ Cloud Run service is healthy"
+    echo "✅ STAGING service is healthy"
 else
-    echo "⚠️  Cloud Run service health check failed, but continuing..."
+    echo "⚠️  STAGING service health check failed, but continuing..."
 fi
 
-# Update Firebase environment (temporarily)
-echo "📝 Updating Firebase environment..."
-cat > .env.firebase << EOF
-# Environment variables for Firebase deployment
+# Update staging environment file
+echo "📝 Updating .env.staging with new WebSocket URL..."
+cat > .env.staging << EOF
+# Environment variables for Firebase STAGING deployment  
 # Auto-generated on $(date)
 
-# WebSocket server on Google Cloud Run
+# STAGING WebSocket server on Google Cloud Run
 NEXT_PUBLIC_SIGNALING_SERVER=$WEBSOCKET_URL
+
+# Build target
+BUILD_TARGET=staging
 
 # Cloud Run service details
 # Service URL: $SERVICE_URL
@@ -137,11 +142,9 @@ NEXT_PUBLIC_SIGNALING_SERVER=$WEBSOCKET_URL
 # Region: $REGION
 EOF
 
-# CRITICAL: Copy Firebase env to local env for Next.js build
-echo "📝 Copying Firebase environment to .env.local for Next.js build..."
-cp .env.firebase .env.local
-
-echo "✅ Updated .env.firebase and .env.local with Cloud Run WebSocket URL"
+# Use staging environment for build
+echo "📝 Using staging environment for Next.js build..."
+cp .env.staging .env.local
 
 echo ""
 echo "🔥 Step 3: Building and Deploying Firebase"
@@ -171,24 +174,26 @@ fi
 FIREBASE_URL="https://festival-chat-peddlenet.web.app"
 
 echo ""
-echo "🎉 Complete Deployment Successful!"
-echo "================================="
-echo "🔥 Firebase URL: $FIREBASE_URL"
-echo "🔌 WebSocket Server: $WEBSOCKET_URL"
-echo "🌐 Client-side code: Deployed"
-echo "⚡ SSR Functions: Deployed"
+echo "🎉 STAGING Deployment Successful!"
+echo "=============================="
+echo "🎭 Firebase URL: $FIREBASE_URL"
+echo "🔌 STAGING WebSocket: $WEBSOCKET_URL"
+echo "🌐 Client-side code: Deployed to staging"
+echo "⚡ SSR Functions: Deployed to staging"
 echo "🧹 Cache-bust applied - fresh deployment guaranteed"
 echo "🛡️ Development environment protected"
-echo "☁️  Cloud Run Console: https://console.cloud.google.com/run/detail/$REGION/$SERVICE_NAME?project=$PROJECT_ID"
-echo "🎛️  Firebase Console: https://console.firebase.google.com/project/festival-chat-peddlenet"
+echo "🎯 Messaging fix: Applied (sender sees own messages)"
+echo "☁️  STAGING Cloud Run: https://console.cloud.google.com/run/detail/$REGION/$SERVICE_NAME?project=$PROJECT_ID"
+echo "🏛️  Firebase Console: https://console.firebase.google.com/project/festival-chat-peddlenet"
 echo ""
 echo "📱 To restart development: npm run dev:mobile"
 echo ""
-echo "📱 Test cross-device messaging:"
+echo "📱 Test STAGING cross-device messaging:"
 echo "   1. Visit $FIREBASE_URL on desktop"
 echo "   2. Create a room and get QR code"
 echo "   3. Scan QR code with mobile device"
 echo "   4. Send messages between devices"
+echo "   ✅ Expected: Sender sees own messages immediately"
 echo ""
 echo "🧪 Health checks:"
 echo "   curl $SERVICE_URL/health"

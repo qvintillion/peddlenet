@@ -10,7 +10,7 @@ COPY package*.json ./
 RUN npm ci --only=production && npm cache clean --force
 
 # Copy source code
-COPY signaling-server-production.js ./signaling-server.js
+COPY signaling-server.js ./signaling-server.js
 
 # Production stage
 FROM node:18-alpine AS production

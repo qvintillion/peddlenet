@@ -14,10 +14,11 @@ const nextConfig = {
   // No static export for Firebase Functions SSR
   output: undefined,
   trailingSlash: false,
+  skipTrailingSlashRedirect: true,
   
   // Skip static generation for diagnostic pages during build
   experimental: {
-    skipTrailingSlashRedirect: true,
+    // moved skipTrailingSlashRedirect to root level
   },
   
   // Image optimization off for compatibility

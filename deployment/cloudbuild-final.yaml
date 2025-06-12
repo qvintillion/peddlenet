@@ -9,18 +9,18 @@ steps:
         ls -la
         echo ""
         echo "=== CHECKING SPECIFIC FILES ==="
-        ls -la deployment/package.json signaling-server-production.js Dockerfile.simple
+        ls -la deployment/package.json signaling-server.js Dockerfile.minimal
         echo ""
-        echo "=== PRODUCTION SERVER INFO ==="
-        echo "signaling-server-production.js size: $(wc -c < signaling-server-production.js) bytes"
-        echo "Dockerfile.simple exists: $(test -f Dockerfile.simple && echo 'YES' || echo 'NO')"
+        echo "=== UNIVERSAL SERVER INFO ==="
+        echo "signaling-server.js size: $(wc -c < signaling-server.js) bytes"
+        echo "Dockerfile.minimal exists: $(test -f Dockerfile.minimal && echo 'YES' || echo 'NO')"
         echo ""
         echo "=== PACKAGE.JSON CONTENT ==="
         cat deployment/package.json
 
-  # Build with working production server (no SQLite dependencies)
+  # Build with universal server (auto-environment detection)
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-f', 'Dockerfile.simple', '-t', 'gcr.io/$PROJECT_ID/peddlenet-websocket-server', '.']
+    args: ['build', '-f', 'Dockerfile.minimal', '-t', 'gcr.io/$PROJECT_ID/peddlenet-websocket-server', '.']
 
   # Push the image  
   - name: 'gcr.io/cloud-builders/docker'
