@@ -11,8 +11,8 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // No static export for Firebase Functions SSR
-  output: undefined,
+  // Static export for GitHub Pages
+  output: 'export',
   trailingSlash: false,
   skipTrailingSlashRedirect: true,
   

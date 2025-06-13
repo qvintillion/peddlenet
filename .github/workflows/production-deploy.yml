@@ -1,0 +1,74 @@
+name: 🚀 Production Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🛎️ Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📦 Install Dependencies
+        run: |
+          npm ci
+          echo "✅ Dependencies installed successfully"
+
+      - name: 🔍 Verify Environment
+        run: |
+          echo "📋 Production Environment Variables:"
+          echo "BUILD_TARGET=production"
+          echo "NEXT_PUBLIC_SIGNALING_SERVER from .env.production:"
+          grep NEXT_PUBLIC_SIGNALING_SERVER .env.production || echo "Not found in .env.production"
+
+      - name: 🏗️ Build for Production
+        run: |
+          echo "🏗️ Building project for GitHub Pages..."
+          npm run build
+          echo "✅ Build completed successfully"
+        env:
+          BUILD_TARGET: production
+          NODE_ENV: production
+
+      - name: 🔧 Verify Build Output
+        run: |
+          echo "📁 Build output structure:"
+          ls -la out/
+          echo "🔍 Checking for admin page:"
+          ls -la out/admin-analytics* || echo "Admin page not found"
+          echo "🔍 Environment in built files:"
+          grep -r "padyxgyv5a\|hfttiarlja\|250496240301" out/ || echo "No server URLs found in build"
+
+      - name: 📄 Create .nojekyll file
+        run: |
+          echo "Creating .nojekyll file for GitHub Pages"
+          touch out/.nojekyll
+
+      - name: 🚀 Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./out
+          force_orphan: true
+
+      - name: 🎉 Deployment Success
+        run: |
+          echo "🎉 Production deployment successful!"
+          echo "🌐 Site URL: https://peddlenet.app"
+          echo "📊 Admin Dashboard: https://peddlenet.app/admin-analytics"
+          echo "⏰ Changes may take 5-10 minutes to propagate"

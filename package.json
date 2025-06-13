@@ -22,6 +22,7 @@
     "dev:with-server": "concurrently \"npm run server\" \"npm run dev\"",
     "test:server": "chmod +x test-server.sh && ./test-server.sh",
     "build": "next build",
+    "export": "# export is handled by output: 'export' in next.config.ts",
     "build:mobile": "npm run build",
     "start": "next start -H 0.0.0.0",
     "lint": "next lint",
