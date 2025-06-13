@@ -1,8 +1,8 @@
 'use client';
 
-// 🔒 ADMIN AUTHENTICATION IMPLEMENTED - June 13, 2025
-// HTTP Basic Auth credentials added for production admin dashboard
-// Username: th3p3ddl3r | Password: letsmakeatrade
+// 🔒 ADMIN AUTHENTICATION WITH CUSTOM LOGIN - June 13, 2025
+// Professional login form with session management and logout capability
+// Better UX than HTTP Basic Auth
 
 import { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
@@ -11,16 +11,16 @@ import { ServerUtils } from '@/utils/server-utils';
 // Force dynamic rendering (no static generation)
 export const dynamic = 'force-dynamic';
 
-// Authentication credentials for production
-const ADMIN_CREDENTIALS = {
-  username: 'th3p3ddl3r',
-  password: 'letsmakeatrade'
-};
+// Authentication state interface
+interface AuthCredentials {
+  username: string;
+  password: string;
+}
 
 // Helper function to make authenticated API calls
-function makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
+function makeAuthenticatedRequest(url: string, credentials: AuthCredentials, options: RequestInit = {}): Promise<Response> {
   const authHeaders = {
-    'Authorization': `Basic ${btoa(`${ADMIN_CREDENTIALS.username}:${ADMIN_CREDENTIALS.password}`)}`,
+    'Authorization': `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`,
     'Content-Type': 'application/json',
     ...options.headers
   };
@@ -29,6 +29,108 @@ function makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promi
     ...options,
     headers: authHeaders
   });
+}
+
+// Login Form Component
+function LoginForm({ onLogin, error, isLoading }: {
+  onLogin: (credentials: AuthCredentials) => void;
+  error: string | null;
+  isLoading: boolean;
+}) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (username.trim() && password.trim()) {
+      onLogin({ username: username.trim(), password: password.trim() });
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-black to-blue-900 text-white flex items-center justify-center">
+      <div className="bg-gray-800/80 rounded-lg p-8 w-full max-w-md backdrop-blur-sm border border-gray-700/50">
+        <div className="text-center mb-8">
+          <div className="text-6xl mb-4">🔒</div>
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-yellow-400">
+            Admin Login
+          </h1>
+          <p className="text-gray-300 mt-2">Festival Chat Admin Dashboard</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
+              Username
+            </label>
+            <input
+              type="text"
+              id="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+              placeholder="Enter admin username"
+              required
+              disabled={isLoading}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+              Password
+            </label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+              placeholder="Enter admin password"
+              required
+              disabled={isLoading}
+            />
+          </div>
+
+          {error && (
+            <div className="bg-red-600/20 border border-red-500/30 rounded-lg p-4">
+              <div className="flex items-center">
+                <span className="text-2xl mr-3">⚠️</span>
+                <div>
+                  <div className="font-bold text-red-300">Authentication Failed</div>
+                  <div className="text-red-400 text-sm mt-1">{error}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={isLoading || !username.trim() || !password.trim()}
+            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center"
+          >
+            {isLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                Authenticating...
+              </>
+            ) : (
+              <>
+                <span className="mr-2">🔐</span>
+                Login to Admin Dashboard
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className="mt-6 text-center text-gray-400 text-sm">
+          <div>Secure admin access for festival management</div>
+          <div className="mt-2 text-xs">
+            Contact system administrator if you need access
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 interface RealTimeStats {
@@ -822,12 +924,17 @@ function AdminControls({ onBroadcast, onClearRoom, onWipeDatabase }: {
 }
 
 export default function AdminAnalyticsDashboard() {
+  // Authentication state
+  const [credentials, setCredentials] = useState<AuthCredentials | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  
+  // Dashboard state
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [authError, setAuthError] = useState<boolean>(false);
   
   // Modal states
   const [showUserDetails, setShowUserDetails] = useState(false);
@@ -843,17 +950,70 @@ export default function AdminAnalyticsDashboard() {
   console.log('🔧 Admin Dashboard URLs:');
   console.log('  - HTTP URL (for API calls):', httpServerUrl);
   console.log('  - WebSocket URL (for real-time):', webSocketServerUrl);
-  console.log('🔒 Authentication: HTTP Basic Auth enabled for production');
-  console.log('  - Username: th3p3ddl3r');
-  console.log('  - Password: [HIDDEN]');
+  console.log('🔒 Authentication: Custom login form with session management');
+  console.log('  - Login required for dashboard access');
+  console.log('  - Logout capability available');
+
+  // Handle login
+  const handleLogin = async (loginCredentials: AuthCredentials) => {
+    setIsAuthenticating(true);
+    setAuthError(null);
+
+    try {
+      // Test credentials with a simple API call
+      const response = await makeAuthenticatedRequest(
+        `${serverUrl}/admin/analytics`,
+        loginCredentials
+      );
+
+      if (response.status === 401) {
+        throw new Error('Invalid username or password');
+      }
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      // If successful, store credentials and proceed
+      setCredentials(loginCredentials);
+      setAuthError(null);
+      
+      // Start loading dashboard data
+      const data = await response.json();
+      setDashboardData(data);
+      setError(null);
+
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Authentication failed');
+      setCredentials(null);
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    setCredentials(null);
+    setDashboardData(null);
+    setActivities([]);
+    setError(null);
+    setAuthError(null);
+    if (socket) {
+      socket.disconnect();
+      setSocket(null);
+    }
+    setIsConnected(false);
+  };
 
   // Fetch dashboard data
   const fetchDashboardData = async () => {
+    if (!credentials) return;
+    
     try {
-      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/analytics`);
+      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/analytics`, credentials);
       if (response.status === 401) {
-        setAuthError(true);
-        setError('Authentication failed. Please check admin credentials.');
+        setAuthError('Session expired. Please login again.');
+        setCredentials(null);
         return;
       }
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -861,7 +1021,6 @@ export default function AdminAnalyticsDashboard() {
       const data = await response.json();
       setDashboardData(data);
       setError(null);
-      setAuthError(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch dashboard data');
       console.error('Dashboard fetch error:', err);
@@ -870,8 +1029,10 @@ export default function AdminAnalyticsDashboard() {
 
   // Fetch activity feed
   const fetchActivity = async () => {
+    if (!credentials) return;
+    
     try {
-      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/activity?limit=50`);
+      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/activity?limit=50`, credentials);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       
       const data = await response.json();
@@ -998,6 +1159,18 @@ export default function AdminAnalyticsDashboard() {
     };
   }, [webSocketServerUrl]);
 
+  // Show login form if not authenticated
+  if (!credentials) {
+    return (
+      <LoginForm 
+        onLogin={handleLogin}
+        error={authError}
+        isLoading={isAuthenticating}
+      />
+    );
+  }
+
+  // Show loading screen while fetching initial data
   if (!dashboardData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-black to-blue-900 text-white flex items-center justify-center">
@@ -1006,21 +1179,9 @@ export default function AdminAnalyticsDashboard() {
           <h1 className="text-2xl font-bold mb-2">Loading Admin Dashboard...</h1>
           {error && (
             <div className="text-red-400 mb-4">
-              <div className="text-4xl mb-2">{authError ? '🔒' : '⚠️'}</div>
-              <div>{authError ? 'Authentication Failed' : 'Connection Error'}</div>
-              <div className="text-sm mt-2">{error}</div>
+              <div className="text-4xl mb-2">⚠️</div>
+              <div>Error: {error}</div>
               <div className="text-xs mt-2 text-gray-400">Server URL: {serverUrl}</div>
-              {authError && (
-                <div className="text-sm mt-4 bg-red-600/20 border border-red-500/30 rounded-lg p-4">
-                  <div className="font-bold mb-2">🔐 Authentication Required</div>
-                  <div className="text-left">
-                    <div>• This admin dashboard requires HTTP Basic Authentication</div>
-                    <div>• Username: <code className="bg-gray-700 px-1 rounded">th3p3ddl3r</code></div>
-                    <div>• Password: <code className="bg-gray-700 px-1 rounded">letsmakeatrade</code></div>
-                    <div className="mt-2 text-xs text-red-300">If you're seeing this error, the authentication credentials may need to be updated.</div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
           <div className="animate-pulse text-purple-200">Connecting to analytics server...</div>
@@ -1053,6 +1214,13 @@ export default function AdminAnalyticsDashboard() {
               <div className="text-sm text-gray-400">
                 DB: {dashboardData.databaseReady ? '✅ Ready' : '⚠️ Not Ready'}
               </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 px-3 py-2 bg-red-600/20 border border-red-500/30 rounded-lg text-red-300 hover:bg-red-600/30 transition-colors text-sm"
+              >
+                <span>🚪</span>
+                <span>Logout</span>
+              </button>
             </div>
           </div>
         </div>
