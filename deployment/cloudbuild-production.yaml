@@ -1,5 +1,5 @@
 steps:
-  # Simple Docker build with minimal dependencies - supports service name substitution
+  # Simple Docker build for production deployment
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-f', 'Dockerfile.minimal', '-t', 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}', '.']
 
@@ -7,7 +7,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}']
 
-  # Deploy to Cloud Run
+  # Deploy to Cloud Run (PRODUCTION)
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'run'
@@ -27,13 +27,11 @@ steps:
       - '--port'
       - '8080'
       - '--set-env-vars'
-      - 'NODE_ENV=${_NODE_ENV},BUILD_TARGET=${_BUILD_TARGET},PLATFORM=cloudrun'
+      - 'NODE_ENV=production,BUILD_TARGET=production,PLATFORM=cloudrun'
 
 # Default substitutions
 substitutions:
   _SERVICE_NAME: 'peddlenet-websocket-server'
-  _BUILD_TARGET: 'staging'
-  _NODE_ENV: 'production'
 
 images:
   - 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}'

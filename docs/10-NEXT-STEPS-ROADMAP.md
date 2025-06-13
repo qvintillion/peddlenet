@@ -19,9 +19,369 @@ Festival Chat has reached **production stability** with mobile-optimized connect
 3. **Mesh Network Foundation** - P2P optimization and distributed architecture
 4. **Enterprise Festival Features** - Multi-room management, organizer tools
 
----
+**Phase 4B: Enhanced Analytics (Week 2-3)**
 
-## 🏗️ **Phase 3: Enhanced User Experience & Preview Channels**
+```typescript
+// NEW: src/hooks/use-analytics.ts
+export function useAnalytics() {
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [rooms, setRooms] = useState<RoomData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Real-time analytics polling
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        // Use existing server endpoints
+        const [dashboardData, healthData] = await Promise.all([
+          ServerUtils.fetchAnalytics(),
+          ServerUtils.testHttpHealth()
+        ]);
+
+        setAnalytics({
+          totalUsers: dashboardData.totalUsers,
+          activeRooms: dashboardData.activeRooms,
+          currentConnections: healthData.connections.current,
+          peakConnections: healthData.connections.peak,
+          notificationSubscribers: dashboardData.notificationSubscribers || 0,
+          messagesPerHour: calculateMessagesPerHour(dashboardData),
+          uptime: healthData.uptime,
+          memoryUsage: healthData.memory,
+          connectionHistory: updateConnectionHistory(healthData),
+          roomDistribution: calculateRoomDistribution(dashboardData)
+        });
+
+        // Fetch individual room data
+        const roomPromises = Array.from({ length: dashboardData.activeRooms }, (_, i) => 
+          ServerUtils.fetchRoomStats(`room-${i}`)
+        );
+        const roomData = await Promise.allSettled(roomPromises);
+        setRooms(roomData.filter(r => r.status === 'fulfilled').map(r => r.value));
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Analytics fetch failed:', error);
+        setIsLoading(false);
+      }
+    };
+
+    // Initial fetch
+    fetchAnalytics();
+    
+    // Real-time updates every 5 seconds
+    const interval = setInterval(fetchAnalytics, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return { analytics, rooms, isLoading };
+}
+```
+
+**Phase 4C: Admin Controls (Week 3-4)**
+
+```typescript
+// NEW: src/components/admin/AdminControls.tsx
+export function AdminControls() {
+  const { 
+    broadcastMessage, 
+    closeRoom, 
+    banUser, 
+    getServerLogs,
+    restartServer 
+  } = useAdminActions();
+
+  return (
+    <div className="bg-gray-800 rounded-lg p-6">
+      <h3 className="text-xl font-semibold mb-4">🛡️ Admin Controls</h3>
+      
+      <div className="space-y-4">
+        {/* Broadcast Message */}
+        <div className="flex items-center space-x-4">
+          <input 
+            type="text" 
+            placeholder="Broadcast message to all rooms"
+            className="flex-1 px-4 py-2 bg-gray-700 rounded-lg text-white"
+          />
+          <button 
+            onClick={() => broadcastMessage(message)}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg"
+          >
+            📢 Broadcast
+          </button>
+        </div>
+
+        {/* Emergency Controls */}
+        <div className="flex items-center space-x-4">
+          <button 
+            onClick={() => getServerLogs()}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
+          >
+            📋 View Logs
+          </button>
+          <button 
+            onClick={() => restartServer()}
+            className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg"
+          >
+            🔄 Restart Server
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+### **4.3: Server Analytics Enhancement** 🔧
+
+**Extend existing server endpoints with more detailed analytics**:
+
+```javascript
+// ENHANCE: signaling-server.js analytics endpoints
+
+// Enhanced analytics endpoint
+app.get('/analytics/detailed', (req, res) => {
+  const roomAnalytics = Array.from(rooms.entries()).map(([roomId, peers]) => {
+    const subscribers = notificationSubscribers.get(roomId) || new Set();
+    return {
+      roomId,
+      activeUsers: peers.size,
+      notificationSubscribers: subscribers.size,
+      totalEngagement: peers.size + subscribers.size,
+      lastActivity: Date.now() // TODO: Track actual last activity
+    };
+  });
+
+  res.json({
+    overview: {
+      totalUsers: connectionStats.totalConnections,
+      activeRooms: rooms.size,
+      currentConnections: connectionStats.currentConnections,
+      peakConnections: connectionStats.peakConnections,
+      totalNotificationSubscribers: Array.from(notificationSubscribers.values())
+        .reduce((sum, set) => sum + set.size, 0),
+      uptime: process.uptime(),
+      memoryUsage: process.memoryUsage()
+    },
+    rooms: roomAnalytics,
+    connectionStats: {
+      ...connectionStats,
+      coldStartRate: connectionStats.coldStarts / connectionStats.totalConnections,
+      corsRejectionRate: connectionStats.corsRejections / connectionStats.totalConnections
+    },
+    timestamp: Date.now()
+  });
+});
+
+// Admin action endpoints
+app.post('/admin/broadcast', (req, res) => {
+  const { message, targetRooms = 'all' } = req.body;
+  
+  const adminMessage = {
+    id: generateMessageId(),
+    content: message,
+    sender: '🛡️ Admin',
+    timestamp: Date.now(),
+    type: 'admin-broadcast',
+    priority: 'high'
+  };
+
+  if (targetRooms === 'all') {
+    // Broadcast to all rooms
+    rooms.forEach((_, roomId) => {
+      io.to(roomId).emit('admin-message', adminMessage);
+    });
+  } else {
+    // Broadcast to specific rooms
+    targetRooms.forEach(roomId => {
+      io.to(roomId).emit('admin-message', adminMessage);
+    });
+  }
+
+  res.json({ success: true, messagesSent: targetRooms === 'all' ? rooms.size : targetRooms.length });
+});
+```
+
+### **4.4: Real-Time Dashboard Features** ⚡
+
+**Live connection monitoring, room management, and admin controls**:
+
+```typescript
+// NEW: src/components/admin/LiveConnectionMonitor.tsx
+export function LiveConnectionMonitor() {
+  const { connections, connectionHistory } = useRealTimeConnections();
+
+  return (
+    <div className="bg-gray-800 rounded-lg p-6">
+      <h3 className="text-xl font-semibold mb-4">🔗 Live Connections</h3>
+      
+      <div className="space-y-4">
+        {/* Connection Status */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="text-center">
+            <div className="text-2xl font-bold text-green-400">
+              {connections.active}
+            </div>
+            <div className="text-sm text-gray-400">Active</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-yellow-400">
+              {connections.reconnecting}
+            </div>
+            <div className="text-sm text-gray-400">Reconnecting</div>
+          </div>
+          <div className="text-center">
+            <div className="text-2xl font-bold text-red-400">
+              {connections.failed}
+            </div>
+            <div className="text-sm text-gray-400">Failed</div>
+          </div>
+        </div>
+
+        {/* Connection History Chart */}
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={connectionHistory}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="time" stroke="#9CA3AF" />
+              <YAxis stroke="#9CA3AF" />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: '#1F2937', 
+                  border: '1px solid #374151' 
+                }} 
+              />
+              <Line 
+                type="monotone" 
+                dataKey="connections" 
+                stroke="#8B5CF6" 
+                strokeWidth={2} 
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+### **📋 Phase 4 Implementation Plan**
+
+**Week 1: Basic Dashboard Setup**
+```bash
+# Create admin dashboard structure
+mkdir -p src/app/admin/dashboard
+touch src/app/admin/dashboard/page.tsx
+touch src/hooks/use-analytics.ts
+touch src/components/admin/MetricCard.tsx
+```
+
+**Week 2: Real-Time Analytics**
+```bash
+# Implement real-time data fetching
+touch src/lib/analytics-client.ts
+touch src/components/admin/ConnectionChart.tsx
+touch src/components/admin/RoomTable.tsx
+```
+
+**Week 3: Admin Controls**
+```bash
+# Add admin functionality
+touch src/components/admin/AdminControls.tsx
+touch src/hooks/use-admin-actions.ts
+# Enhance server endpoints for admin actions
+```
+
+**Week 4: Testing & Polish**
+```bash
+# Final testing and optimization
+npm run preview:deploy admin-dashboard
+# Test admin features in staging
+./deploy.sh  # Deploy to production
+```
+
+### **📋 Enhanced Implementation Timeline**
+
+**Week 1: Server Enhancement & SQLite Integration**
+```bash
+# 1. Enhanced server with SQLite persistence
+cp signaling-server.js signaling-server-analytics.js
+# Add SQLite message persistence
+# Add analytics data collection
+# Add admin endpoints
+
+# 2. Database setup
+# Messages table with 24-hour auto-cleanup
+# Room analytics table
+# Admin action logging
+```
+
+**Week 2: Dashboard Frontend Foundation**
+```bash
+# 1. Admin dashboard structure
+mkdir -p src/app/admin
+touch src/app/admin/page.tsx
+touch src/hooks/use-admin-analytics.ts
+touch src/components/admin/MetricCard.tsx
+
+# 2. Real-time data integration
+touch src/lib/admin-client.ts
+touch src/hooks/use-real-time-analytics.ts
+```
+
+**Week 3: Advanced Controls & Analytics**
+```bash
+# 1. Admin control panels
+touch src/components/admin/LiveActivityFeed.tsx
+touch src/components/admin/AdvancedAdminControls.tsx
+touch src/components/admin/NetworkMonitoring.tsx
+
+# 2. Admin actions implementation
+touch src/hooks/use-admin-actions.ts
+# Broadcast messages, clear rooms, database operations
+```
+
+**Week 4: Testing & Production Deployment**
+```bash
+# 1. Lost & found scenario testing
+# Test 24-hour message persistence
+# Validate admin controls
+
+# 2. Security review
+# Admin endpoint protection
+# Confirmation dialogs for destructive actions
+
+# 3. Deploy enhanced server
+./scripts/deploy-websocket-cloudbuild.sh  # Deploy analytics server
+npm run preview:deploy admin-dashboard    # Test dashboard
+./deploy.sh                               # Deploy to production
+```
+
+### **🎯 Strategic Impact & Benefits**
+
+**✅ Addresses All Requirements**:
+1. **✅ Active Users & Rooms**: Real-time monitoring with live updates
+2. **✅ Message Analytics**: Flow tracking, patterns, rate monitoring
+3. **✅ Server Health**: Network, memory, connection quality metrics
+4. **✅ Admin Controls**: Clear messages, database wipe, room management
+5. **✅ Message Persistence**: SQLite backend solves lost & found scenario
+6. **✅ Network Monitoring**: Foundation for mesh network analytics
+
+**✅ Festival Platform Transformation**:
+- **Professional Management**: Enterprise-grade admin tools
+- **Real-Time Operations**: Live monitoring during events
+- **Emergency Response**: Instant broadcast capabilities
+- **Data-Driven Insights**: Analytics for event optimization
+- **Scalable Foundation**: Ready for mesh network evolution
+
+**✅ Technical Excellence**:
+- **Hybrid Storage**: Performance + persistence optimized
+- **Minimal Breaking Changes**: Enhances existing infrastructure
+- **Mobile Responsive**: Works on tablets for on-site management
+- **Export Capabilities**: Data analysis and reporting
+- **Safety Features**: Confirmation dialogs, rollback options
+
+**🎪 Result**: Festival Chat evolves from messaging app to **professional festival communication platform** with enterprise-grade monitoring and management! 🚀
 
 **Timeline**: 2-4 weeks  
 **Priority**: High (Immediate user impact)  
@@ -258,270 +618,245 @@ case \"$1\" in
     echo \"Usage: $0 {create|list|cleanup}\"
     ;;
 esac
+**Live Activity Feed**:
+```typescript
+// Real-time activity stream with admin actions
+<div className="bg-gray-800 rounded-lg p-6 h-96 overflow-y-auto">
+  <h3>🔴 Live Activity</h3>
+  {activities.map(activity => (
+    <div key={activity.id} className="flex items-center space-x-3 p-2 bg-gray-700 rounded">
+      <div className="text-lg">{activity.icon}</div>
+      <div className="flex-1">
+        <div className="text-sm">{activity.description}</div>
+        <div className="text-xs text-gray-400">{activity.timestamp}</div>
+      </div>
+      {activity.roomId && (
+        <button onClick={() => navigateToRoom(activity.roomId)}>
+          View Room
+        </button>
+      )}
+    </div>
+  ))}
+</div>
 ```
 
-**Benefits**:
-- **Rapid iteration** - Test changes without affecting production
-- **Stakeholder preview** - Share specific feature builds
-- **A/B testing** - Compare different UI approaches
-- **Integration testing** - Test with real mobile devices
+**Advanced Admin Controls**:
+```typescript
+// Three-panel admin control system
+<div className="grid grid-cols-3 gap-6">
+  {/* Message Management */}
+  <div className="bg-gray-800 rounded-lg p-6">
+    <h3>💬 Message Management</h3>
+    <input placeholder="Emergency announcement..." />
+    <button onClick={() => broadcastMessage()} className="bg-red-600">📢 Broadcast</button>
+    
+    <select>{/* Room selection */}</select>
+    <button onClick={() => clearRoomMessages()} className="bg-yellow-600">🗑️ Clear Room</button>
+  </div>
+
+  {/* Database Management */}
+  <div className="bg-gray-800 rounded-lg p-6">
+    <h3>🗄️ Database Management</h3>
+    <div className="bg-gray-700 p-3 rounded">
+      <div>Messages: {dbStats.totalMessages}</div>
+      <div>Rooms: {dbStats.totalRooms}</div>
+      <div>Size: {dbStats.dbSize}</div>
+    </div>
+    <button onClick={() => exportAnalytics()} className="bg-blue-600">📊 Export</button>
+    <button onClick={() => wipeDatabaseCompletely()} className="bg-red-600 border-2 border-red-400">
+      ⚠️ WIPE DATABASE
+    </button>
+  </div>
+
+  {/* Server Management */}
+  <div className="bg-gray-800 rounded-lg p-6">
+    <h3>🖥️ Server Management</h3>
+    <div className="bg-gray-700 p-3 rounded">
+      <div>Status: {serverHealth.status}</div>
+      <div>Uptime: {serverHealth.uptime}</div>
+      <div>Memory: {serverHealth.memoryUsed}/{serverHealth.memoryTotal}</div>
+    </div>
+    <button onClick={() => restartServer()} className="bg-orange-600">🔄 Restart</button>
+    <button onClick={() => viewServerLogs()} className="bg-gray-600">📋 Logs</button>
+  </div>
+</div>
+```
+
+**Network & Mesh Monitoring**:
+```typescript
+// Dual-panel network monitoring
+<div className="grid grid-cols-2 gap-6">
+  {/* Current Connection Status */}
+  <div className="bg-gray-800 rounded-lg p-6">
+    <h3>🔗 Connection Status</h3>
+    <div className="grid grid-cols-2 gap-4">
+      <div className="text-center">
+        <div className="text-3xl font-bold text-green-400">{connectionStats.active}</div>
+        <div className="text-sm text-gray-400">Active</div>
+      </div>
+      <div className="text-center">
+        <div className="text-3xl font-bold text-yellow-400">{connectionStats.reconnecting}</div>
+        <div className="text-sm text-gray-400">Reconnecting</div>
+      </div>
+    </div>
+    
+    {/* Quality Metrics */}
+    <div className="space-y-3 mt-6">
+      <div className="flex justify-between">
+        <span>Average Latency</span>
+        <span className={latencyColor}>{networkQuality.avgLatency}ms</span>
+      </div>
+      <div className="flex justify-between">
+        <span>Success Rate</span>
+        <span className={successColor}>{networkQuality.successRate}%</span>
+      </div>
+      <div className="flex justify-between">
+        <span>Message Delivery</span>
+        <span className={deliveryColor}>{networkQuality.deliveryRate}%</span>
+      </div>
+    </div>
+  </div>
+
+  {/* Future Mesh Network */}
+  <div className="bg-gray-800 rounded-lg p-6">
+    <h3>🕸️ Network Topology</h3>
+    {meshTopology.enabled ? (
+      <MeshNetworkVisualization topology={meshTopology} />
+    ) : (
+      <div className="text-center py-8 text-gray-400">
+        <div className="text-4xl mb-4">🌐</div>
+        <div className="text-lg mb-2">Mesh Network: Disabled</div>
+        <div className="text-sm">Currently using WebSocket server</div>
+        <button className="mt-4 px-4 py-2 bg-purple-600 rounded">
+          🚀 Enable Mesh Network
+        </button>
+      </div>
+    )}
+  </div>
+</div>
+```
 
 ---
 
-## 🕸️ **Phase 4: Data Pooling & Message Intelligence**
+## 📊 **Phase 4: Analytics Dashboard & Admin Interface** 🎯
 
-**Timeline**: 3-5 weeks  
-**Priority**: High (Foundation for mesh networking)  
-**Complexity**: High
+**Timeline**: 3-4 weeks  
+**Priority**: HIGH (Strategic foundation for festival platform)  
+**Complexity**: Medium-High
+**Status**: 🚀 **NEXT PRIORITY** - Analytics foundation already exists
 
-### **4.1: Intelligent Message Routing** 🧠
+### **✅ 4.1: Analytics Foundation Assessment** 📈
 
-**Concept**: Smart message distribution based on user presence and network topology
+**EXCELLENT NEWS**: Analytics infrastructure is already built into the server!
 
-```typescript
-// src/lib/message-intelligence.ts
-export class MessageIntelligence {
-  private messageCache = new LRUCache<string, Message>(1000);
-  private userPresence = new Map<string, UserPresence>();
-  private messageRoutes = new Map<string, Route[]>();
+**✅ Existing Analytics Endpoints**:
+- **`/analytics/dashboard`** - Real-time dashboard data
+- **`/room-stats/:roomId`** - Individual room analytics
+- **`/health`** - Comprehensive server health and connection metrics
+- **`/debug/rooms`** (development) - Detailed room and connection debugging
 
-  /**
-   * Intelligent message delivery with multiple route options
-   */
-  async deliverMessage(message: Message, options: DeliveryOptions = {}) {
-    const routes = await this.calculateOptimalRoutes(message.recipients);
-    
-    const deliveryPromises = routes.map(async (route) => {
-      try {
-        switch (route.type) {
-          case 'direct':
-            return this.sendDirect(message, route.peer);
-          case 'relay':
-            return this.sendViaRelay(message, route.peers);
-          case 'broadcast':
-            return this.sendBroadcast(message, route.room);
-          case 'server':
-            return this.sendViaServer(message);
-        }
-      } catch (error) {
-        console.warn(`Route ${route.type} failed:`, error);
-        return null;
-      }
-    });
-
-    // Wait for first successful delivery, keep others as backup
-    return Promise.any(deliveryPromises);
-  }
-
-  /**
-   * Calculate optimal message routes based on network topology
-   */
-  private async calculateOptimalRoutes(recipients: string[]): Promise<Route[]> {
-    const routes: Route[] = [];
-    
-    for (const recipient of recipients) {
-      const presence = this.userPresence.get(recipient);
-      
-      if (!presence) {
-        // User offline - use server storage
-        routes.push({ type: 'server', recipient, priority: 3 });
-        continue;
-      }
-
-      // Direct P2P connection available
-      if (presence.p2pConnection && presence.p2pConnection.reliable) {
-        routes.push({ 
-          type: 'direct', 
-          peer: recipient, 
-          priority: 1,
-          estimatedLatency: presence.p2pConnection.latency 
-        });
-      }
-
-      // Relay via other peers
-      const relayPeers = this.findRelayPeers(recipient);
-      if (relayPeers.length > 0) {
-        routes.push({ 
-          type: 'relay', 
-          peers: relayPeers, 
-          priority: 2,
-          estimatedLatency: this.calculateRelayLatency(relayPeers)
-        });
-      }
-
-      // Server as fallback
-      routes.push({ type: 'server', recipient, priority: 4 });
-    }
-
-    return routes.sort((a, b) => a.priority - b.priority);
-  }
+**✅ Current Analytics Data Available**:
+```javascript
+// Server already collects:
+{
+  totalUsers: connectionStats.totalConnections,
+  activeRooms: rooms.size,
+  currentConnections: connectionStats.currentConnections,
+  peakConnections: connectionStats.peakConnections,
+  coldStarts: connectionStats.coldStarts,
+  notificationSubscribers: notificationSubscribers.size,
+  corsRejections: connectionStats.corsRejections,
+  uptime: process.uptime(),
+  memoryUsage: process.memoryUsage()
 }
 ```
 
-### **4.2: Data Pooling Architecture** 📊
-
-**Objective**: Aggregate and synchronize message data across multiple connection types
-
-```typescript
-// src/lib/data-pool.ts
-export class DataPool {
-  private pools = new Map<string, MessagePool>();
-  private syncStrategies = new Map<string, SyncStrategy>();
-
-  /**
-   * Multi-source data pooling with conflict resolution
-   */
-  async poolMessage(message: Message, source: MessageSource) {
-    const poolId = this.getPoolId(message.roomId);
-    let pool = this.pools.get(poolId);
-    
-    if (!pool) {
-      pool = new MessagePool(poolId);
-      this.pools.set(poolId, pool);
-    }
-
-    // Add message with source metadata
-    const pooledMessage = {
-      ...message,
-      sources: [source],
-      confidence: this.calculateConfidence(message, source),
-      timestamp: Date.now()
-    };
-
-    // Conflict resolution for duplicate messages
-    const existing = pool.findById(message.id);
-    if (existing) {
-      return this.resolveConflict(existing, pooledMessage);
-    }
-
-    pool.add(pooledMessage);
-    
-    // Trigger synchronization across all connected sources
-    await this.synchronizePool(poolId);
-    
-    return pooledMessage;
-  }
-
-  /**
-   * Smart synchronization based on connection quality
-   */
-  private async synchronizePool(poolId: string) {
-    const pool = this.pools.get(poolId);
-    const strategy = this.syncStrategies.get(poolId) || new DefaultSyncStrategy();
-    
-    const pendingSync = pool.getPendingSync();
-    if (pendingSync.length === 0) return;
-
-    // Prioritize sync by connection quality
-    const connections = await this.getActiveConnections(poolId);
-    const prioritizedConnections = connections.sort((a, b) => 
-      b.quality.reliability - a.quality.reliability
-    );
-
-    for (const connection of prioritizedConnections) {
-      try {
-        await strategy.sync(pendingSync, connection);
-        pool.markSynced(pendingSync, connection.id);
-      } catch (error) {
-        console.warn(`Sync failed for connection ${connection.id}:`, error);
-      }
-    }
-  }
-}
-
-// Message pooling with intelligent conflict resolution
-class MessagePool {
-  private messages = new Map<string, PooledMessage>();
-  private conflictResolver = new ConflictResolver();
-
-  resolveConflict(existing: PooledMessage, incoming: PooledMessage): PooledMessage {
-    // Merge sources
-    const mergedSources = [...existing.sources, ...incoming.sources];
-    
-    // Resolve content conflicts (prefer higher confidence)
-    const resolvedContent = existing.confidence >= incoming.confidence 
-      ? existing.content 
-      : incoming.content;
-
-    // Update confidence based on multiple sources
-    const newConfidence = this.calculateMergedConfidence(mergedSources);
-
-    return {
-      ...existing,
-      content: resolvedContent,
-      sources: mergedSources,
-      confidence: newConfidence,
-      lastUpdated: Date.now()
-    };
-  }
+**✅ Room-Level Analytics**:
+```javascript
+// Per-room data available:
+{
+  roomId,
+  activeUsers: roomPeers.size,
+  notificationSubscribers: subscribers.size,
+  totalConnections: activeUsers + notificationSubscribers,
+  lastActivity: Date.now()
 }
 ```
 
-### **4.3: Performance Analytics & Optimization** 📈
+### **4.2: Analytics Dashboard Implementation** 🖥️
+
+**Phase 4A: Basic Dashboard (Week 1-2)**
 
 ```typescript
-// src/lib/performance-analytics.ts
-export class PerformanceAnalytics {
-  private metrics = new MetricsCollector();
-  private optimizations = new Map<string, Optimization>();
+// NEW: src/app/admin/dashboard/page.tsx
+export default function AdminDashboard() {
+  const { 
+    analytics, 
+    rooms, 
+    connections, 
+    notifications,
+    isLoading 
+  } = useAnalytics();
 
-  /**
-   * Real-time performance monitoring and optimization
-   */
-  async optimizeMessageDelivery(roomId: string) {
-    const metrics = await this.metrics.getRoomMetrics(roomId);
-    
-    const optimizations = [
-      this.optimizeConnectionRouting(metrics),
-      this.optimizeMessageBatching(metrics),
-      this.optimizeCacheStrategy(metrics),
-      this.optimizeNetworkUsage(metrics)
-    ];
+  return (
+    <div className="min-h-screen bg-gray-900 text-white">
+      {/* Header */}
+      <header className="bg-gray-800 border-b border-gray-700 p-6">
+        <h1 className="text-3xl font-bold">🎪 Festival Chat Analytics</h1>
+        <div className="text-gray-400 mt-1">
+          Real-time dashboard • Updated every 5 seconds
+        </div>
+      </header>
 
-    const appliedOptimizations = await Promise.allSettled(optimizations);
-    
-    // Track optimization effectiveness
-    this.trackOptimizationResults(roomId, appliedOptimizations);
-    
-    return {
-      applied: appliedOptimizations.filter(o => o.status === 'fulfilled').length,
-      metrics: metrics,
-      recommendations: this.generateRecommendations(metrics)
-    };
-  }
+      {/* Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-6">
+        <MetricCard 
+          title="Total Users" 
+          value={analytics.totalUsers}
+          trend={analytics.userTrend}
+          icon="👥"
+        />
+        <MetricCard 
+          title="Active Rooms" 
+          value={analytics.activeRooms}
+          trend={analytics.roomTrend}
+          icon="🏠"
+        />
+        <MetricCard 
+          title="Messages/Hour" 
+          value={analytics.messagesPerHour}
+          trend={analytics.messageTrend}
+          icon="💬"
+        />
+        <MetricCard 
+          title="Notification Subscribers" 
+          value={analytics.notificationSubscribers}
+          trend={analytics.notificationTrend}
+          icon="🔔"
+        />
+      </div>
 
-  private generateRecommendations(metrics: RoomMetrics): Recommendation[] {
-    const recommendations: Recommendation[] = [];
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h3 className="text-xl font-semibold mb-4">Connection Activity</h3>
+          <ConnectionChart data={analytics.connectionHistory} />
+        </div>
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h3 className="text-xl font-semibold mb-4">Room Distribution</h3>
+          <RoomChart data={analytics.roomDistribution} />
+        </div>
+      </div>
 
-    if (metrics.averageLatency > 500) {
-      recommendations.push({
-        type: 'latency',
-        severity: 'high',
-        message: 'Consider enabling P2P direct connections',
-        action: 'enableP2P'
-      });
-    }
-
-    if (metrics.connectionDropRate > 0.05) {
-      recommendations.push({
-        type: 'reliability',
-        severity: 'medium', 
-        message: 'Increase circuit breaker threshold',
-        action: 'adjustCircuitBreaker'
-      });
-    }
-
-    if (metrics.messageDeliveryRate < 0.98) {
-      recommendations.push({
-        type: 'delivery',
-        severity: 'high',
-        message: 'Enable multi-path message routing',
-        action: 'enableMultiPath'
-      });
-    }
-
-    return recommendations;
-  }
+      {/* Room Table */}
+      <div className="p-6">
+        <div className="bg-gray-800 rounded-lg p-6">
+          <h3 className="text-xl font-semibold mb-4">Active Rooms</h3>
+          <RoomTable rooms={rooms} />
+        </div>
+      </div>
+    </div>
+  );
 }
 ```
 

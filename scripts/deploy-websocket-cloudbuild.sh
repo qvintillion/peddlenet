@@ -12,8 +12,8 @@ if [ ! -f "signaling-server.js" ]; then
     exit 1
 fi
 
-# Set project variables - UPDATE THIS WITH CORRECT PROJECT ID
-PROJECT_ID="peddlenet-1749130439"  # Correct project ID
+# Set project variables - PRODUCTION PROJECT ID
+PROJECT_ID="festival-chat-peddlenet"  # Production project ID
 SERVICE_NAME="peddlenet-websocket-server"
 REGION="us-central1"
 
@@ -38,9 +38,11 @@ fi
 echo "🎯 Setting project to $PROJECT_ID..."
 gcloud config set project $PROJECT_ID
 
-# Submit build to Cloud Build (minimal working approach)
-echo "☁️  Submitting minimal build to Google Cloud Build..."
-gcloud builds submit --config deployment/cloudbuild-minimal.yaml
+# Submit build to Cloud Build (production configuration)
+echo "☁️  Submitting production build to Google Cloud Build..."
+gcloud builds submit \
+  --config deployment/cloudbuild-production.yaml \
+  --substitutions=_SERVICE_NAME=$SERVICE_NAME
 
 if [ $? -ne 0 ]; then
     echo "❌ Cloud Build deployment failed"

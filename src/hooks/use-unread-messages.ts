@@ -128,6 +128,27 @@ class UnreadMessageManager {
     }
   }
 
+  // Clear all unread counts (for database wipe)
+  clearAll() {
+    console.log('🗑️ Clearing all unread message counts');
+    this.unreadCounts.clear();
+    this.savePersistedCounts();
+    this.notifyListeners();
+  }
+
+  // Clear unread counts for a specific room (for room message clearing)
+  clearRoom(roomId: string) {
+    if (!roomId) return;
+    
+    const hadCount = this.unreadCounts.has(roomId);
+    if (hadCount) {
+      console.log('🗑️ Clearing unread message counts for room:', roomId);
+      this.unreadCounts.delete(roomId);
+      this.savePersistedCounts();
+      this.notifyListeners();
+    }
+  }
+
   // Subscribe to unread count changes
   addListener(listener: (counts: Map<string, UnreadMessageCount>) => void) {
     this.listeners.add(listener);

@@ -399,6 +399,51 @@ curl https://[new-cloud-run-url]/health
 
 ## 🔧 Troubleshooting Deployments
 
+## 🔧 Troubleshooting Deployments
+
+### **🚨 FIXED: Preview Deploy Environment Variable Issues (June 2025)**
+
+#### **Problem**: Preview Deploys Not Picking Up UI Changes  
+**Symptoms**:
+- ❌ Preview server URL NOT found in build!
+- UI changes not appearing in preview deployments
+- Environment variables not properly baked into build
+- Admin dashboard showing placeholder URLs with `[hash]`
+
+**Root Cause**: 
+1. Build cache not properly cleared between deployments
+2. Environment variables not exported during build process
+3. Preview verification script looking for wrong server pattern
+
+**Solution Applied**:
+```bash
+# Enhanced cache clearing in preview deploy script
+rm -rf .next/
+rm -rf functions/.next/
+rm -rf functions/lib/
+rm -rf node_modules/.cache/  # ← Added
+rm -rf .firebase/           # ← Added
+
+# Explicit environment variable export
+export NEXT_PUBLIC_SIGNALING_SERVER="$PREVIEW_SERVER_URL"
+export BUILD_TARGET="preview"
+
+# Fixed verification pattern (preview uses staging server)
+if grep -r "peddlenet-websocket-server-staging" .next/ >/dev/null 2>&1; then
+    echo "✅ Found staging server URL in build"
+fi
+```
+
+**Key Fix**: Preview deployments correctly use the **staging server**, not a separate preview server. The verification script was incorrectly looking for `peddlenet-websocket-server-preview` when it should look for `peddlenet-websocket-server-staging`.
+
+**For detailed technical information**, see [Preview Deployment Fix Details](./fixes/PREVIEW-DEPLOYMENT-FIX-JUNE-2025.md).
+
+**Verification After Fix**:
+- ✅ Preview deployments pick up UI changes immediately
+- ✅ Environment variables properly baked into build
+- ✅ Admin dashboard shows correct server URLs
+- ✅ Browser console shows proper server URL detection logs
+
 ### **🚨 Cache Issues (SOLVED)**
 
 #### **"Code changes not appearing after deploy"**

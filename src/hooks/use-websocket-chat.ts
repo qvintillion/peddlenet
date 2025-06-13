@@ -7,6 +7,7 @@ import { generateCompatibleUUID } from '@/utils/peer-utils';
 import { NetworkUtils } from '@/utils/network-utils';
 import { MessagePersistence } from '@/utils/message-persistence';
 import { ServerUtils } from '@/utils/server-utils';
+import { unreadMessageManager } from '@/hooks/use-unread-messages';
 
 // Enhanced connection resilience with Cloud Run optimizations
 const createEnhancedConnectionResilience = () => {
@@ -498,6 +499,106 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
         console.log('🔄 Attempting reconnection after server maintenance...');
         connectToServer();
       }, data.reconnectDelay || 15000); // Longer delay for Cloud Run
+    });
+
+    // CRITICAL: Handle database wipe events
+    socket.on('database-wiped', (data) => {
+      console.log('🗑️ Database wiped notification received:', data);
+      
+      // Clear all local message state immediately
+      setMessages([]);
+      
+      // Clear persisted messages for this room
+      try {
+        MessagePersistence.clearRoomMessages(roomId);
+        console.log('🧹 Cleared local message persistence for room:', roomId);
+      } catch (error) {
+        console.warn('Failed to clear local persistence:', error);
+      }
+      
+      // Clear all unread message counts
+      try {
+        unreadMessageManager.clearAll();
+        console.log('🧹 Cleared all unread message counts');
+      } catch (error) {
+        console.warn('Failed to clear unread counts:', error);
+      }
+      
+      // Force reload if requested
+      if (data.forceReload && typeof window !== 'undefined') {
+        console.log('🔄 Force reloading page after database wipe...');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
+    });
+
+    // Handle force refresh events
+    socket.on('force-refresh', (data) => {
+      console.log('🔄 Force refresh notification:', data);
+      
+      // Clear all local state
+      setMessages([]);
+      setConnectedPeers([]);
+      
+      // Clear local persistence
+      try {
+        MessagePersistence.clearRoomMessages(roomId);
+      } catch (error) {
+        console.warn('Failed to clear local persistence:', error);
+      }
+      
+      // Clear all unread message counts
+      try {
+        unreadMessageManager.clearAll();
+        console.log('🧹 Cleared all unread message counts');
+      } catch (error) {
+        console.warn('Failed to clear unread counts:', error);
+      }
+      
+      // Optionally reload page
+      if (data.forceReload !== false && typeof window !== 'undefined') {
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
+      }
+    });
+
+    // CRITICAL: Handle room-specific message clearing
+    socket.on('room-messages-cleared', (data) => {
+      console.log('🗑️ Room messages cleared notification received:', data);
+      
+      // Only clear if this is for the current room
+      if (data.roomId === roomId) {
+        console.log(`🧹 Clearing local state for room: ${data.roomId}`);
+        
+        // Clear messages from React state
+        setMessages([]);
+        
+        // Clear persisted messages for this specific room
+        try {
+          MessagePersistence.clearRoomMessages(data.roomId);
+          console.log(`🧹 Cleared local message persistence for room: ${data.roomId}`);
+        } catch (error) {
+          console.warn('Failed to clear local persistence for room:', error);
+        }
+        
+        // Clear unread message counts for this specific room
+        try {
+          unreadMessageManager.clearRoom(data.roomId);
+          console.log(`🧹 Cleared unread message counts for room: ${data.roomId}`);
+        } catch (error) {
+          console.warn('Failed to clear unread counts for room:', error);
+        }
+        
+        // Show a brief notification to the user
+        if (typeof window !== 'undefined' && data.message) {
+          // You could show a toast notification here if available
+          console.log(`📢 Admin message: ${data.message}`);
+        }
+      } else {
+        console.log(`ℹ️ Room messages cleared for different room (${data.roomId}), ignoring`);
+      }
     });
 
     // Standard message handling (unchanged)

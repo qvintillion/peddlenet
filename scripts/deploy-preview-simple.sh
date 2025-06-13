@@ -21,7 +21,36 @@ EXPIRES="7d"
 echo -e "${PURPLE}🎪 Festival Chat Simple Preview Deploy${NC}"
 echo -e "${BLUE}===================================${NC}"
 
-# Get channel name from user or use default
+# SAFETY: Check if dev server is running and warn user
+if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo -e "${YELLOW}⚠️ WARNING: Development server running on port 3000${NC}"
+    echo -e "${YELLOW}This may cause deployment conflicts and environment corruption.${NC}"
+    echo -e "${RED}Strongly recommend closing dev server before preview deployment.${NC}"
+    echo ""
+    read -p "Stop dev server and continue? (y/N): " stop_dev
+    
+    if [[ $stop_dev =~ ^[Yy]$ ]]; then
+        echo -e "${BLUE}🛑 Stopping development servers...${NC}"
+        pkill -f "next dev" 2>/dev/null || true
+        pkill -f "signaling-server" 2>/dev/null || true
+        sleep 2
+        echo -e "${GREEN}✅ Development servers stopped${NC}"
+    else
+        echo -e "${RED}❌ Preview deployment cancelled${NC}"
+        echo -e "${YELLOW}💡 Close dev servers manually and retry${NC}"
+        exit 1
+    fi
+fi
+
+# SAFETY: Stop WebSocket server if running on dev port
+if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null 2>&1; then
+    echo -e "${BLUE}🛑 Stopping WebSocket development server...${NC}"
+    pkill -f "signaling-server" 2>/dev/null || true
+    sleep 1
+    echo -e "${GREEN}✅ WebSocket server stopped${NC}"
+fi
+
+echo ""
 if [ -z "$1" ]; then
     CHANNEL_ID="$DEFAULT_CHANNEL"
     echo -e "${YELLOW}📋 Using default channel ID: ${CHANNEL_ID}${NC}"
@@ -68,6 +97,8 @@ echo -e "${YELLOW}🧹 Cache bust: clearing all builds...${NC}"
 rm -rf .next/
 rm -rf functions/.next/
 rm -rf functions/lib/
+rm -rf node_modules/.cache/
+rm -rf .firebase/
 echo -e "${GREEN}✅ Build cache cleared${NC}"
 
 echo ""
@@ -78,18 +109,29 @@ echo -e "${YELLOW}Setting NEXT_PUBLIC_SIGNALING_SERVER explicitly...${NC}"
 PREVIEW_SERVER_URL=$(grep NEXT_PUBLIC_SIGNALING_SERVER .env.preview | cut -d'=' -f2)
 echo -e "${GREEN}Using preview server: ${PREVIEW_SERVER_URL}${NC}"
 
-# Build with explicit environment variable
+# Build with explicit environment variable and verify it's set
 echo -e "${BLUE}Building with environment variable...${NC}"
 echo -e "${YELLOW}NEXT_PUBLIC_SIGNALING_SERVER=${PREVIEW_SERVER_URL}${NC}"
+
+# Export environment variable for the build process
+export NEXT_PUBLIC_SIGNALING_SERVER="$PREVIEW_SERVER_URL"
+export BUILD_TARGET="preview"
+
+# Verify environment variable is set
+echo -e "${BLUE}Verifying environment variable is set...${NC}"
+echo "NEXT_PUBLIC_SIGNALING_SERVER: $NEXT_PUBLIC_SIGNALING_SERVER"
+echo "BUILD_TARGET: $BUILD_TARGET"
+
+# Build with explicit environment variable
 NEXT_PUBLIC_SIGNALING_SERVER="$PREVIEW_SERVER_URL" BUILD_TARGET="preview" npm run build:firebase
 
 # Verify the build actually contains the correct URL
 echo ""
 echo -e "${YELLOW}🔍 Verifying ALL built files contain correct URL...${NC}"
-if grep -r "peddlenet-websocket-server-preview" .next/ >/dev/null 2>&1; then
-    echo -e "${GREEN}✅ Found preview server URL in build${NC}"
+if grep -r "peddlenet-websocket-server-staging" .next/ >/dev/null 2>&1; then
+    echo -e "${GREEN}✅ Found staging server URL in build${NC}"
 else
-    echo -e "${RED}❌ Preview server URL NOT found in build!${NC}"
+    echo -e "${RED}❌ Staging server URL NOT found in build!${NC}"
     echo -e "${YELLOW}Searching for any signaling server URLs in build...${NC}"
     grep -r "peddlenet-websocket-server" .next/ | head -3 || echo "No URLs found"
 fi

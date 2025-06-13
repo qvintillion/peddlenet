@@ -66,9 +66,9 @@ fi
 gcloud config set project $PROJECT_ID
 
 echo "🎯 Deploying to STAGING WebSocket server: $SERVICE_NAME"
-echo "🛡️ Using proven working configuration (messaging fix included)"
+echo "🛡️ Using proven working configuration"
 echo "📦 Docker: Dockerfile.minimal"
-echo "🔌 Server: signaling-server-production-FIXED.js"
+echo "🔌 Server: signaling-server.js (universal server with auto-detection)"
 echo ""
 
 # Build and deploy to Cloud Run using proven working configuration

@@ -70,6 +70,25 @@ npm run dev
 
 ## 🔧 Recent Updates (June 2025)
 
+### **📊 ADMIN ANALYTICS DASHBOARD** (June 12, 2025)
+- **🎯 NEW FEATURE**: Comprehensive real-time admin dashboard for monitoring and control
+- **Real-time Analytics**: Live user counts, room statistics, message flow, and network health
+- **Admin Controls**: Broadcast messages, clear room messages, user management, database wipe
+- **Interactive Details**: Click on user/room cards for detailed management interfaces
+- **Professional UI**: Modern dashboard with live activity feed and performance metrics
+- **URL**: Access at `/admin-analytics` on any deployed environment
+
+**📚 Complete details**: [ADMIN-DASHBOARD-URL-FIX-JUNE-12-2025.md](./docs/ADMIN-DASHBOARD-URL-FIX-JUNE-12-2025.md)
+
+### **🔧 NODE_ENV COMPLIANCE FIX** (June 12, 2025)
+- **🎯 ISSUE RESOLVED**: Eliminated Next.js "non-standard NODE_ENV" warnings
+- **Standards Compliance**: Now uses `NODE_ENV=production` for staging builds (Next.js standard)
+- **Custom Environment Detection**: Added `BUILD_TARGET` variable for our environment logic
+- **Performance Benefits**: Proper production optimizations in staging builds
+- **Architecture**: Clean separation between Next.js requirements and our custom logic
+
+**Result**: ✅ **No more Next.js warnings + optimized staging builds**
+
 ### **🎨 CRITICAL: Room Switcher UI Transparency Fix** (June 12, 2025)
 - **🎯 ISSUE RESOLVED**: Room switcher dropdown cards completely opaque - no more background bleed-through
 - **React Portal solution**: Dropdown now renders outside DOM hierarchy for guaranteed opacity
@@ -232,9 +251,12 @@ npm run preview:list           # List all channels
 npm run preview:manage         # Manage existing channels
 npm run preview:cleanup        # Clean up expired channels
 
-# 🎭 Final Staging & Production
-npm run deploy:firebase:complete  # Full staging deployment
+# 🚀 Final Staging & Production
+npm run deploy:firebase:complete  # Enhanced staging deployment with debugging
 ./deploy.sh                       # Production deployment
+
+# 🐎 Admin Analytics Dashboard
+npm run admin:nuclear-fix         # Emergency fix for admin dashboard cache issues
 
 # Standard development
 npm run dev               # Frontend only
@@ -259,10 +281,11 @@ npm run start             # Start production server
 
 ### Production
 - `NEXT_PUBLIC_SIGNALING_SERVER`: Production server URL (WSS format)
-  - Example: `wss://peddlenet-websocket-server-padyxgyv5a-uc.a.run.app`
+  - Example: `wss://peddlenet-websocket-server-hfttiarlja-uc.a.run.app`
   - ServerUtils automatically converts to HTTPS for API calls
-- `NODE_ENV`: Auto-detected by universal server (production/staging/development)
-- `PLATFORM`: Auto-detected by universal server (cloudrun/firebase/local)
+- `NODE_ENV`: Next.js environment (`production` for optimized builds)
+- `BUILD_TARGET`: Our custom environment detection (`development`, `staging`, `production`)
+- `PLATFORM`: Auto-detected by universal server (`cloudrun`, `firebase`, `local`)
 
 ## 🔧 Network Requirements
 
@@ -527,3 +550,4 @@ MIT License - See LICENSE file for details.
 - [docs/11-TROUBLESHOOTING.md](./docs/11-TROUBLESHOOTING.md) - Detailed troubleshooting guide
 - [docs/04-ARCHITECTURE.md](./docs/04-ARCHITECTURE.md) - Technical system overview
 - [docs/12-COMPREHENSIVE-NEXT-STEPS.md](./docs/12-COMPREHENSIVE-NEXT-STEPS.md) - Strategic evolution roadmap
+- [docs/ADMIN-DASHBOARD-NODEENV-IMPLEMENTATION-JUNE-12-2025.md](./docs/ADMIN-DASHBOARD-NODEENV-IMPLEMENTATION-JUNE-12-2025.md) - **NEW**: Complete admin dashboard & NODE_ENV implementation guide

@@ -1,24 +1,9 @@
-steps:
-  # Debug what files are available
-  - name: 'gcr.io/cloud-builders/docker'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        echo "=== FILES IN BUILD CONTEXT ==="
-        ls -la
-        echo ""
-        echo "=== CHECKING SPECIFIC FILES ==="
-        ls -la deployment/package.json signaling-server.js Dockerfile.minimal
-        echo ""
-        echo "=== UNIVERSAL SERVER INFO ==="
-        echo "signaling-server.js size: $(wc -c < signaling-server.js) bytes"
-        echo "Dockerfile.minimal exists: $(test -f Dockerfile.minimal && echo 'YES' || echo 'NO')"
-        echo ""
-        echo "=== PACKAGE.JSON CONTENT ==="
-        cat deployment/package.json
+# BACKUP of deployment/cloudbuild-production.yaml - Made before fixing production deployment issues
+# Date: 2025-06-12 22:54:23
+# Reason: Fixing critical production deployment port and Cloud Build configuration issues
 
-  # Build with universal server (auto-environment detection)
+steps:
+  # Simple Docker build for production deployment
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-f', 'Dockerfile.minimal', '-t', 'gcr.io/$PROJECT_ID/peddlenet-websocket-server', '.']
 
@@ -26,7 +11,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/peddlenet-websocket-server']
 
-  # Deploy to Cloud Run
+  # Deploy to Cloud Run (PRODUCTION)
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'run'

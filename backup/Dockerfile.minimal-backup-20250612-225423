@@ -1,3 +1,7 @@
+# BACKUP of Dockerfile.minimal - Made before fixing production deployment issues
+# Date: 2025-06-12 22:54:23
+# Reason: Fixing critical production deployment port and Cloud Build configuration issues
+
 # Minimal Dockerfile for immediate deployment
 FROM node:18-alpine
 
@@ -12,8 +16,8 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy the universal server (works for all environments with auto-detection)
 COPY signaling-server.js ./server.js
 
-# Expose port (Cloud Run uses PORT environment variable, defaults to 8080)
-EXPOSE 8080
+# Expose port
+EXPOSE 3001
 
 # Start server
 CMD ["node", "server.js"]

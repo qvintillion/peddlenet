@@ -52,7 +52,7 @@ echo "Using universal server with auto-detection..."
 # Use the minimal Docker configuration that worked for production
 gcloud builds submit \
   --config=deployment/cloudbuild-minimal.yaml \
-  --substitutions=_SERVICE_NAME=$SERVICE_NAME,_NODE_ENV=staging
+  --substitutions=_SERVICE_NAME=$SERVICE_NAME,_NODE_ENV=production,_BUILD_TARGET=staging
 
 echo ""
 echo "🚀 Deploying to Cloud Run (STAGING)..."
@@ -66,8 +66,9 @@ gcloud run deploy $SERVICE_NAME \
     --cpu 1 \
     --min-instances 0 \
     --max-instances 5 \
-    --set-env-vars NODE_ENV=staging \
-    --set-env-vars PLATFORM="firebase" \
+    --set-env-vars NODE_ENV=production \
+    --set-env-vars BUILD_TARGET=staging \
+    --set-env-vars PLATFORM=cloudrun \
     --set-env-vars VERSION="2.0.0-universal-staging"
 
 # Get the service URL for verification

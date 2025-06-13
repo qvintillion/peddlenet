@@ -14,16 +14,13 @@ const server = createServer(app);
 // Universal environment detection
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const PLATFORM = process.env.PLATFORM || 'local'; // local, firebase, github, cloudrun
-const BUILD_TARGET = process.env.BUILD_TARGET || 'development'; // development, staging, production
-
 const isDevelopment = NODE_ENV === 'development' || PLATFORM === 'local';
-const isStaging = BUILD_TARGET === 'staging' || PLATFORM === 'firebase';
-const isProduction = NODE_ENV === 'production' && (PLATFORM === 'github' || PLATFORM === 'cloudrun');
+const isStaging = PLATFORM === 'firebase' || NODE_ENV === 'staging';
+const isProduction = PLATFORM === 'github' || PLATFORM === 'cloudrun' || NODE_ENV === 'production';
 
 console.log(`🎪 PeddleNet Universal Server Starting... (ANALYTICS ENHANCED)`);
 console.log(`📍 Environment: ${NODE_ENV}`);
 console.log(`🏗️ Platform: ${PLATFORM}`);
-console.log(`🎯 Build Target: ${BUILD_TARGET}`);
 console.log(`🎯 Mode: ${isDevelopment ? 'DEVELOPMENT' : isStaging ? 'STAGING' : 'PRODUCTION'}`);
 
 // 📊 ANALYTICS & STORAGE ENHANCEMENT
@@ -375,26 +372,6 @@ const io = new Server(server, {
   }
 });
 
-// Admin info endpoint (shows auth status)
-app.get('/admin/info', (req, res) => {
-  res.json({
-    adminDashboard: 'Festival Chat Admin Dashboard',
-    version: '3.0.0-analytics-enhanced',
-    authRequired: isProduction,
-    environment: BUILD_TARGET || NODE_ENV,
-    platform: PLATFORM,
-    securityNote: isProduction ? 'Authentication required for admin access' : 'Open access in staging/development',
-    endpoints: {
-      analytics: '/admin/analytics',
-      activity: '/admin/activity', 
-      export: '/admin/export',
-      users: '/admin/users/detailed',
-      rooms: '/admin/rooms/detailed'
-    },
-    timestamp: Date.now()
-  });
-});
-
 // CRITICAL FIX: Enhanced CORS middleware for all routes
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -437,47 +414,6 @@ app.use(cors({
 }));
 
 app.use(express.json());
-
-// 🔒 ADMIN AUTHENTICATION (Production Only)
-// Simple HTTP Basic Auth for admin dashboard security
-function requireAdminAuth(req, res, next) {
-  // Skip authentication in development and staging
-  if (!isProduction) {
-    return next();
-  }
-  
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader || !authHeader.startsWith('Basic ')) {
-    res.setHeader('WWW-Authenticate', 'Basic realm="Festival Chat Admin Dashboard"');
-    return res.status(401).json({ 
-      error: 'Authentication required',
-      message: 'Admin access requires authentication'
-    });
-  }
-  
-  // Decode base64 credentials
-  const base64Credentials = authHeader.split(' ')[1];
-  const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
-  const [username, password] = credentials.split(':');
-  
-  // Check credentials (allow environment override)
-  const validUsername = process.env.ADMIN_USERNAME || 'th3p3ddl3r';
-  const validPassword = process.env.ADMIN_PASSWORD || 'letsmakeatrade';
-  
-  if (username !== validUsername || password !== validPassword) {
-    res.setHeader('WWW-Authenticate', 'Basic realm="Festival Chat Admin Dashboard"');
-    return res.status(401).json({ 
-      error: 'Invalid credentials',
-      message: 'Access denied - invalid username or password'
-    });
-  }
-  
-  // Log successful admin access
-  console.log(`🛡️ Admin authenticated: ${username} from ${req.ip || 'unknown IP'}`);
-  
-  next();
-}
 
 // Store room and connection information
 const rooms = new Map();
@@ -590,16 +526,16 @@ app.get('/health', (req, res) => {
       allowedOrigins: ['https://peddlenet.app', 'http://localhost:3000'],
       requestOrigin: origin || 'none'
     },
-    environment: BUILD_TARGET || NODE_ENV,
+    environment: NODE_ENV,
     platform: PLATFORM,
     timestamp: Date.now()
   });
 });
 
-// 📊 COMPREHENSIVE ANALYTICS ENDPOINTS (Protected)
+// 📊 COMPREHENSIVE ANALYTICS ENDPOINTS
 
 // Main analytics dashboard endpoint
-app.get('/admin/analytics', requireAdminAuth, async (req, res) => {
+app.get('/admin/analytics', async (req, res) => {
   try {
     const dashboardData = await generateComprehensiveDashboardData();
     res.json(dashboardData);
@@ -610,7 +546,7 @@ app.get('/admin/analytics', requireAdminAuth, async (req, res) => {
 });
 
 // Live activity feed endpoint
-app.get('/admin/activity', requireAdminAuth, (req, res) => {
+app.get('/admin/activity', (req, res) => {
   const { limit = 20 } = req.query;
   res.json({
     activities: activityLog.slice(0, parseInt(limit)),
@@ -620,7 +556,7 @@ app.get('/admin/activity', requireAdminAuth, (req, res) => {
 });
 
 // Room-specific analytics
-app.get('/admin/room/:roomId/analytics', requireAdminAuth, async (req, res) => {
+app.get('/admin/room/:roomId/analytics', async (req, res) => {
   const { roomId } = req.params;
   
   try {
@@ -633,7 +569,7 @@ app.get('/admin/room/:roomId/analytics', requireAdminAuth, async (req, res) => {
 });
 
 // Message history for admin (last 24h)
-app.get('/admin/room/:roomId/messages', requireAdminAuth, (req, res) => {
+app.get('/admin/room/:roomId/messages', (req, res) => {
   const { roomId } = req.params;
   const { limit = 100 } = req.query;
   
@@ -656,7 +592,7 @@ app.get('/admin/room/:roomId/messages', requireAdminAuth, (req, res) => {
 });
 
 // Network health and performance metrics
-app.get('/admin/network-health', requireAdminAuth, (req, res) => {
+app.get('/admin/network-health', (req, res) => {
   res.json({
     serverHealth: getServerHealth(),
     connectionStats: getConnectionStats(),
@@ -669,58 +605,37 @@ app.get('/admin/network-health', requireAdminAuth, (req, res) => {
   });
 });
 
-// 🛡️ ADMIN CONTROL ENDPOINTS (Protected)
+// 🛡️ ADMIN CONTROL ENDPOINTS
 
-// Clear room messages with proper client cache clearing
-app.delete('/admin/room/:roomId/messages', requireAdminAuth, (req, res) => {
+// Clear room messages
+app.delete('/admin/room/:roomId/messages', (req, res) => {
   const { roomId } = req.params;
   
   safeDbRun('DELETE FROM messages WHERE room_id = ?', [roomId], function(err) {
     if (err) {
       res.status(500).json({ error: err.message });
     } else {
-      const messagesDeleted = this.changes || 0;
-      
       // Also clear from memory
       if (messageStore.has(roomId)) {
         messageStore.delete(roomId);
       }
       
-      // CRITICAL: Notify all users in this room to clear their local cache
-      // This is similar to database wipe but targeted to specific room
-      io.to(roomId).emit('room-messages-cleared', {
-        roomId,
-        message: `All messages in this room have been cleared by an administrator.`,
-        messagesDeleted,
-        clearLocalCache: true, // Signal to clear React state, localStorage, unread counts
-        timestamp: Date.now()
-      });
-      
       // Log admin action
       logActivity('admin-action', {
         action: 'clear-room-messages',
         roomId,
-        messagesDeleted,
-        usersNotified: rooms.has(roomId) ? rooms.get(roomId).size : 0
+        messagesDeleted: this.changes || 0
       });
       
       // Broadcast to admin clients
       if (io && io.to) {
-        io.to('admin-channel').emit('room-cleared', { 
-          roomId, 
-          messagesDeleted,
-          usersNotified: rooms.has(roomId) ? rooms.get(roomId).size : 0,
-          timestamp: Date.now()
-        });
+        io.to('admin-channel').emit('room-cleared', { roomId, messagesDeleted: this.changes || 0 });
       }
-      
-      console.log(`🗑️ Room ${roomId} messages cleared: ${messagesDeleted} messages deleted, ${rooms.has(roomId) ? rooms.get(roomId).size : 0} users notified`);
       
       res.json({ 
         success: true, 
         roomId, 
-        messagesDeleted,
-        usersNotified: rooms.has(roomId) ? rooms.get(roomId).size : 0,
+        messagesDeleted: this.changes || 0,
         timestamp: Date.now()
       });
     }
@@ -728,7 +643,7 @@ app.delete('/admin/room/:roomId/messages', requireAdminAuth, (req, res) => {
 });
 
 // DANGER: Wipe entire database
-app.delete('/admin/database', requireAdminAuth, (req, res) => {
+app.delete('/admin/database', (req, res) => {
   const { confirm } = req.body;
   
   if (confirm !== 'WIPE_EVERYTHING') {
@@ -852,7 +767,7 @@ app.delete('/admin/database', requireAdminAuth, (req, res) => {
 });
 
 // Broadcast admin message to all rooms
-app.post('/admin/broadcast', requireAdminAuth, (req, res) => {
+app.post('/admin/broadcast', (req, res) => {
   const { message, targetRooms = 'all', priority = 'normal' } = req.body;
   
   if (!message || !message.trim()) {
@@ -899,7 +814,7 @@ app.post('/admin/broadcast', requireAdminAuth, (req, res) => {
 });
 
 // Export analytics data
-app.get('/admin/export', requireAdminAuth, async (req, res) => {
+app.get('/admin/export', async (req, res) => {
   const { format = 'json', timeframe = '24h' } = req.query;
   
   try {
@@ -917,162 +832,6 @@ app.get('/admin/export', requireAdminAuth, async (req, res) => {
   } catch (error) {
     console.error('❌ Export error:', error);
     res.status(500).json({ error: error.message });
-  }
-});
-
-// 📊 DETAILED USER & ROOM MANAGEMENT ENDPOINTS (Protected)
-
-// Detailed active users endpoint
-app.get('/admin/users/detailed', requireAdminAuth, async (req, res) => {
-  try {
-    const activeUsers = [];
-    
-    // Get users currently in rooms
-    for (const [roomId, roomPeers] of rooms.entries()) {
-      for (const [socketId, peerData] of roomPeers.entries()) {
-        activeUsers.push({
-          socketId,
-          peerId: peerData.peerId,
-          displayName: peerData.displayName,
-          roomId,
-          joinedAt: peerData.joinedAt,
-          duration: Date.now() - peerData.joinedAt,
-          isActive: true
-        });
-      }
-    }
-    
-    // Also get recent user sessions from database for context
-    safeDbAll(
-      'SELECT * FROM user_sessions WHERE joined_at > datetime("now", "-1 hour") ORDER BY joined_at DESC LIMIT 100',
-      [],
-      (err, recentSessions) => {
-        if (err) {
-          console.error('Error fetching recent sessions:', err);
-          recentSessions = [];
-        }
-        
-        res.json({
-          activeUsers,
-          recentSessions: recentSessions || [],
-          summary: {
-            totalActive: activeUsers.length,
-            uniqueUsers: new Set(activeUsers.map(u => u.peerId)).size,
-            totalRooms: rooms.size,
-            timestamp: Date.now()
-          }
-        });
-      }
-    );
-  } catch (error) {
-    console.error('❌ Detailed users error:', error);
-    res.status(500).json({ error: 'Failed to get detailed user data' });
-  }
-});
-
-// Detailed active rooms endpoint
-app.get('/admin/rooms/detailed', requireAdminAuth, async (req, res) => {
-  try {
-    const detailedRooms = [];
-    
-    for (const [roomId, roomPeers] of rooms.entries()) {
-      const roomStats = analyticsData.roomActivity.get(roomId);
-      const roomCode = Array.from(roomCodes.entries()).find(([code, id]) => id === roomId)?.[0];
-      
-      detailedRooms.push({
-        roomId,
-        roomCode: roomCode || 'N/A',
-        activeUsers: roomPeers.size,
-        userList: Array.from(roomPeers.values()),
-        created: roomStats?.created || Date.now(),
-        lastActivity: roomStats?.lastActivity || Date.now(),
-        totalMessages: roomStats?.messages || 0,
-        uniqueUsers: roomStats?.users?.size || roomPeers.size
-      });
-    }
-    
-    // Sort by last activity (most recent first)
-    detailedRooms.sort((a, b) => b.lastActivity - a.lastActivity);
-    
-    res.json({
-      activeRooms: detailedRooms,
-      summary: {
-        totalRooms: detailedRooms.length,
-        totalActiveUsers: detailedRooms.reduce((sum, room) => sum + room.activeUsers, 0),
-        totalMessages: detailedRooms.reduce((sum, room) => sum + room.totalMessages, 0),
-        timestamp: Date.now()
-      }
-    });
-  } catch (error) {
-    console.error('❌ Detailed rooms error:', error);
-    res.status(500).json({ error: 'Failed to get detailed room data' });
-  }
-});
-
-// Admin action: Remove user from room
-app.post('/admin/users/:peerId/remove', requireAdminAuth, (req, res) => {
-  const { peerId } = req.params;
-  const { roomId, reason = 'Removed by admin' } = req.body;
-  
-  let removedUser = null;
-  let socketToDisconnect = null;
-  
-  // Find the user in the specified room
-  if (rooms.has(roomId)) {
-    const roomPeers = rooms.get(roomId);
-    for (const [socketId, peerData] of roomPeers.entries()) {
-      if (peerData.peerId === peerId) {
-        removedUser = peerData;
-        socketToDisconnect = socketId;
-        roomPeers.delete(socketId);
-        break;
-      }
-    }
-  }
-  
-  if (removedUser && socketToDisconnect) {
-    // Disconnect the user's socket
-    const socket = io.sockets.sockets.get(socketToDisconnect);
-    if (socket) {
-      socket.emit('admin-removed', {
-        reason,
-        message: 'You have been removed from the room by an administrator.',
-        timestamp: Date.now()
-      });
-      socket.disconnect(true);
-    }
-    
-    // Notify others in the room
-    io.to(roomId).emit('peer-left', {
-      peerId,
-      displayName: removedUser.displayName,
-      reason: 'admin-removed'
-    });
-    
-    // Log the admin action
-    logActivity('admin-action', {
-      action: 'remove-user',
-      peerId,
-      displayName: removedUser.displayName,
-      roomId,
-      reason
-    });
-    
-    res.json({
-      success: true,
-      removedUser: {
-        peerId,
-        displayName: removedUser.displayName,
-        roomId
-      },
-      reason,
-      timestamp: Date.now()
-    });
-  } else {
-    res.status(404).json({
-      success: false,
-      error: 'User not found in specified room'
-    });
   }
 });
 
@@ -1100,14 +859,11 @@ async function setupDatabaseCleanup() {
 // Helper functions for analytics
 async function generateComprehensiveDashboardData() {
   return new Promise((resolve, reject) => {
-    // Calculate actual active users by counting room participants
-    const actualActiveUsers = Array.from(rooms.values()).reduce((total, roomPeers) => total + roomPeers.size, 0);
-    
     if (!dbReady) {
       // Return mock data if database not ready
       resolve({
         realTimeStats: {
-          activeUsers: actualActiveUsers,
+          activeUsers: connectionStats.currentConnections,
           activeRooms: rooms.size,
           messagesPerMinute: analyticsData.messagesPerMinute,
           totalMessages: analyticsData.totalMessages,
@@ -1175,13 +931,10 @@ async function generateComprehensiveDashboardData() {
         
         completed++;
         if (completed === total) {
-          // Calculate actual active users by counting room participants
-          const actualActiveUsers = Array.from(rooms.values()).reduce((total, roomPeers) => total + roomPeers.size, 0);
-          
           resolve({
             // Real-time stats
             realTimeStats: {
-              activeUsers: actualActiveUsers,
+              activeUsers: connectionStats.currentConnections,
               activeRooms: rooms.size,
               messagesPerMinute: analyticsData.messagesPerMinute,
               totalMessages: results.totalMessages,
@@ -1484,17 +1237,6 @@ if (isDevelopment) {
       recentActivity: activityLog.slice(0, 10),
       environment: 'development',
       stats: connectionStats,
-      adminConnections: {
-        count: adminConnections.size,
-        socketIds: Array.from(adminConnections)
-      },
-      userCalculation: {
-        totalConnections: connectionStats.currentConnections,
-        adminConnections: adminConnections.size,
-        roomParticipants: Array.from(rooms.values()).reduce((total, roomPeers) => total + roomPeers.size, 0),
-        calculatedActiveUsers: Array.from(rooms.values()).reduce((total, roomPeers) => total + roomPeers.size, 0),
-        oldCalculation: connectionStats.currentConnections - adminConnections.size
-      },
       cors: {
         allowedOrigins: getCorsOrigins(),
         rejections: connectionStats.corsRejections
@@ -1653,7 +1395,6 @@ io.on('connection', (socket) => {
 
   devLog(`🔗 Client connected: ${socket.id} (${connectionStats.currentConnections} active)`);
   devLog(`🔗 Connection transport: ${socket.conn?.transport?.name || 'unknown'}`);
-  devLog(`📊 Current breakdown: Total=${connectionStats.currentConnections}, Admin=${adminConnections.size}, Users=${connectionStats.currentConnections - adminConnections.size}`);
 
   // Store user data
   socket.userData = null;
@@ -1673,8 +1414,10 @@ io.on('connection', (socket) => {
     adminConnections.add(socket.id);
     socket.isAdmin = true; // Mark this socket as admin
     
+    // Update chat user count (subtract admin from current connections)
+    connectionStats.currentChatUsers = connectionStats.currentConnections - adminConnections.size;
+    
     devLog(`🛡️ Admin client connected: ${socket.id} (Admin connections: ${adminConnections.size})`);
-    devLog(`📊 Connection breakdown: Total=${connectionStats.currentConnections}, Admin=${adminConnections.size}, Users=${connectionStats.currentConnections - adminConnections.size}`);
     
     // Send initial dashboard data
     generateComprehensiveDashboardData().then(data => {
@@ -1774,18 +1517,7 @@ io.on('connection', (socket) => {
     );
     
     logActivity('user-joined', { roomId, peerId, displayName });
-    
-    // Log the updated user count calculation
-    const actualActiveUsers = Array.from(rooms.values()).reduce((total, roomPeers) => total + roomPeers.size, 0);
-    devLog(`👥 Updated active users: ${actualActiveUsers} (counting actual room participants)`);
     devLog(`📊 Room ${roomId} now has ${roomPeers.size} peers`);
-    
-    // Broadcast updated user count to admins
-    io.to('admin-channel').emit('user-count-update', {
-      activeUsers: actualActiveUsers,
-      activeRooms: rooms.size,
-      timestamp: Date.now()
-    });
   });
 
   // Handle connection requests
@@ -1958,12 +1690,6 @@ io.on('connection', (socket) => {
       devLog(`❄️ Cold start disconnect detected (${connectionStats.coldStarts} total)`);
     }
     
-    // Clean up admin connections
-    if (socket.isAdmin && adminConnections.has(socket.id)) {
-      adminConnections.delete(socket.id);
-      devLog(`🛡️ Admin client disconnected: ${socket.id} (Admin connections: ${adminConnections.size})`);
-    }
-    
     // Clean up notification subscriptions for this socket
     if (socket.notificationSubscriptions) {
       socket.notificationSubscriptions.forEach(roomId => {
@@ -2002,17 +1728,6 @@ io.on('connection', (socket) => {
           logActivity('room-deleted', { roomId });
           devLog(`🗑️ Room ${roomId} deleted (empty)`);
         }
-        
-        // Log the updated user count calculation
-        const actualActiveUsers = Array.from(rooms.values()).reduce((total, roomPeers) => total + roomPeers.size, 0);
-        devLog(`👥 Updated active users: ${actualActiveUsers} (counting actual room participants)`);
-        
-        // Broadcast updated user count to admins
-        io.to('admin-channel').emit('user-count-update', {
-          activeUsers: actualActiveUsers,
-          activeRooms: rooms.size,
-          timestamp: Date.now()
-        });
       }
       
       logActivity('user-left', { roomId, peerId, displayName, duration: sessionDuration });

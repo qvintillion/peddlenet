@@ -1,13 +1,17 @@
 # 🚀 Festival Chat Scripts - Essential Collection
 
-## ✅ **ACTIVE SCRIPTS** (June 12, 2025 - Post-Environment-Parity-Breakthrough)
+## ✅ **ACTIVE SCRIPTS** (June 12, 2025 - Clean & Optimized)
 
-After achieving perfect environment parity across all deployment targets, these are the **essential scripts** for your streamlined three-tier workflow:
+After implementing the admin dashboard and NODE_ENV compliance fix, these are the **essential scripts** for your streamlined workflow:
 
 ### **🎯 Core Development**
 - **`dev-mobile.sh`** - Mobile development with automatic IP detection
   ```bash
   npm run dev:mobile  # Uses this script
+  ```
+- **`make-scripts-executable.sh`** - Make all scripts executable
+  ```bash
+  ./scripts/make-scripts-executable.sh
   ```
 
 ### **🎪 Preview Environment (Feature Testing)**
@@ -33,10 +37,19 @@ After achieving perfect environment parity across all deployment targets, these 
   # Used by main deployment when WebSocket server needs updating
   ```
 
-### **🛠️ Utilities**
-- **`make-scripts-executable.sh`** - Make all scripts executable
+### **🛠️ Environment Management**
+- **`env-switch.sh`** - Switch between development environments
   ```bash
-  ./scripts/make-scripts-executable.sh
+  npm run env:show         # Uses this script
+  npm run env:dev          # Uses this script
+  npm run env:staging      # Uses this script
+  npm run env:production   # Uses this script
+  ```
+
+### **🐎 Admin Dashboard Tools**
+- **`nuclear-admin-fix.sh`** - Emergency fix for admin dashboard cache issues
+  ```bash
+  npm run admin:nuclear-fix  # Uses this script
   ```
 
 ---
@@ -54,50 +67,49 @@ npm run preview:manage
 npm run preview:cleanup
 
 # 3. STAGING (Pre-production)
-npm run deploy:firebase:complete     # Handles both server + frontend
+npm run deploy:firebase:complete     # Uses enhanced deployment script
 
 # 4. PRODUCTION (Release)
 ./deploy.sh                          # Root level script
+
+# 5. ADMIN DASHBOARD
+# Access at: /admin-analytics on any deployed environment
+npm run admin:nuclear-fix            # If dashboard has cache issues
 ```
 
 ---
 
 ## 📦 **ARCHIVED SCRIPTS** (`scripts/archive/`)
 
+**Recently Cleaned Up (June 12, 2025):**
 These scripts have been moved to `scripts/archive/` as they're no longer needed in the streamlined workflow:
 
-**Development & Debugging:**
-- `debug-build.sh`, `debug-urls.sh`, `diagnose-signaling.sh`
-- `get-build-logs.sh`, `health-check.js`, `ngrok-diagnostic.js`
-- `verify-environment.sh`, `investigate-chrome-profiles.sh`
+**Cache Management (Superseded by nuclear-admin-fix.sh):**
+- `clear-cache-rebuild.sh`, `force-clear-all-cache.sh`, `nuclear-cache-clear.sh`
+- `clear-room-cache.sh` - Room-specific cache clearing
 
-**Package Management:**
-- `check-package-health.sh`, `fix-package-warnings.sh`
+**Development Utilities (One-off tools):**
+- `add-build-marker.sh` - Build verification timestamps
+- `fix-functions-deploy.sh` - Functions deployment fix
+- `verify-build-sync.sh` - Build synchronization verification
+
+**Package Management (Broken references cleaned up):**
+- `fix-package-warnings.sh`, `check-package-health.sh`
 - `test-all-package-fixes.sh`, `test-better-sqlite3.sh`, `test-server-package.sh`
 
-**Legacy Deployment:**
-- `deploy-gcloud.sh`, `deploy-websocket-docker.sh`, `deploy-websocket-environments.sh`
-- `deploy-staging-simple.sh` (replaced by `tools/deploy-complete.sh`)
-- `complete-gcloud-setup.sh`, `update-deploy-message.sh`
-
-**Testing & Utilities:**
-- `test-p2p-connection.js`, `test-room-stats.sh`
-- `manual-preview-open.sh`, `open-in-chrome-profile.sh`
-
-**Note**: These archived scripts contain valuable troubleshooting tools and alternative approaches that may be useful for debugging or special cases.
+**Note**: These archived scripts contain valuable troubleshooting tools that may be useful for debugging or special cases, but are not part of the standard workflow.
 
 ---
 
-## 🎯 **BREAKTHROUGH ACHIEVEMENT**
+## 🎯 **RECENT ACHIEVEMENTS** (June 12, 2025)
 
-This clean script structure reflects the **June 12, 2025 breakthrough** where we achieved:
+✅ **Admin Analytics Dashboard** - Comprehensive real-time monitoring and control system  
+✅ **NODE_ENV Compliance** - Eliminated Next.js warnings with proper environment handling  
+✅ **Script Cleanup** - Streamlined to essential scripts only  
+✅ **Package.json Cleanup** - Removed broken script references  
+✅ **Enhanced Deployment** - Comprehensive cache clearing and validation  
 
-✅ **Perfect Environment Parity** - All environments working with identical messaging behavior  
-✅ **Streamlined Workflow** - Clean three-tier deployment system  
-✅ **Production Safety** - Zero-risk deployment processes  
-✅ **Complete Preview Integration** - Full channel management system  
-
-**Result**: Your deployment workflow is now **production-ready and fully streamlined**! 🚀
+**Result**: Your script ecosystem is now **clean, focused, and production-ready**! 🚀
 
 ---
 
@@ -112,7 +124,7 @@ chmod +x ./scripts/script-name.sh
 
 ## 📚 **Documentation References**
 
-- **Environment Parity**: `docs/ENVIRONMENT-SYNC-ISSUE-TRACKING.md`
-- **Current Session**: `docs/STAGING-SYNC-CURRENT-SESSION.md`  
+- **Admin Dashboard**: `docs/ADMIN-DASHBOARD-URL-FIX-JUNE-12-2025.md`
+- **NODE_ENV Fix**: Environment compliance documentation in README.md
 - **Troubleshooting**: `docs/11-TROUBLESHOOTING.md`
 - **Architecture**: `docs/04-ARCHITECTURE.md`
