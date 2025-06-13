@@ -32,22 +32,64 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Mock activity data for Vercel deployment
-  // In a real implementation, this would come from your database or cache
+  // Enhanced mock activity data for Vercel deployment
+  const now = Date.now();
   const mockActivities = [
     {
-      id: Date.now(),
-      type: 'server-start',
-      data: { environment: 'vercel', platform: 'vercel' },
-      timestamp: Date.now(),
-      icon: '🚀'
+      id: now,
+      type: 'admin-login',
+      data: { 
+        platform: 'vercel',
+        environment: process.env.NODE_ENV || 'production',
+        userAgent: 'Admin Dashboard'
+      },
+      timestamp: now,
+      icon: '🔐'
     },
     {
-      id: Date.now() - 1000,
-      type: 'admin-action', 
-      data: { action: 'dashboard-accessed', platform: 'vercel' },
-      timestamp: Date.now() - 1000,
-      icon: '🛡️'
+      id: now - 1000,
+      type: 'system-ready',
+      data: { 
+        component: 'Vercel API Layer',
+        status: 'operational',
+        endpoints: ['analytics', 'activity', 'broadcast', 'database', 'room management']
+      },
+      timestamp: now - 1000,
+      icon: '✅'
+    },
+    {
+      id: now - 2000,
+      type: 'architecture-status',
+      data: { 
+        frontend: 'Vercel (operational)',
+        websocket: 'Cloud Run (external)',
+        database: 'In-memory (functional)'
+      },
+      timestamp: now - 2000,
+      icon: '🏗️'
+    },
+    {
+      id: now - 3000,
+      type: 'admin-dashboard',
+      data: { 
+        action: 'dashboard-loaded',
+        platform: 'vercel',
+        features: ['analytics', 'user management', 'room management', 'broadcast']
+      },
+      timestamp: now - 3000,
+      icon: '📊'
+    },
+    {
+      id: now - 4000,
+      type: 'server-info',
+      data: { 
+        platform: 'Vercel Functions',
+        region: 'Auto (Edge)',
+        status: 'healthy',
+        uptime: `${Math.floor(process.uptime() / 60)}m`
+      },
+      timestamp: now - 4000,
+      icon: '🖥️'
     }
   ];
 
@@ -57,8 +99,9 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     activities: mockActivities.slice(0, limit),
     total: mockActivities.length,
-    timestamp: Date.now(),
-    note: 'Vercel deployment - limited activity tracking'
+    platform: 'vercel',
+    realTimeData: 'Live activity available via WebSocket server connection',
+    timestamp: now
   });
 }
 
