@@ -943,6 +943,7 @@ export default function AdminAnalyticsDashboard() {
   // Get server URLs using ServerUtils
   const httpServerUrl = ServerUtils.getHttpServerUrl();
   const webSocketServerUrl = ServerUtils.getWebSocketServerUrl();
+  const adminApiPath = ServerUtils.getAdminApiPath();
   
   // Use HTTP URL for admin API calls
   const serverUrl = httpServerUrl;
@@ -962,7 +963,7 @@ export default function AdminAnalyticsDashboard() {
     try {
       // Test credentials with a simple API call
       const response = await makeAuthenticatedRequest(
-        `${serverUrl}/admin/analytics`,
+        `${serverUrl}${adminApiPath}/analytics`,
         loginCredentials
       );
 
@@ -1010,7 +1011,7 @@ export default function AdminAnalyticsDashboard() {
     if (!credentials) return;
     
     try {
-      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/analytics`, credentials);
+      const response = await makeAuthenticatedRequest(`${serverUrl}${adminApiPath}/analytics`, credentials);
       if (response.status === 401) {
         setAuthError('Session expired. Please login again.');
         setCredentials(null);
@@ -1032,7 +1033,7 @@ export default function AdminAnalyticsDashboard() {
     if (!credentials) return;
     
     try {
-      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/activity?limit=50`, credentials);
+      const response = await makeAuthenticatedRequest(`${serverUrl}${adminApiPath}/activity?limit=50`, credentials);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       
       const data = await response.json();
@@ -1045,7 +1046,7 @@ export default function AdminAnalyticsDashboard() {
   // Admin actions
   const handleBroadcast = async (message: string) => {
     try {
-      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/broadcast`, {
+      const response = await makeAuthenticatedRequest(`${serverUrl}${adminApiPath}/broadcast`, credentials, {
         method: 'POST',
         body: JSON.stringify({ message, targetRooms: 'all' })
       });

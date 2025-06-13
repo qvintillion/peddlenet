@@ -138,6 +138,28 @@ export const ServerUtils = {
   },
 
   /**
+   * Get the API endpoint path for admin calls
+   * Returns "/api/admin" for Vercel, "/admin" for Cloud Run
+   */
+  getAdminApiPath(): string {
+    if (typeof window === 'undefined') return '/admin';
+    
+    const currentHostname = window.location.hostname;
+    
+    // If we're on Vercel (or similar platform), use /api/admin
+    if (currentHostname.includes('.vercel.app') || 
+        currentHostname.includes('peddlenet.app') ||
+        (currentHostname !== 'localhost' && !currentHostname.match(/^\d+\.\d+\.\d+\.\d+$/))) {
+      console.log('🚀 Using Vercel API path: /api/admin');
+      return '/api/admin';
+    }
+    
+    // For localhost or Cloud Run, use /admin
+    console.log('🌐 Using Cloud Run API path: /admin');
+    return '/admin';
+  },
+
+  /**
    * Test if the HTTP server is reachable
    */
   async testHttpHealth(): Promise<{ success: boolean; data?: any; error?: string }> {
@@ -176,6 +198,7 @@ export const ServerUtils = {
   getEnvironmentInfo(): {
     httpUrl: string;
     webSocketUrl: string;
+    adminApiPath: string;
     environment: 'development' | 'production';
     platform: 'localhost' | 'vercel' | 'cloudrun' | 'other';
     protocol: string;
@@ -183,6 +206,7 @@ export const ServerUtils = {
   } {
     const httpUrl = this.getHttpServerUrl();
     const webSocketUrl = this.getWebSocketServerUrl();
+    const adminApiPath = this.getAdminApiPath();
     const environment = httpUrl.includes('localhost') || httpUrl.includes('192.168.') || httpUrl.includes('10.') ? 'development' : 'production';
     
     let platform: 'localhost' | 'vercel' | 'cloudrun' | 'other' = 'other';
@@ -200,6 +224,7 @@ export const ServerUtils = {
     return {
       httpUrl,
       webSocketUrl,
+      adminApiPath,
       environment,
       platform,
       protocol: typeof window !== 'undefined' ? window.location.protocol : 'http:',
