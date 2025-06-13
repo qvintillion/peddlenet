@@ -35,24 +35,40 @@ jobs:
 
       - name: 🔍 Debug Environment
         run: |
-          echo "📋 Environment Variables:"
+          echo "📋 Current Environment:"
           echo "BUILD_TARGET=production"
           echo "NODE_ENV=production"
-          echo "Current directory:"
-          pwd
+          echo "PWD: $(pwd)"
+          echo "Files in root:"
           ls -la
-          echo "Checking .env.production:"
+          echo ""
+          echo "📄 .env.production contents:"
           cat .env.production
-          echo "Checking for server URL:"
-          grep -r "padyxgyv5a\|hfttiarlja\|250496240301" . --exclude-dir=node_modules --exclude-dir=.git || echo "No old URLs found"
+          echo ""
+          echo "🔧 Node and npm versions:"
+          node --version
+          npm --version
 
       - name: 🏗️ Build for Production
         run: |
-          echo "🏗️ Building with production environment..."
+          echo "🏗️ Starting Next.js build..."
+          echo "Environment variables set:"
+          echo "BUILD_TARGET=$BUILD_TARGET"
+          echo "NODE_ENV=$NODE_ENV"
+          echo ""
           npm run build
+          echo ""
+          echo "✅ Build completed, checking output:"
+          ls -la out/ || echo "No out/ directory found"
+          echo ""
+          echo "🔍 Checking for URLs in build:"
+          grep -r "hfttiarlja" out/ || echo "Target URL not found"
+          grep -r "padyxgyv5a" out/ || echo "Old URL not found (good)"
         env:
           BUILD_TARGET: production
           NODE_ENV: production
+          # Use GitHub secret if .env.production is not available
+          NEXT_PUBLIC_SIGNALING_SERVER: ${{ secrets.NEXT_PUBLIC_SIGNALING_SERVER || 'wss://peddlenet-websocket-server-hfttiarlja-uc.a.run.app' }}
 
       - name: 🔧 Setup Pages
         uses: actions/configure-pages@v5
