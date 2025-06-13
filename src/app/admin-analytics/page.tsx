@@ -1062,7 +1062,7 @@ export default function AdminAnalyticsDashboard() {
 
   const handleClearRoom = async (roomId: string) => {
     try {
-      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/room/${roomId}/messages`, {
+      const response = await makeAuthenticatedRequest(`${serverUrl}${adminApiPath}/room/${roomId}/messages`, credentials, {
         method: 'DELETE'
       });
       
@@ -1079,7 +1079,7 @@ export default function AdminAnalyticsDashboard() {
 
   const handleWipeDatabase = async () => {
     try {
-      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/database`, {
+      const response = await makeAuthenticatedRequest(`${serverUrl}${adminApiPath}/database`, credentials, {
         method: 'DELETE',
         body: JSON.stringify({ confirm: 'WIPE_EVERYTHING' })
       });
