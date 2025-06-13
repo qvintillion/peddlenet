@@ -1,0 +1,160 @@
+' : 'red'}
+          />
+          <MetricCard
+            title="Network Quality"
+            value={`${dashboardData.networkStatus.quality}%`}
+            subvalue={`${dashboardData.networkStatus.avgLatency}ms`}
+            icon="🌐"
+            color={dashboardData.networkStatus.quality > 90 ? 'green' : dashboardData.networkStatus.quality > 70 ? 'yellow' : 'red'}
+          />
+          <MetricCard
+            title="Storage Used"
+            value={`${dashboardData.realTimeStats.storageUsed}MB`}
+            subvalue={`${dashboardData.dbStats.totalMessages} messages`}
+            icon="💾"
+            color="gray"
+          />
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Live Activity Feed - Takes up 2 columns */}
+          <div className="lg:col-span-2">
+            <ActivityFeed 
+              activities={activities} 
+              onClearActivity={handleClearActivity}
+            />
+          </div>
+
+          {/* Admin Controls - Ensure it doesn't clip on mobile */}
+          <div className="w-full min-w-0">
+            <AdminControls
+              onBroadcast={handleBroadcast}
+              onClearRoom={handleClearRoom}
+              onWipeDatabase={handleWipeDatabase}
+            />
+          </div>
+        </div>
+
+        {/* Additional Stats Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+          {/* Database Stats */}
+          <div className="bg-gray-800/80 rounded-lg p-6 backdrop-blur-sm border border-gray-700/50">
+            <h3 className="text-xl font-semibold mb-4 flex items-center">
+              <span className="text-2xl mr-2">🗄️</span>
+              Database Stats
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-300">Total Messages:</span>
+                <span className="font-bold">{dashboardData.dbStats.totalMessages}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Total Rooms:</span>
+                <span className="font-bold">{dashboardData.dbStats.totalRooms}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Total Sessions:</span>
+                <span className="font-bold">{dashboardData.dbStats.totalSessions}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Recent Activity:</span>
+                <span className="font-bold">{dashboardData.dbStats.recentActivity}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Database Size:</span>
+                <span className="font-bold">{dashboardData.dbStats.dbSize}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Server Performance */}
+          <div className="bg-gray-800/80 rounded-lg p-6 backdrop-blur-sm border border-gray-700/50">
+            <h3 className="text-xl font-semibold mb-4 flex items-center">
+              <span className="text-2xl mr-2">⚡</span>
+              Server Performance
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-300">Memory Used:</span>
+                <span className="font-bold">{dashboardData.serverHealth.memoryUsed}MB</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Memory Total:</span>
+                <span className="font-bold">{dashboardData.serverHealth.memoryTotal}MB</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">CPU Usage:</span>
+                <span className="font-bold">{dashboardData.serverHealth.cpuUsage}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Cold Starts:</span>
+                <span className="font-bold">{dashboardData.serverHealth.coldStarts}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Peak Connections:</span>
+                <span className="font-bold">{dashboardData.realTimeStats.peakConnections}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Network Monitoring */}
+          <div className="bg-gray-800/80 rounded-lg p-6 backdrop-blur-sm border border-gray-700/50">
+            <h3 className="text-xl font-semibold mb-4 flex items-center">
+              <span className="text-2xl mr-2">📡</span>
+              Network Monitoring
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-300">Quality Score:</span>
+                <span className={`font-bold ${
+                  dashboardData.networkStatus.quality > 90 ? 'text-green-400' : 
+                  dashboardData.networkStatus.quality > 70 ? 'text-yellow-400' : 'text-red-400'
+                }`}>
+                  {dashboardData.networkStatus.quality}%
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Avg Latency:</span>
+                <span className="font-bold">{dashboardData.networkStatus.avgLatency}ms</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Delivery Rate:</span>
+                <span className="font-bold text-green-400">{dashboardData.networkStatus.deliveryRate}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-300">Server URL:</span>
+                <span className="font-mono text-xs text-gray-400 truncate">{serverUrl}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-8 text-center text-gray-400 text-sm">
+          <div>Last updated: {new Date(dashboardData.timestamp).toLocaleTimeString()}</div>
+          <div className="mt-1">
+            PeddleNet Admin Dashboard v4.0.0-session-persistence • 
+            {isConnected ? ' Real-time updates active' : ' Using polling updates'} • 
+            Session expires: {credentials ? new Date(Date.now() + SESSION_DURATION).toLocaleString() : 'N/A'}
+          </div>
+        </div>
+      </div>
+
+      {/* Detailed Modals */}
+      <DetailedUserView
+        isOpen={showUserDetails}
+        onClose={() => setShowUserDetails(false)}
+        serverUrl={serverUrl}
+        credentials={credentials}
+      />
+      
+      <DetailedRoomView
+        isOpen={showRoomDetails}
+        onClose={() => setShowRoomDetails(false)}
+        serverUrl={serverUrl}
+        credentials={credentials}
+      />
+    </div>
+  );
+}

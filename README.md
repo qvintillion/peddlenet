@@ -1,6 +1,6 @@
 # 🎪 Festival Chat - PeddleNet
 
-A real-time chat application designed for festivals and events with instant QR code connections and mobile-first architecture.
+A real-time chat application designed for festivals and events with instant QR code connections, mobile-first architecture, and comprehensive admin dashboard.
 
 ## 🚀 Quick Start
 
@@ -34,6 +34,7 @@ npm run dev
 - **🔗 Instant QR Connections:** Scan to join rooms in 5-10 seconds
 - **💬 Real-time Messaging:** WebSocket-based with polling fallback
 - **💜 Smart Favorites System:** Heart-based room bookmarking with notification integration
+- **📊 Admin Dashboard:** Complete analytics and management interface with session persistence
 - **📱 Mobile Optimized:** Works seamlessly across devices
 - **🔄 Auto-Reconnection:** Intelligent reconnection without manual refresh
 - **🔄 Message Persistence:** Survives page refreshes and reconnections
@@ -45,20 +46,28 @@ npm run dev
 
 ## 🏗️ Architecture
 
-### Frontend (Port 3000)
+### Frontend (Vercel)
 - **Framework:** Next.js 15 with React 19
 - **Styling:** Tailwind CSS 4
 - **Real-time:** Socket.IO client
 - **QR Generation:** qrcode library
 - **Persistence:** localStorage + server sync
+- **Admin APIs:** Complete admin dashboard with session management
 
-### Backend (Port 3001) 
+### Backend (Cloud Run) 
 - **Server:** Node.js with Express
-- **WebSockets:** Socket.IO server
+- **WebSockets:** Socket.IO server  
 - **Storage:** In-memory with automatic cleanup
 - **CORS:** Configured for local network access
 - **Room Codes:** `/register-room-code` and `/resolve-room-code` endpoints
 - **Health Endpoint:** `/health` for connection testing
+
+### 📊 Admin Dashboard (NEW - June 2025)
+- **URL:** `/admin-analytics` on any deployed environment
+- **Authentication:** Custom login with 24-hour session persistence
+- **Features:** Real-time analytics, user management, room control, broadcast messaging
+- **Session Management:** Persists across page refreshes using localStorage
+- **Activity Tracking:** Retains last 100 activity records with clear functionality
 
 ### Connection Flow
 1. **Network Detection:** Auto-detect local IP for mobile access
@@ -68,91 +77,126 @@ npm run dev
 5. **QR Code Generation:** Include connection details for instant pairing
 6. **Message Sync:** Real-time broadcast with persistence
 
+## 🔧 Development Workflow
+
+### **New 4-Tier Deployment Workflow**
+
+#### **1. Development (Local)**
+```bash
+npm run dev:mobile
+```
+- **Purpose:** Fast UI iteration and component testing
+- **Environment:** Local (localhost + network IP)
+- **Server:** Uses localhost:3001 (no remote dependencies)
+- **Benefits:** Fast startup, good for UI work, mobile QR testing
+
+#### **2. Preview Staging (Quick Testing)**
+```bash
+npm run preview:deploy feature-name
+```
+- **Purpose:** Quick testing and sharing with stakeholders
+- **Environment:** Firebase Preview Channels + Preview WebSocket server
+- **Server:** Dedicated preview WebSocket server
+- **Benefits:** Fast deployment, shareable URLs, temporary channels
+
+#### **3. Final Staging (Comprehensive Validation)**
+```bash
+npm run deploy:firebase:complete
+```
+- **Purpose:** Final validation before production deployment
+- **Environment:** Full Firebase staging + staging WebSocket server
+- **Server:** Staging WebSocket server (production-like)
+- **Benefits:** Complete testing, production-like conditions, final validation
+
+#### **4. Production (Vercel)**
+```bash
+vercel --prod --yes
+# or use: ./deploy.sh
+```
+- **Purpose:** Live production deployment
+- **Environment:** Vercel + production WebSocket server (Cloud Run)
+- **Server:** Production WebSocket server
+- **Benefits:** High confidence, known working configuration
+
+### **WebSocket Server Updates**
+When you need to test universal server changes:
+
+**Staging:**
+```bash
+./scripts/deploy-websocket-staging.sh
+```
+
+**Production:**
+```bash
+./scripts/deploy-websocket-cloudbuild.sh
+```
+
+## 🛠️ Development Scripts
+
+```bash
+# 🏠 Local Development (recommended for fast iteration)
+npm run dev:mobile        # Auto IP detection + dual server start
+
+# 🌍 Environment Management
+npm run env:show          # Check current environment configuration
+npm run env:dev           # Set development environment (localhost:3001)
+npm run env:staging       # Set staging environment (staging WebSocket server)
+npm run env:production    # Set production environment (production WebSocket server)
+
+# 🎆 Preview Channels (Quick Testing)
+npm run preview:deploy [name]  # Deploy new preview channel
+npm run preview:list           # List all channels
+npm run preview:manage         # Manage existing channels
+npm run preview:cleanup        # Clean up expired channels
+
+# 🚀 Staging & Production
+npm run deploy:firebase:complete  # Enhanced staging deployment
+vercel --prod --yes               # Production deployment to Vercel
+
+# 📊 Admin Dashboard
+# Access at: https://your-domain.com/admin-analytics
+# Credentials: th3p3ddl3r / letsmakeatrade
+
+# Standard development
+npm run dev               # Frontend only
+npm run server            # Backend only
+
+# Build commands
+npm run build             # Build for production
+npm run start             # Start production server
+```
+
 ## 🔧 Recent Updates (June 2025)
 
-### **📊 ADMIN ANALYTICS DASHBOARD** (June 12, 2025)
-- **🎯 NEW FEATURE**: Comprehensive real-time admin dashboard for monitoring and control
-- **Real-time Analytics**: Live user counts, room statistics, message flow, and network health
+### **📊 ADMIN DASHBOARD WITH SESSION PERSISTENCE** (June 13, 2025)
+- **🎯 NEW FEATURE**: Complete admin dashboard with persistent sessions
+- **Session Management**: 24-hour authentication persistence across page refreshes
+- **Activity Retention**: Keeps last 100 activity records in localStorage with clear functionality
+- **Real-time Analytics**: Live user counts, room statistics, message flow, network health
 - **Admin Controls**: Broadcast messages, clear room messages, user management, database wipe
-- **Interactive Details**: Click on user/room cards for detailed management interfaces
-- **Professional UI**: Modern dashboard with live activity feed and performance metrics
-- **URL**: Access at `/admin-analytics` on any deployed environment
+- **Modal Management**: User and room detail views with proper authentication
+- **Professional UX**: Modern dashboard with enhanced error handling and loading states
 
-**📚 Complete details**: [ADMIN-DASHBOARD-URL-FIX-JUNE-12-2025.md](./docs/ADMIN-DASHBOARD-URL-FIX-JUNE-12-2025.md)
+**📚 Key Features:**
+- Login persists across browser refreshes (24-hour sessions)
+- Activity feed retains 100 records with manual clear option
+- User/Room management modals work without authentication errors
+- All admin actions logged with timestamps
+- Enhanced error handling and user feedback
 
-### **🔧 NODE_ENV COMPLIANCE FIX** (June 12, 2025)
-- **🎯 ISSUE RESOLVED**: Eliminated Next.js "non-standard NODE_ENV" warnings
-- **Standards Compliance**: Now uses `NODE_ENV=production` for staging builds (Next.js standard)
-- **Custom Environment Detection**: Added `BUILD_TARGET` variable for our environment logic
-- **Performance Benefits**: Proper production optimizations in staging builds
-- **Architecture**: Clean separation between Next.js requirements and our custom logic
+### **🏗️ VERCEL MIGRATION COMPLETED** (June 12, 2025)
+- **🎯 ARCHITECTURE**: Hybrid Vercel + Cloud Run deployment
+- **Frontend + Admin APIs**: Deployed to Vercel for optimal performance
+- **Real-time WebSocket**: Remains on Cloud Run for reliability
+- **Admin Dashboard**: Fully functional on Vercel with complete API coverage
+- **Session Persistence**: localStorage-based session management
 
-**Result**: ✅ **No more Next.js warnings + optimized staging builds**
-
-### **🎨 CRITICAL: Room Switcher UI Transparency Fix** (June 12, 2025)
-- **🎯 ISSUE RESOLVED**: Room switcher dropdown cards completely opaque - no more background bleed-through
-- **React Portal solution**: Dropdown now renders outside DOM hierarchy for guaranteed opacity
-- **Enhanced positioning**: Dynamic calculation with getBoundingClientRect() for perfect placement
-- **Cross-platform compatibility**: Works flawlessly on iOS, Android, and all major browsers
-- **Professional appearance**: Semi-transparent backdrop with solid, readable room cards
-- **Mobile optimization**: Touch interactions and responsive design perfected
-
-**📚 Complete details**: [ROOM-SWITCHER-UI-FIX-JUNE-12-2025.md](./docs/ROOM-SWITCHER-UI-FIX-JUNE-12-2025.md)
-
-### **🔄 Enhanced System Reliability** (June 12, 2025)
+### **🔧 Enhanced System Reliability** (June 12, 2025)
 - **WebSocket connection resilience**: 40% reduction in connection drop incidents
 - **Smart notification system**: 60% reduction in duplicate notifications with intelligent throttling
 - **CORS debugging resolved**: Comprehensive configuration for all environments
 - **Mobile performance**: 25% improvement in responsiveness across devices
 - **Development workflow**: 30% faster iteration with optimized debugging tools
-
-### **✅ FIXED: WebSocket Development Workflow** (June 12, 2025)
-- **🎯 ISSUE RESOLVED**: Local development no longer requires staging server deployment
-- **Environment separation**: Proper local (.env.local), staging (.env.staging), and production configs
-- **Smart detection**: ServerUtils automatically detects localhost and uses local server
-- **Workflow commands**: Added `npm run env:dev`, `npm run env:staging`, `npm run env:show`
-- **Development independence**: `npm run dev:mobile` now uses localhost:3001 by default
-
-**🎯 Proper Four-Tier Workflow**:
-```bash
-# Local Development (localhost:3001)
-npm run env:dev              # Ensure development environment
-npm run dev:mobile           # Uses localhost:3001 automatically
-
-# Preview Channels (quick testing/sharing)
-npm run preview:deploy feature-name  # Deploy to preview channel for quick testing
-npm run preview:list         # List all preview channels
-npm run preview:manage       # Manage existing channels
-
-# Final Staging (comprehensive validation)
-npm run deploy:firebase:complete     # Full staging deployment with complete testing
-
-# Production Deployment
-./deploy.sh                  # Deploy to production after staging validation
-```
-
-**Result**: 🎉 **No more staging deployment needed for local development!**
-
-### **✅ CRITICAL: Development Workflow Protection** (June 11, 2025)
-- **Enhanced deployment safety** with automatic dev server conflict detection
-- **Environment protection** - staging deployments no longer corrupt development setup
-- **Process isolation** - eliminates port conflicts between dev and build processes
-- **Seamless recovery** - automatic backup/restore of development environment
-- **Zero workflow changes** - existing deployment commands now include safety measures
-
-**📚 Complete details**: [WEBSOCKET-WORKFLOW-FIX-JUNE-12-2025.md](./docs/WEBSOCKET-WORKFLOW-FIX-JUNE-12-2025.md)
-
-### **✅ Enhanced Room Navigation** (June 11, 2025)
-- **Always-visible room display** - fresh users now see room ID immediately in header
-- **Smart switcher behavior** - dropdown functionality only when multiple rooms available
-- **Progressive enhancement** - basic display for new users, full features for experienced users
-- **Unread message indicators** - clear visual feedback for active rooms
-
-### **✅ React Hydration Stability** (June 11, 2025)
-- **Fixed hydration mismatches** in notification banner component
-- **Consistent SSR/client rendering** - eliminated flash of different content
-- **Enhanced error handling** - safer dynamic imports with parameter validation
-- **Improved loading states** - smooth transitions during initialization
 
 ### **💜 Enhanced Favorites System** (June 10, 2025)
 - **Heart-based favorites** with ❤️/🤍 toggle buttons in chat headers
@@ -160,117 +204,6 @@ npm run deploy:firebase:complete     # Full staging deployment with complete tes
 - **Horizontal scrolling cards** with room codes, timestamps, and status indicators
 - **Cross-component synchronization** with real-time status updates
 - **Mobile-optimized design** perfect for festival coordination
-
-### **✅ Background Notifications Stability** (June 10, 2025)
-- **Eliminated infinite connection loops** when notifications disabled
-- **Rate limiting with exponential backoff** (2s → 4s → 8s → 16s → 30s)
-- **Smart connection management** - only connects when notifications enabled
-- **Resource optimization** with automatic cleanup and mobile battery improvements
-
-### **🔧 JavaScript & Connection Reliability** (June 9, 2025)
-- **Fixed Temporal Dead Zone (TDZ) errors** in production builds
-- **Auto-reconnection system** with 3-second recovery and 30-second health monitoring
-- **Mobile reliability improvements** - 80% fewer false disconnect errors
-- **Enhanced error detection** - only shows errors after proven connectivity
-
-### **🎨 UI/UX & Infrastructure Improvements** (June 2025)
-- **Streamlined interface** with reduced clutter and better mobile layouts
-- **Dark mode optimization** with consistent purple branding
-- **Infrastructure consolidation** - unified backend for 50% cost reduction
-- **Room code reliability** - 100% consistent manual entry across domains
-- **Package deprecation fixes** - eliminated 10+ npm warnings in deployments
-
-**📚 Full documentation**: [docs/](./docs/) directory contains comprehensive guides
-
-## 🛠️ Build Troubleshooting
-
-### **If Build Fails:**
-```bash
-# Clean build artifacts
-rm -rf .next out node_modules/.cache
-npm cache clean --force
-
-# Reinstall dependencies if needed
-rm -rf node_modules
-npm install
-
-# Try development first
-npm run dev
-
-# Then attempt Firebase build
-npm run build:firebase
-```
-
-### **Common Build Issues:**
-- **Webpack chunk errors:** Clean .next directory and rebuild
-- **Headers with export:** Fixed in next.config.ts (conditional headers)
-- **Module not found:** Clear cache and reinstall dependencies
-- **Static export conflicts:** ServerUtils handles client-side only operations
-
-## 📁 Key Files
-
-```
-├── src/
-│   ├── app/
-│   │   ├── chat/[roomId]/page.tsx    # Main chat interface (updated)
-│   │   └── diagnostics/page.tsx      # Connection testing
-│   ├── components/
-│   │   ├── QRModal.tsx               # QR code generation
-│   │   ├── ConnectionTest.tsx        # Debug utilities (updated)
-│   │   └── NetworkStatus.tsx         # Connection indicators
-│   ├── hooks/
-│   │   └── use-websocket-chat.ts     # WebSocket connection logic (updated with auto-reconnect)
-│   └── utils/
-│       ├── server-utils.ts           # 🆕 HTTP/WebSocket URL management
-│       ├── room-codes.ts             # Room code utilities (updated)
-│       ├── network-utils.ts          # IP detection
-│       ├── message-persistence.ts    # Local storage
-│       └── peer-utils.ts             # Connection utilities
-├── scripts/
-│   └── dev-mobile.sh                 # Mobile development script
-├── signaling-server-production-FIXED.js  # WebSocket server (used everywhere)
-├── next.config.ts                    # Build configuration (updated)
-└── package.json
-```
-
-## 🛠️ Development Scripts
-
-```bash
-# 🏠 Local Development (recommended for fast iteration)
-npm run dev:mobile        # Auto IP detection + dual server start (uses localhost:3001)
-
-### 🌍 Environment Management (NEW)
-npm run env:show          # Check current environment configuration
-npm run env:dev           # Set development environment (localhost:3001)
-npm run env:staging       # Set staging environment (staging WebSocket server)
-npm run env:production    # Set production environment (production WebSocket server)
-
-# 🎆 Preview Channels (Quick Testing)
-npm run preview:deploy [name]  # Deploy new preview (main command)
-npm run preview:list           # List all channels
-npm run preview:manage         # Manage existing channels
-npm run preview:cleanup        # Clean up expired channels
-
-# 🚀 Final Staging & Production
-npm run deploy:firebase:complete  # Enhanced staging deployment with debugging
-./deploy.sh                       # Production deployment
-
-# 🐎 Admin Analytics Dashboard
-npm run admin:nuclear-fix         # Emergency fix for admin dashboard cache issues
-
-# Standard development
-npm run dev               # Frontend only
-npm run server            # Backend only
-
-# Testing & Deployment
-npm run preview:deploy feature-name  # Preview: Quick testing/sharing
-npm run deploy:firebase:complete     # Staging: Final validation
-./deploy.sh                          # Production: Live deployment
-
-# Build commands
-npm run build             # Build for production
-npm run start             # Start production server
-```
 
 ## 🌐 Environment Variables
 
@@ -285,7 +218,7 @@ npm run start             # Start production server
   - ServerUtils automatically converts to HTTPS for API calls
 - `NODE_ENV`: Next.js environment (`production` for optimized builds)
 - `BUILD_TARGET`: Our custom environment detection (`development`, `staging`, `production`)
-- `PLATFORM`: Auto-detected by universal server (`cloudrun`, `firebase`, `local`)
+- `PLATFORM`: Auto-detected by universal server (`cloudrun`, `firebase`, `vercel`)
 
 ## 🔧 Network Requirements
 
@@ -333,10 +266,11 @@ The diagnostics page will show:
 - Test server health: `http://YOUR_IP:3001/health`
 - Disable firewall temporarily
 
-**"Mixed Content" or "Protocol" Errors:**
-- ✅ **Fixed with ServerUtils** - Automatically handles HTTPS/WSS conversion
-- The system now properly separates HTTP API calls from WebSocket connections
-- No manual intervention needed
+**Admin Dashboard Issues:**
+- ✅ **Sessions persist across refreshes** - No need to re-login constantly
+- ✅ **Activity feed retains data** - Use clear button to manually reset
+- ✅ **User/Room modals work** - No more authentication errors
+- Access at: `/admin-analytics` with credentials: `th3p3ddl3r` / `letsmakeatrade`
 
 **QR Code Shows "localhost":**
 - Use `npm run dev:mobile` (not `npm run dev`)
@@ -346,81 +280,38 @@ The diagnostics page will show:
 - Deploy updated server: `npm run deploy:firebase:complete`
 - The production server needs the latest endpoints
 
-**Background Notification Connection Loops:**
-- ✅ **Fixed with smart connection management** - Eliminated infinite reconnection loops
-- Only connects when notifications are actually enabled for rooms
-- Rate limiting with exponential backoff prevents server overload
-- Automatic disconnection when no active notification subscriptions
-- No more "Connection rate limit exceeded" errors
-
-**False "Server Disconnected" Errors:**
-- ✅ **Fixed with smart detection** - 80% fewer false alerts
-- Only shows errors after proven connectivity is established
-- 8-second delay accommodates slower mobile network conditions
-- No more errors during normal initial connection process
-
-**Messages Not Syncing:**
-- Check WebSocket connection in browser console
-- Restart servers: `npm run dev:mobile`
-- Test connection stability
-
 ## 🚀 Deployment
 
-### **🎯 Simple Three-Tier Workflow**
-
-**The workflow is designed to be simple and safe:**
-
-#### **1. Development (UI Changes)**
-```bash
-npm run dev:mobile
+### **Complete File Structure**
 ```
-- **Purpose**: Fast UI iteration and component testing
-- **Environment**: Local (localhost + network IP)
-- **Server**: Uses localhost:3001 (no remote dependencies)
-- **Benefits**: Fast startup, good for UI work, mobile QR testing
-
-#### **2. Preview Channels (Quick Testing)**
-```bash
-npm run preview:deploy feature-name
+festival-chat/
+├── src/
+│   ├── app/
+│   │   ├── admin-analytics/page.tsx     # Admin dashboard with session persistence
+│   │   ├── chat/[roomId]/page.tsx       # Main chat interface
+│   │   ├── diagnostics/page.tsx         # Connection testing
+│   │   └── api/admin/                   # Complete admin API endpoints
+│   ├── components/
+│   │   ├── QRModal.tsx                  # QR code generation
+│   │   ├── ConnectionTest.tsx           # Debug utilities
+│   │   └── NetworkStatus.tsx            # Connection indicators
+│   ├── hooks/
+│   │   ├── use-websocket-chat.ts        # WebSocket connection logic
+│   │   └── use-admin-analytics.ts       # Admin dashboard data management
+│   └── utils/
+│       ├── server-utils.ts              # HTTP/WebSocket URL management
+│       ├── room-codes.ts                # Room code utilities
+│       ├── network-utils.ts             # IP detection
+│       ├── message-persistence.ts       # Local storage
+│       └── peer-utils.ts                # Connection utilities
+├── scripts/
+│   ├── deploy-websocket-staging.sh      # WebSocket staging deployment
+│   └── deploy-websocket-cloudbuild.sh   # WebSocket production deployment
+├── signaling-server.js                  # Universal WebSocket server
+├── deploy.sh                            # Production deployment script
+├── package.json                         # Dependencies and scripts
+└── vercel.json                          # Vercel configuration
 ```
-- **Purpose**: Quick testing and sharing with stakeholders
-- **Environment**: Firebase Preview Channels + Preview WebSocket server
-- **Server**: Dedicated preview WebSocket server (wss://...preview...)
-- **Benefits**: Fast deployment, shareable URLs, temporary channels
-
-#### **3. Final Staging (Comprehensive Validation)**
-```bash
-npm run deploy:firebase:complete
-```
-- **Purpose**: Final validation before production deployment
-- **Environment**: Full Firebase staging + staging WebSocket server
-- **Server**: Staging WebSocket server (production-like)
-- **Benefits**: Complete testing, production-like conditions, final validation
-
-#### **4. Production (Live Deployment)**
-```bash
-./deploy.sh
-```
-- **Purpose**: Deploy to live production after staging validation
-- **Environment**: Production hosting + production WebSocket server
-- **Server**: Production WebSocket server
-- **Benefits**: High confidence, known working configuration
-
-### **🔧 Universal Server Change Workflow**
-
-When you need to test universal server changes:
-
-1. **Edit** `signaling-server.js` (the universal server)
-2. **Test in staging**: `npm run deploy:firebase:complete`
-3. **Verify auto-detection works** in firebase environment
-4. **If good**: `./deploy.sh` to production
-5. **If issues**: Fix and repeat from step 2
-
-### **📁 Universal File Structure**
-- ✅ **One server**: `signaling-server.js` (universal with auto-detection)
-- ✅ **Smart adaptation**: Automatically optimizes per environment
-- ✅ **Future-ready**: Analytics and mesh endpoints built-in
-- ✅ **Easy maintenance**: One file to rule them all
 
 ## 📊 Performance
 
@@ -433,6 +324,7 @@ When you need to test universal server changes:
 - **Auto-reconnection:** 3-second recovery from disconnections + 30-second health monitoring
 - **Connection reliability:** 80% fewer false disconnect notifications on mobile
 - **Smart error detection:** Only triggers after proven connectivity established
+- **Admin Sessions:** 24-hour persistence with localStorage backup
 
 ## 🔒 Privacy & Security
 
@@ -441,30 +333,8 @@ When you need to test universal server changes:
 - **Temporary Rooms:** Automatic cleanup
 - **Network Isolation:** Local WiFi or secure WebSocket connections
 - **No Analytics:** No tracking or data collection
-
-## 🔄 Connection Reliability
-
-### **Auto-Reconnection System**
-Festival Chat features intelligent auto-reconnection that eliminates the need for manual page refreshes:
-
-- **Automatic Recovery:** 3-second reconnection after unexpected disconnections
-- **Health Monitoring:** 30-second interval checks for silent connection failures
-- **Visual Feedback:** "Reconnecting..." status with yellow pulsing indicator
-- **Smart Detection:** Only shows errors after proven connectivity is established
-- **Mobile Optimized:** 8-second tolerance for slower mobile network conditions
-- **Circuit Breaker Integration:** Prevents connection spam while ensuring reliability
-
-### **Connection Status Indicators**
-- 🟢 **Green dot:** Connected and online
-- 🟡 **Yellow pulsing:** Reconnecting in progress
-- 🔴 **Red dot:** Disconnected (auto-reconnection scheduled)
-- **"Reconnecting..." badge:** Clear visual feedback during recovery
-
-### **Mobile Connection Improvements**
-- **80% reduction** in false "server disconnected" error messages
-- **Smart state tracking** distinguishes initial load from actual disconnections
-- **Enhanced mobile tolerance** with longer delay periods for mobile networks
-- **No manual refresh needed** - automatic background recovery
+- **Admin Security:** Session-based authentication with secure logout
+- **Data Retention:** Admin activity kept locally (100 records max)
 
 ## 🏷️ Room Codes
 
@@ -480,32 +350,6 @@ Room codes provide memorable alternatives to QR scanning with enterprise-grade r
 - **Production Validated:** Manual entry working consistently across all environments
 - **Usage:** Enter manually when QR scanning isn't available or practical
 
-### **🧡 Universal Server Health Check**
-The universal server provides rich environment information:
-
-```json
-{
-  "status": "ok",
-  "service": "PeddleNet Universal Signaling Server",
-  "version": "2.0.0-universal",
-  "environment": "development",
-  "platform": "local",
-  "mode": "development",
-  "description": "Universal WebRTC signaling server that adapts to all environments",
-  "connections": {
-    "current": 5,
-    "peak": 12,
-    "rooms": 3
-  },
-  "endpoints": {
-    "health": "/health",
-    "signaling": "/socket.io/",
-    "debug": "/debug/rooms",
-    "analytics": "/analytics/dashboard"
-  }
-}
-```
-
 ## 🎪 Testing Checklist
 
 ### Local Development
@@ -517,15 +361,27 @@ The universal server provides rich environment information:
 - [ ] Auto-reconnection works after network interruption
 - [ ] Visual reconnection status appears during disconnections
 
+### Admin Dashboard
+- [ ] `/admin-analytics` loads without errors
+- [ ] Login with `th3p3ddl3r` / `letsmakeatrade` works
+- [ ] Session persists across page refreshes
+- [ ] Activity feed shows and retains data
+- [ ] User details modal opens without errors
+- [ ] Room details modal opens without errors
+- [ ] All admin controls function properly
+- [ ] Clear activity button works
+- [ ] Logout and re-login flow works
+
 ### Production Deployment
-- [ ] `npm run deploy:firebase:complete` succeeds
-- [ ] Frontend loads at Firebase URL
+- [ ] Vercel deployment succeeds
+- [ ] Frontend loads at Vercel URL
 - [ ] Universal server health check returns JSON with environment info
-- [ ] WebSocket connections establish
+- [ ] WebSocket connections establish to Cloud Run
 - [ ] Room codes register successfully
 - [ ] No console errors in browser
 - [ ] Auto-reconnection works in production environment
-- [ ] Server shows correct environment detection (staging/production)
+- [ ] Admin dashboard fully functional
+- [ ] Server shows correct environment detection
 
 ## 🤝 Contributing
 
@@ -534,6 +390,7 @@ This is an internal project for festival/event use. The codebase is optimized fo
 - Mobile-first experience  
 - Network resilience
 - Zero-configuration usage
+- Professional admin management
 
 ## 📄 License
 
@@ -546,10 +403,8 @@ MIT License - See LICENSE file for details.
 ## 📚 Additional Documentation
 
 - [DEPLOYMENT.md](./DEPLOYMENT.md) - Complete deployment guide with scripts
-- [PROJECT_STATUS.md](./PROJECT_STATUS.md) - Current project status and features  
 - [docs/11-TROUBLESHOOTING.md](./docs/11-TROUBLESHOOTING.md) - Detailed troubleshooting guide
 - [docs/04-ARCHITECTURE.md](./docs/04-ARCHITECTURE.md) - Technical system overview
 - [docs/12-COMPREHENSIVE-NEXT-STEPS.md](./docs/12-COMPREHENSIVE-NEXT-STEPS.md) - Strategic evolution roadmap
-- [docs/ADMIN-DASHBOARD-NODEENV-IMPLEMENTATION-JUNE-12-2025.md](./docs/ADMIN-DASHBOARD-NODEENV-IMPLEMENTATION-JUNE-12-2025.md) - **NEW**: Complete admin dashboard & NODE_ENV implementation guide
-# Build trigger Fri Jun 13 00:29:41 CDT 2025
-# GitHub Pages enabled Fri Jun 13 00:37:43 CDT 2025
+
+# Build trigger Fri Jun 13 15:45:30 CDT 2025
