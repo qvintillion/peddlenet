@@ -1,8 +1,8 @@
-// utils/server-utils.ts - Centralized server URL management with HTTP/WS separation
+// utils/server-utils.ts - Centralized server URL management with Vercel support
 
 export const ServerUtils = {
   /**
-   * Get the HTTP URL for REST API calls (health checks, etc.)
+   * Get the HTTP URL for REST API calls (room codes, health checks, etc.)
    */
   getHttpServerUrl(): string {
     if (typeof window === 'undefined') return 'http://localhost:3001';
@@ -11,12 +11,22 @@ export const ServerUtils = {
     const detectedIP = process.env.NEXT_PUBLIC_DETECTED_IP;
     const currentHostname = window.location.hostname;
     const currentProtocol = window.location.protocol;
+    const currentOrigin = window.location.origin;
     
     console.log('🔍 HTTP Server URL detection:');
     console.log('  - NEXT_PUBLIC_SIGNALING_SERVER:', envUrl);
     console.log('  - NEXT_PUBLIC_DETECTED_IP:', detectedIP);
     console.log('  - Current hostname:', currentHostname);
     console.log('  - Current protocol:', currentProtocol);
+    console.log('  - Current origin:', currentOrigin);
+    
+    // 🚀 VERCEL DETECTION: If we're on a Vercel domain, use the current origin for API calls
+    if (currentHostname.includes('.vercel.app') || 
+        currentHostname.includes('peddlenet.app') ||
+        (currentHostname !== 'localhost' && !currentHostname.match(/^\d+\.\d+\.\d+\.\d+$/))) {
+      console.log('🚀 Vercel deployment detected, using current origin for API:', currentOrigin);
+      return currentOrigin;
+    }
     
     // PRIORITY: If we're on localhost, always use local server
     if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
@@ -39,7 +49,7 @@ export const ServerUtils = {
       return httpUrl;
     }
     
-    // Production: Convert WSS to HTTPS for HTTP calls
+    // Production: Convert WSS to HTTPS for HTTP calls (Cloud Run fallback)
     if (envUrl && envUrl.startsWith('wss://')) {
       const httpUrl = envUrl.replace('wss://', 'https://');
       console.log('🌐 Using production HTTP URL:', httpUrl);
@@ -135,7 +145,12 @@ export const ServerUtils = {
       const serverUrl = this.getHttpServerUrl();
       console.log('🏥 Testing HTTP health:', serverUrl);
       
-      const response = await fetch(`${serverUrl}/health`, {
+      // For Vercel deployments, use the API route
+      const healthEndpoint = serverUrl.includes('.vercel.app') || serverUrl.includes('peddlenet.app') || serverUrl === window.location.origin
+        ? `${serverUrl}/api/health`
+        : `${serverUrl}/health`;
+      
+      const response = await fetch(healthEndpoint, {
         method: 'GET',
         signal: AbortSignal.timeout(10000),
         mode: 'cors'
@@ -162,6 +177,7 @@ export const ServerUtils = {
     httpUrl: string;
     webSocketUrl: string;
     environment: 'development' | 'production';
+    platform: 'localhost' | 'vercel' | 'cloudrun' | 'other';
     protocol: string;
     hostname: string;
   } {
@@ -169,10 +185,23 @@ export const ServerUtils = {
     const webSocketUrl = this.getWebSocketServerUrl();
     const environment = httpUrl.includes('localhost') || httpUrl.includes('192.168.') || httpUrl.includes('10.') ? 'development' : 'production';
     
+    let platform: 'localhost' | 'vercel' | 'cloudrun' | 'other' = 'other';
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        platform = 'localhost';
+      } else if (hostname.includes('.vercel.app') || hostname.includes('peddlenet.app')) {
+        platform = 'vercel';
+      } else if (httpUrl.includes('run.app')) {
+        platform = 'cloudrun';
+      }
+    }
+    
     return {
       httpUrl,
       webSocketUrl,
       environment,
+      platform,
       protocol: typeof window !== 'undefined' ? window.location.protocol : 'http:',
       hostname: typeof window !== 'undefined' ? window.location.hostname : 'localhost'
     };
@@ -184,7 +213,7 @@ if (typeof window !== 'undefined') {
   setTimeout(() => {
     try {
       (window as any).ServerUtils = ServerUtils;
-      console.log('🔧 Server Utils loaded - separate HTTP/WebSocket URL management');
+      console.log('🔧 Server Utils loaded - Vercel + Cloud Run support');
     } catch (error) {
       console.warn('ServerUtils initialization failed:', error);
     }

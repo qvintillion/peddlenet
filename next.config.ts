@@ -11,8 +11,9 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Conditional output based on environment
-  output: process.env.BUILD_TARGET === 'production' ? 'export' : undefined,
+  // 🚀 VERCEL DEPLOYMENT: Use default output for Vercel (no static export)
+  // Static export only for explicit GitHub Pages builds
+  output: process.env.VERCEL ? undefined : (process.env.BUILD_TARGET === 'github-pages' ? 'export' : undefined),
   trailingSlash: false,
   skipTrailingSlashRedirect: true,
   
@@ -26,9 +27,9 @@ const nextConfig = {
     unoptimized: true,
   },
   
-  // Base path for GitHub Pages (if needed)
-  basePath: process.env.BUILD_TARGET === 'production' ? '' : '',
-  assetPrefix: process.env.BUILD_TARGET === 'production' ? '' : '',
+  // No base path for Vercel (handles this automatically)
+  basePath: '',
+  assetPrefix: '',
 
   // Simplified webpack configuration to fix TDZ issues
   webpack: (config, { isServer, dev }) => {
@@ -45,32 +46,47 @@ const nextConfig = {
     return config;
   },
   
-  // Only add headers for non-export builds
-  ...(!process.env.BUILD_TARGET && {
-    // Headers for CORS support (only for dev/server mode)
-    async headers() {
-      return [
-        {
-          // Apply headers to all routes
-          source: '/(.*)',
-          headers: [
-            {
-              key: 'Access-Control-Allow-Origin',
-              value: '*', // Allow all origins in development
-            },
-            {
-              key: 'Access-Control-Allow-Methods',
-              value: 'GET, POST, PUT, DELETE, OPTIONS',
-            },
-            {
-              key: 'Access-Control-Allow-Headers',
-              value: 'X-Requested-With, Content-Type, Authorization',
-            },
-          ],
-        },
-      ];
-    },
-  }),
+  // Headers for CORS support (works for both dev and Vercel)
+  async headers() {
+    return [
+      {
+        // Apply headers to API routes
+        source: '/api/(.*)',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'X-Requested-With, Content-Type, Authorization',
+          },
+        ],
+      },
+      {
+        // Apply headers to all other routes
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

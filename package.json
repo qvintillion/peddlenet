@@ -27,6 +27,7 @@
     "start": "next start -H 0.0.0.0",
     "lint": "next lint",
     "deploy:vercel": "vercel --prod",
+    "deploy:vercel:complete": "chmod +x deploy-vercel.sh && ./deploy-vercel.sh",
     "build:firebase": "npm run build",
     "deploy:firebase": "npm run build:firebase && cd functions && npm run build && cd .. && firebase deploy",
     "preview:firebase": "npx firebase hosting:channel:deploy preview",
