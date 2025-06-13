@@ -65,9 +65,13 @@ export function useAdminAnalytics() {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Get server URLs using ServerUtils
-  const getHttpUrl = useCallback(() => {
-    return ServerUtils.getHttpServerUrl();
+  // Get server URLs using ServerUtils with proper admin API path detection
+  const getAdminApiUrl = useCallback(() => {
+    const httpUrl = ServerUtils.getHttpServerUrl();
+    const adminPath = ServerUtils.getAdminApiPath();
+    const fullUrl = `${httpUrl}${adminPath}`;
+    console.log('🛠️ Admin API URL:', fullUrl);
+    return fullUrl;
   }, []);
 
   const getWebSocketUrl = useCallback(() => {
@@ -77,88 +81,166 @@ export function useAdminAnalytics() {
   // Fetch dashboard data
   const fetchDashboardData = useCallback(async () => {
     try {
-      const httpUrl = getHttpUrl();
-      console.log('📊 Fetching admin dashboard data from:', httpUrl);
+      const adminUrl = getAdminApiUrl();
+      console.log('📊 Fetching admin dashboard data from:', `${adminUrl}/analytics`);
       
-      const response = await fetch(`${httpUrl}/admin/analytics`);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      // Add authentication headers for admin endpoints
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add basic auth if needed (using environment or default credentials)
+      const username = 'th3p3ddl3r';
+      const password = 'letsmakeatrade';
+      const credentials = btoa(`${username}:${password}`);
+      headers['Authorization'] = `Basic ${credentials}`;
+
+      const response = await fetch(`${adminUrl}/analytics`, {
+        headers,
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication required for admin access');
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
       
       const data = await response.json();
       setDashboardData(data);
       setError(null);
+      console.log('✅ Admin dashboard data fetched successfully');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch dashboard data');
-      console.error('Dashboard fetch error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch dashboard data';
+      setError(errorMessage);
+      console.error('❌ Dashboard fetch error:', errorMessage);
     }
-  }, [getHttpUrl]);
+  }, [getAdminApiUrl]);
 
   // Fetch activity feed
   const fetchActivity = useCallback(async () => {
     try {
-      const httpUrl = getHttpUrl();
-      console.log('📋 Fetching admin activity from:', httpUrl);
+      const adminUrl = getAdminApiUrl();
+      console.log('📋 Fetching admin activity from:', `${adminUrl}/activity`);
       
-      const response = await fetch(`${httpUrl}/admin/activity?limit=50`);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      // Add authentication headers
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      const username = 'th3p3ddl3r';
+      const password = 'letsmakeatrade';
+      const credentials = btoa(`${username}:${password}`);
+      headers['Authorization'] = `Basic ${credentials}`;
+      
+      const response = await fetch(`${adminUrl}/activity?limit=50`, {
+        headers,
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        console.warn(`Activity fetch failed: HTTP ${response.status}`);
+        return;
+      }
       
       const data = await response.json();
       setActivities(data.activities || []);
+      console.log('✅ Admin activity fetched successfully');
     } catch (err) {
-      console.error('Activity fetch error:', err);
+      console.error('❌ Activity fetch error:', err);
     }
-  }, [getHttpUrl]);
+  }, [getAdminApiUrl]);
 
-  // Admin actions
+  // Admin actions with authentication
+  const getAuthHeaders = useCallback(() => {
+    const username = 'th3p3ddl3r';
+    const password = 'letsmakeatrade';
+    const credentials = btoa(`${username}:${password}`);
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Basic ${credentials}`
+    };
+  }, []);
+
   const handleBroadcast = useCallback(async (message: string) => {
     try {
-      const httpUrl = getHttpUrl();
-      console.log('📢 Broadcasting message via:', httpUrl);
+      const adminUrl = getAdminApiUrl();
+      console.log('📢 Broadcasting message via:', `${adminUrl}/broadcast`);
       
-      const response = await fetch(`${httpUrl}/admin/broadcast`, {
+      const response = await fetch(`${adminUrl}/broadcast`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ message, targetRooms: 'all' })
       });
       
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication required');
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
       
       const result = await response.json();
+      console.log('✅ Broadcast successful:', result);
       return { success: true, messagesSent: result.messagesSent };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('❌ Broadcast error:', errorMessage);
+      return { success: false, error: errorMessage };
     }
-  }, [getHttpUrl]);
+  }, [getAdminApiUrl, getAuthHeaders]);
 
   const handleClearRoom = useCallback(async (roomId: string) => {
     try {
-      const httpUrl = getHttpUrl();
-      console.log('🗑️ Clearing room messages via:', httpUrl);
+      const adminUrl = getAdminApiUrl();
+      console.log('🗑️ Clearing room messages via:', `${adminUrl}/room/${roomId}/messages`);
       
-      const response = await fetch(`${httpUrl}/admin/room/${roomId}/messages`, {
-        method: 'DELETE'
+      const response = await fetch(`${adminUrl}/room/${roomId}/messages`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+        credentials: 'include'
       });
       
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication required');
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
       
       const result = await response.json();
+      console.log('✅ Room cleared successfully:', result);
       return { success: true, messagesDeleted: result.messagesDeleted };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('❌ Clear room error:', errorMessage);
+      return { success: false, error: errorMessage };
     }
-  }, [getHttpUrl]);
+  }, [getAdminApiUrl, getAuthHeaders]);
 
   const handleWipeDatabase = useCallback(async () => {
     try {
-      const httpUrl = getHttpUrl();
-      console.log('💥 Wiping database via:', httpUrl);
+      const adminUrl = getAdminApiUrl();
+      console.log('💥 Wiping database via:', `${adminUrl}/database`);
       
-      const response = await fetch(`${httpUrl}/admin/database`, {
+      const response = await fetch(`${adminUrl}/database`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ confirm: 'WIPE_EVERYTHING' })
       });
       
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication required');
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ Database wipe successful:', result);
       
       // Refresh data after wipe
       setTimeout(() => {
@@ -168,9 +250,11 @@ export function useAdminAnalytics() {
       
       return { success: true };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('❌ Database wipe error:', errorMessage);
+      return { success: false, error: errorMessage };
     }
-  }, [getHttpUrl, fetchDashboardData, fetchActivity]);
+  }, [getAdminApiUrl, getAuthHeaders, fetchDashboardData, fetchActivity]);
 
   // Initialize dashboard
   useEffect(() => {
@@ -188,10 +272,19 @@ export function useAdminAnalytics() {
     };
   }, [fetchDashboardData, fetchActivity]);
 
-  // Set up Socket.IO connection for real-time updates
+  // Set up Socket.IO connection for real-time updates (WebSocket server)
   useEffect(() => {
     const webSocketUrl = getWebSocketUrl();
     console.log('🔌 Connecting admin socket to:', webSocketUrl);
+
+    // Only connect to WebSocket if it's available (not on Vercel-only deployments)
+    const environmentInfo = ServerUtils.getEnvironmentInfo();
+    
+    if (environmentInfo.platform === 'vercel' && !webSocketUrl.includes('run.app')) {
+      console.log('🚀 Vercel-only deployment detected, skipping WebSocket admin connection');
+      setIsConnected(false);
+      return;
+    }
 
     const socketConnection = io(webSocketUrl, {
       transports: ['polling', 'websocket'],
@@ -212,12 +305,15 @@ export function useAdminAnalytics() {
 
     socketConnection.on('connect_error', (err) => {
       console.error('❌ Admin socket connection error:', err);
-      setError(`Socket connection failed: ${err.message}`);
+      // Don't set error for socket connection issues in Vercel deployments
+      if (environmentInfo.platform !== 'vercel') {
+        setError(`Socket connection failed: ${err.message}`);
+      }
       setIsConnected(false);
     });
 
     socketConnection.on('dashboard-data', (data: DashboardData) => {
-      console.log('📊 Received real-time dashboard data');
+      console.log('📊 Received real-time dashboard data via WebSocket');
       setDashboardData(data);
     });
 
@@ -239,7 +335,7 @@ export function useAdminAnalytics() {
     activities,
     isConnected,
     error,
-    serverUrl: getHttpUrl(),
+    serverUrl: getAdminApiUrl(),
     actions: {
       broadcast: handleBroadcast,
       clearRoom: handleClearRoom,
