@@ -2,9 +2,66 @@
 
 ## 📋 Overview
 
-Festival Chat uses a dual-deployment architecture:
-- **Frontend**: Firebase Hosting for global CDN and HTTPS
+Festival Chat supports multiple deployment platforms:
+- **Primary**: **Vercel** (auto-deployment from GitHub with custom domain)
+- **Alternative**: Firebase Hosting for global CDN and HTTPS
 - **Backend**: Google Cloud Run with Universal WebSocket Server
+
+## 🎯 **CRITICAL FIX: Vercel Environment Variables (June 13, 2025)**
+
+### **✅ RESOLVED: Admin Dashboard 404 Issue**
+
+**Problem**: Admin dashboard showing 404 errors due to incorrect WebSocket server URL  
+**Root Cause**: Vercel dashboard had old environment variable `NEXT_PUBLIC_SIGNALING_SERVER=wss://peddlenet-websocket-server-padyxgyv5a-uc.a.run.app`  
+**Solution**: Updated Vercel environment variable to current server: `wss://peddlenet-websocket-server-hfttiarlja-uc.a.run.app`
+
+**✅ Current Status**: 
+- **Admin dashboard is now accessible** at `https://peddlenet.app/admin-analytics`
+- **WebSocket connection established** - Dashboard loads and connects to server
+- **Remaining issue**: User/room details API calls failing (investigating)
+
+**Key Learning**: 
+- **Multiple deployment platforms** can cause environment variable conflicts
+- **Vercel serves the live site** at `peddlenet.app`, not GitHub Pages
+- **Always verify which platform is actually serving your domain**
+
+### **⚠️ Current Known Issues**
+
+**Admin Dashboard Data Fetching**:
+- **Status**: Dashboard loads but shows "No data available" or loading states
+- **Likely Cause**: API endpoints may need CORS configuration or authentication
+- **Impact**: Dashboard UI works, but analytics data not displaying
+- **Priority**: Medium - Dashboard infrastructure is working, data fetching needs debugging
+
+**Admin Dashboard Authentication Missing**:
+- **Status**: ✅ Server authentication is working correctly (returns 401 as expected)
+- **Real Issue**: Frontend not sending HTTP Basic Auth headers with API requests
+- **Expected**: React app should prompt for credentials and send `Authorization: Basic` headers
+- **Credentials**: Username: `th3p3ddl3r`, Password: `letsmakeatrade`
+- **Impact**: Dashboard loads but all API calls fail with 401 Unauthorized
+- **Priority**: HIGH - Frontend authentication implementation needed
+
+**Live Activity Feed Refreshing Issue**:
+- **Status**: Activity feed resets/refreshes every time page is refreshed
+- **Expected**: Activity feed should maintain state and show historical activities
+- **Likely Cause**: Activity data not persisted, WebSocket reconnection clearing state, or missing activity history endpoint
+- **Impact**: Poor user experience - can't see activity history after page refresh
+- **Priority**: Medium - UX issue affecting admin dashboard usability
+
+### **Vercel vs Other Platforms**
+
+| Platform | Purpose | Domain | Environment Variables |
+|----------|---------|--------|-----------------------|
+| **Vercel** | **Primary Production** | `peddlenet.app` | Vercel Dashboard Settings |
+| GitHub Pages | Secondary/Backup | `qvintillion.github.io/peddlenet` | `.env.production` file |
+| Firebase | Staging/Preview | `festival-chat-peddlenet.web.app` | `.env.staging` file |
+
+**✅ Fix Applied**:
+1. Updated `NEXT_PUBLIC_SIGNALING_SERVER` in Vercel dashboard
+2. Redeployed via automatic GitHub trigger
+3. Verified admin dashboard now connects to correct WebSocket server
+
+**Prevention**: Always check Vercel dashboard environment variables when debugging production issues with custom domains.
 
 ## 🛠️ Available Deployment Scripts
 
@@ -216,6 +273,17 @@ npm run deploy:firebase:complete
 # 4. Production Deployment
 ./deploy.sh
 ```
+
+**WebSocket Server Deployment (Separate Process):**
+```bash
+# FOR STAGING WebSocket server updates:
+./scripts/deploy-websocket-staging.sh
+
+# FOR PRODUCTION WebSocket server updates:
+./scripts/deploy-websocket-cloudbuild.sh
+```
+
+**Note**: While Vercel auto-deploys when pushing to GitHub, the established workflow uses `./deploy.sh` for coordinated production deployment that handles both frontend and any necessary backend coordination.
 
 ### **Daily Development**
 ```bash
@@ -536,28 +604,38 @@ npm run deploy:firebase:complete
 - [ ] Test cross-device messaging (desktop ↔ mobile)
 - [ ] Verify no console errors in browser
 - [ ] Check universal server auto-detection
+- [ ] **Verify correct deployment platform** (Vercel vs Firebase vs GitHub Pages)
 
-### **Quick Deploy Checklist** (UI changes only)
-- [ ] Changes are frontend-only (no server modifications)
+### **Vercel Deployment Checklist** (Primary Platform)
+- [ ] Check Vercel dashboard environment variables are correct
+- [ ] Verify `NEXT_PUBLIC_SIGNALING_SERVER` points to current WebSocket server
+- [ ] Push to GitHub (triggers automatic Vercel deployment)
+- [ ] Verify: `https://peddlenet.app` loads correctly
+- [ ] Test: Admin dashboard connects to correct WebSocket server
+- [ ] Monitor: No WebSocket connection errors in browser console
+
+### **Firebase Deployment Checklist** (Staging/Alternative)
+- [ ] Changes are appropriate for Firebase hosting
 - [ ] Run `npm run build:mobile` successfully
-- [ ] Deploy: `npm run deploy:firebase:quick`
-- [ ] Verify: Frontend URL loads correctly
+- [ ] Deploy: `npm run deploy:firebase:quick` or `npm run deploy:firebase:complete`
+- [ ] Verify: Firebase URL loads correctly
 - [ ] Test: Core messaging functionality still works
 
-### **Complete Deploy Checklist** (Full stack)
+### **WebSocket Server Deployment**
 - [ ] Backend changes require new universal server deployment
-- [ ] Run `npm run build:mobile` successfully  
-- [ ] Deploy: `npm run deploy:firebase:complete`
+- [ ] Deploy staging: `./scripts/deploy-websocket-staging.sh`
+- [ ] Test staging server functionality
+- [ ] Deploy production: `./scripts/deploy-websocket-cloudbuild.sh`
+- [ ] Update environment variables in **all platforms** (Vercel, Firebase, GitHub)
 - [ ] Verify: Backend health check shows correct environment
-- [ ] Verify: Frontend connects to updated backend
 - [ ] Test: Complete cross-device workflow
-- [ ] Monitor: No errors in browser console
 
 ### **Universal Server Validation**
 - [ ] Health endpoint shows correct version: `2.0.0-universal`
 - [ ] Environment detection working: `development`/`staging`/`production`
 - [ ] Platform detection accurate: `local`/`firebase`/`cloudrun`
 - [ ] Features appropriate for environment (debug vs production)
+- [ ] **All deployment platforms** connect to same WebSocket server
 
 ## 🔄 Rollback Procedures
 
@@ -633,3 +711,4 @@ Use `npm run deploy:firebase:quick` for UI fixes and `npm run deploy:firebase:co
 - **[Universal Server Architecture](./04-ARCHITECTURE.md)** - Technical details of the universal server approach
 - **[Mobile Notification Fix Details](./CRITICAL-FIX-JUNE-2025.md)** - Technical details of mobile notification enhancement
 - **[Troubleshooting Guide](./11-TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Next Steps Roadmap](./10-NEXT-STEPS-ROADMAP.md)** - Strategic deployment platform recommendations

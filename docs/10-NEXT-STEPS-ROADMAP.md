@@ -4,6 +4,92 @@
 
 Festival Chat has reached **production stability** with mobile-optimized connections, cross-device messaging, and robust error handling. This roadmap outlines the evolution toward **mesh networking**, **enhanced user experience**, and **enterprise festival features**.
 
+## 🚀 **STRATEGIC RECOMMENDATION: Vercel as Primary Platform (June 13, 2025)**
+
+### **✅ Deployment Platform Consolidation**
+
+**Current Status**: Successfully resolved admin dashboard 404 issue by fixing Vercel environment variables  
+**Strategic Decision**: **Vercel should be the primary deployment platform**
+
+**✅ Admin Dashboard Status**:
+- **Dashboard accessible**: `https://peddlenet.app/admin-analytics` loads successfully
+- **WebSocket connection**: Established and working
+- **UI functionality**: Dashboard interface renders correctly
+- **✅ Server authentication**: Working correctly (returns 401 as expected)
+- **⚠️ Frontend authentication**: Not implemented - API calls missing Basic Auth headers
+- **⚠️ Data fetching**: All API calls fail with 401 Unauthorized due to missing auth
+- **Required credentials**: Username: `th3p3ddl3r`, Password: `letsmakeatrade`
+- **Next step**: Implement HTTP Basic Auth in React app for admin API calls
+
+**Why Vercel?**
+- ✅ **Already connected and working** - Auto-deploys from GitHub
+- ✅ **Custom domain configured** - `peddlenet.app` is live and working
+- ✅ **Seamless GitHub integration** - Zero-config deployment pipeline
+- ✅ **Superior Next.js optimization** - Built specifically for Next.js apps
+- ✅ **Edge network performance** - Global CDN with intelligent routing
+- ✅ **Environment variable management** - Easy dashboard configuration
+- ✅ **Preview deployments** - Automatic preview URLs for every pull request
+- ✅ **Zero maintenance** - No Firebase or GitHub Actions workflow management
+
+### **Platform Comparison & Recommendation**
+
+| Feature | **Vercel (Recommended)** | Firebase | GitHub Pages |
+|---------|-------------------------|----------|-------------|
+| **Next.js Optimization** | ✅ Native support | ⚠️ Requires config | ⚠️ Static export only |
+| **Custom Domain** | ✅ Working (`peddlenet.app`) | ✅ Available | ✅ Available |
+| **Auto Deployment** | ✅ GitHub integration | ⚠️ Manual setup | ✅ GitHub Actions |
+| **Environment Variables** | ✅ Dashboard UI | ⚠️ CLI/config files | ⚠️ Secrets + workflow |
+| **Preview Deployments** | ✅ Automatic | ✅ Preview channels | ❌ Manual |
+| **Performance** | ✅ Edge network | ✅ Google CDN | ⚠️ GitHub CDN |
+| **Maintenance** | ✅ Zero config | ⚠️ Firebase CLI | ⚠️ Workflow maintenance |
+| **Cost** | ✅ Free tier generous | ✅ Free tier good | ✅ Free |
+
+### **Implementation Strategy**
+
+**Phase 1: Immediate (This Week)**
+- ✅ **Primary**: Continue using Vercel for production deployments
+- ✅ **Backup**: Keep Firebase for staging/testing environments
+- ✅ **Archive**: Disable GitHub Pages deployment (optional)
+
+**Phase 2: Optimization (Next Week)**
+```bash
+# Streamline deployment workflow
+# Remove GitHub Actions complexity
+# Focus on Vercel + Firebase staging setup
+
+# Update npm scripts for clarity:
+npm run deploy:vercel:production  # → Push to main branch (auto-deploys)
+npm run deploy:firebase:staging   # → Firebase staging environment
+npm run preview:vercel            # → Preview branch deployment
+```
+
+**Phase 3: Documentation Update**
+- Update all deployment documentation to prioritize Vercel
+- Create Vercel-specific troubleshooting guides
+- Simplify developer onboarding with Vercel-first approach
+
+### **Strategic Benefits**
+
+**For Development**:
+- **Faster iteration** - Push to branch, get instant preview URL
+- **Less configuration** - No complex GitHub Actions or Firebase CLI
+- **Better debugging** - Vercel's superior logging and monitoring
+- **Next.js optimizations** - Automatic performance optimizations
+
+**For Production**:
+- **Higher reliability** - Vercel's infrastructure built for Next.js
+- **Better performance** - Edge network with intelligent caching
+- **Easier scaling** - Automatic scaling without configuration
+- **Professional monitoring** - Built-in analytics and error tracking
+
+**For Team**:
+- **Simplified workflow** - One primary platform to learn
+- **Reduced complexity** - Fewer deployment pipelines to maintain
+- **Industry standard** - Vercel is widely adopted for Next.js apps
+- **Future-proof** - Vercel continues to innovate with Next.js
+
+**🎯 Result**: **Vercel-first deployment strategy** reduces complexity while improving performance and developer experience!
+
 ## 📊 Current Foundation Assessment
 
 ### **✅ Solid Production Foundation**
@@ -1375,6 +1461,88 @@ npm run deploy:firebase:quick          # Deploy to preview channel
 
 ---
 
-**🎪 Ready to evolve Festival Chat into the ultimate festival communication platform!** The foundation is solid, the roadmap is clear, and each phase builds naturally on the previous work while maintaining production stability.
+**🎪 Ready to evolve Festival Chat into the ultimate festival communication platform!** The foundation is solid, the deployment strategy is optimized with Vercel as the primary platform, and each phase builds naturally on the previous work while maintaining production stability.
 
 *Next milestone: Cross-room notifications and preview channels within 2 weeks!*
+
+## 📋 **Immediate Action Items Post-Vercel Fix**
+
+### **This Week: Admin Dashboard Completion**
+1. **✅ Document Vercel as primary platform** (completed)
+2. **🔐 Implement admin authentication in frontend** - Current priority
+   - Add HTTP Basic Auth headers to all admin API calls
+   - Implement login form or browser basic auth prompt
+   - Handle 401 responses and re-authentication
+   - Test with credentials: `th3p3ddl3r` / `letsmakeatrade`
+   - Fix activity feed refreshing on page reload (should persist history)
+3. **Test admin dashboard data flow** once API issues resolved
+4. **Archive GitHub Pages workflow** (optional cleanup)
+
+### **Next Week: Platform Optimization**
+1. **Complete admin dashboard functionality** (carry over if needed)
+2. **Optimize Vercel environment variables** for all environments
+3. **Test Vercel preview deployments** for feature branches
+4. **Update team documentation** to prioritize Vercel workflow
+
+### **Following Week: Development Workflow**
+1. **Set up branch protection rules** to trigger Vercel previews
+2. **Configure Vercel monitoring** for production insights
+3. **Streamline Firebase** for staging/testing only
+4. **Begin Phase 3 development** (cross-room notifications)
+
+### **Development Commands (Updated)**
+```bash
+# ACTUAL Development Workflow (Corrected)
+
+# 1. Local Development
+npm run dev:mobile                # Local development with mobile support
+
+# 2. Preview Testing
+npm run preview:deploy feature-name  # Firebase preview channels
+
+# 3. Staging Deployment
+npm run deploy:firebase:complete     # Full staging deployment
+
+# 4. Production Deployment
+./deploy.sh                          # Production deployment to GitHub/Vercel
+
+# WebSocket Server Deployments (Separate)
+./scripts/deploy-websocket-staging.sh    # Staging WebSocket server
+./scripts/deploy-websocket-cloudbuild.sh # Production WebSocket server
+```
+
+**Note**: Vercel auto-deploys from GitHub pushes, but the established workflow uses the deploy script for production coordination.
+
+### **🔧 Admin Dashboard API Debugging Commands**
+```bash
+# Test server health and analytics endpoints
+curl -i https://peddlenet-websocket-server-hfttiarlja-uc.a.run.app/health
+curl -i https://peddlenet-websocket-server-hfttiarlja-uc.a.run.app/admin/analytics
+
+# Test activity feed endpoint
+curl -i https://peddlenet-websocket-server-hfttiarlja-uc.a.run.app/admin/activity
+
+# Test with authentication
+curl -i -u th3p3ddl3r:letsmakeatrade https://peddlenet-websocket-server-hfttiarlja-uc.a.run.app/admin/analytics
+curl -i -u th3p3ddl3r:letsmakeatrade https://peddlenet-websocket-server-hfttiarlja-uc.a.run.app/admin/activity
+
+# Check server environment detection
+curl -i https://peddlenet-websocket-server-hfttiarlja-uc.a.run.app/admin/info
+
+# Check CORS headers
+curl -i -X OPTIONS -H "Origin: https://peddlenet.app" \
+  https://peddlenet-websocket-server-hfttiarlja-uc.a.run.app/admin/analytics
+
+# Test from browser console (on peddlenet.app/admin-analytics):
+# fetch('https://peddlenet-websocket-server-hfttiarlja-uc.a.run.app/admin/activity').then(r => r.json()).then(console.log)
+# Test with auth (browser will prompt):
+# fetch('https://peddlenet-websocket-server-hfttiarlja-uc.a.run.app/admin/analytics').then(r => r.json()).then(console.log)
+```
+
+**Common Issues to Check**:
+- **CORS**: Server may need to allow `https://peddlenet.app` origin
+- **Authentication**: Admin endpoints might require basic auth headers
+- **Network**: Vercel might be blocking outbound requests to Google Cloud Run
+- **SSL**: Mixed content issues between HTTPS frontend and HTTP backend
+
+**Strategic Focus**: The established dev → preview → staging → production workflow remains the primary development process. Vercel provides the production hosting infrastructure, but deployments are coordinated through the existing deploy script to maintain consistency across frontend and backend deployments.

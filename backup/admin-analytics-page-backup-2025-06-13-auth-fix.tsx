@@ -1,35 +1,11 @@
 'use client';
 
-// 🔒 ADMIN AUTHENTICATION IMPLEMENTED - June 13, 2025
-// HTTP Basic Auth credentials added for production admin dashboard
-// Username: th3p3ddl3r | Password: letsmakeatrade
-
 import { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { ServerUtils } from '@/utils/server-utils';
 
 // Force dynamic rendering (no static generation)
 export const dynamic = 'force-dynamic';
-
-// Authentication credentials for production
-const ADMIN_CREDENTIALS = {
-  username: 'th3p3ddl3r',
-  password: 'letsmakeatrade'
-};
-
-// Helper function to make authenticated API calls
-function makeAuthenticatedRequest(url: string, options: RequestInit = {}): Promise<Response> {
-  const authHeaders = {
-    'Authorization': `Basic ${btoa(`${ADMIN_CREDENTIALS.username}:${ADMIN_CREDENTIALS.password}`)}`,
-    'Content-Type': 'application/json',
-    ...options.headers
-  };
-
-  return fetch(url, {
-    ...options,
-    headers: authHeaders
-  });
-}
 
 interface RealTimeStats {
   activeUsers: number;
@@ -224,7 +200,7 @@ function DetailedUserView({
     
     setLoading(true);
     try {
-      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/users/detailed`);
+      const response = await fetch(`${serverUrl}/admin/users/detailed`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       
       const data = await response.json();
@@ -241,8 +217,9 @@ function DetailedUserView({
     
     setRemoving(peerId);
     try {
-      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/users/${peerId}/remove`, {
+      const response = await fetch(`${serverUrl}/admin/users/${peerId}/remove`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           roomId, 
           reason: 'Removed by admin via dashboard' 
@@ -510,7 +487,7 @@ function DetailedRoomView({
     
     setLoading(true);
     try {
-      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/rooms/detailed`);
+      const response = await fetch(`${serverUrl}/admin/rooms/detailed`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       
       const data = await response.json();
@@ -827,7 +804,6 @@ export default function AdminAnalyticsDashboard() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [authError, setAuthError] = useState<boolean>(false);
   
   // Modal states
   const [showUserDetails, setShowUserDetails] = useState(false);
@@ -843,25 +819,16 @@ export default function AdminAnalyticsDashboard() {
   console.log('🔧 Admin Dashboard URLs:');
   console.log('  - HTTP URL (for API calls):', httpServerUrl);
   console.log('  - WebSocket URL (for real-time):', webSocketServerUrl);
-  console.log('🔒 Authentication: HTTP Basic Auth enabled for production');
-  console.log('  - Username: th3p3ddl3r');
-  console.log('  - Password: [HIDDEN]');
 
   // Fetch dashboard data
   const fetchDashboardData = async () => {
     try {
-      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/analytics`);
-      if (response.status === 401) {
-        setAuthError(true);
-        setError('Authentication failed. Please check admin credentials.');
-        return;
-      }
+      const response = await fetch(`${serverUrl}/admin/analytics`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       
       const data = await response.json();
       setDashboardData(data);
       setError(null);
-      setAuthError(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch dashboard data');
       console.error('Dashboard fetch error:', err);
@@ -871,7 +838,7 @@ export default function AdminAnalyticsDashboard() {
   // Fetch activity feed
   const fetchActivity = async () => {
     try {
-      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/activity?limit=50`);
+      const response = await fetch(`${serverUrl}/admin/activity?limit=50`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       
       const data = await response.json();
@@ -884,8 +851,9 @@ export default function AdminAnalyticsDashboard() {
   // Admin actions
   const handleBroadcast = async (message: string) => {
     try {
-      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/broadcast`, {
+      const response = await fetch(`${serverUrl}/admin/broadcast`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message, targetRooms: 'all' })
       });
       
@@ -900,7 +868,7 @@ export default function AdminAnalyticsDashboard() {
 
   const handleClearRoom = async (roomId: string) => {
     try {
-      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/room/${roomId}/messages`, {
+      const response = await fetch(`${serverUrl}/admin/room/${roomId}/messages`, {
         method: 'DELETE'
       });
       
@@ -917,8 +885,9 @@ export default function AdminAnalyticsDashboard() {
 
   const handleWipeDatabase = async () => {
     try {
-      const response = await makeAuthenticatedRequest(`${serverUrl}/admin/database`, {
+      const response = await fetch(`${serverUrl}/admin/database`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ confirm: 'WIPE_EVERYTHING' })
       });
       
@@ -1006,21 +975,9 @@ export default function AdminAnalyticsDashboard() {
           <h1 className="text-2xl font-bold mb-2">Loading Admin Dashboard...</h1>
           {error && (
             <div className="text-red-400 mb-4">
-              <div className="text-4xl mb-2">{authError ? '🔒' : '⚠️'}</div>
-              <div>{authError ? 'Authentication Failed' : 'Connection Error'}</div>
-              <div className="text-sm mt-2">{error}</div>
-              <div className="text-xs mt-2 text-gray-400">Server URL: {serverUrl}</div>
-              {authError && (
-                <div className="text-sm mt-4 bg-red-600/20 border border-red-500/30 rounded-lg p-4">
-                  <div className="font-bold mb-2">🔐 Authentication Required</div>
-                  <div className="text-left">
-                    <div>• This admin dashboard requires HTTP Basic Authentication</div>
-                    <div>• Username: <code className="bg-gray-700 px-1 rounded">th3p3ddl3r</code></div>
-                    <div>• Password: <code className="bg-gray-700 px-1 rounded">letsmakeatrade</code></div>
-                    <div className="mt-2 text-xs text-red-300">If you're seeing this error, the authentication credentials may need to be updated.</div>
-                  </div>
-                </div>
-              )}
+              <div className="text-4xl mb-2">⚠️</div>
+              <div>Error: {error}</div>
+              <div className="text-sm mt-2">Server URL: {serverUrl}</div>
             </div>
           )}
           <div className="animate-pulse text-purple-200">Connecting to analytics server...</div>
