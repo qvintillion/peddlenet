@@ -49,6 +49,20 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# CRITICAL: Set environment variables after deployment
+echo "🔧 Setting production environment variables..."
+gcloud run services update $SERVICE_NAME \
+  --set-env-vars="NODE_ENV=production,BUILD_TARGET=production,PLATFORM=cloudrun" \
+  --region=$REGION \
+  --project=$PROJECT_ID
+
+if [ $? -ne 0 ]; then
+    echo "⚠️ Warning: Failed to set environment variables"
+    echo "Admin dashboard may not work properly"
+else
+    echo "✅ Environment variables set successfully"
+fi
+
 # Get the service URL
 echo "📍 Getting service URL..."
 SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --platform managed --region $REGION --format 'value(status.url)' --project $PROJECT_ID)

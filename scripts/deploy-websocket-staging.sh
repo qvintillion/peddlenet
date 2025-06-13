@@ -71,6 +71,20 @@ gcloud run deploy $SERVICE_NAME \
     --set-env-vars PLATFORM=cloudrun \
     --set-env-vars VERSION="2.0.0-universal-staging"
 
+# CRITICAL: Ensure environment variables are set properly
+echo "🔧 Verifying staging environment variables..."
+gcloud run services update $SERVICE_NAME \
+  --set-env-vars="NODE_ENV=production,BUILD_TARGET=staging,PLATFORM=cloudrun" \
+  --region=$REGION \
+  --project=$PROJECT_ID
+
+if [ $? -ne 0 ]; then
+    echo "⚠️ Warning: Failed to set environment variables"
+    echo "Admin dashboard may not work properly in staging"
+else
+    echo "✅ Staging environment variables set successfully"
+fi
+
 # Get the service URL for verification
 echo ""
 echo "📡 Getting staging WebSocket server URL..."

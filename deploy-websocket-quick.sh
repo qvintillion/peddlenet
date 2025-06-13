@@ -22,6 +22,23 @@ if [ $? -eq 0 ]; then
     echo "🎉 WEBSOCKET SERVER DEPLOYMENT SUCCESSFUL!"
     echo "=========================================="
     echo ""
+    
+    # CRITICAL: Set environment variables for admin dashboard
+    echo "🔧 Setting production environment variables..."
+    gcloud run services update peddlenet-websocket-server \
+      --set-env-vars="NODE_ENV=production,BUILD_TARGET=production,PLATFORM=cloudrun" \
+      --region=us-central1 \
+      --project=festival-chat-peddlenet
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ Environment variables set successfully!"
+        echo "🔒 Admin authentication is now enabled"
+    else
+        echo "⚠️ Warning: Failed to set environment variables"
+        echo "Admin dashboard may not work properly"
+    fi
+    
+    echo ""
     echo "🔒 Admin Dashboard URLs:"
     echo "• Analytics: https://peddlenet-websocket-server-padyxgyv5a-uc.a.run.app/admin/analytics"
     echo "• Activity: https://peddlenet-websocket-server-padyxgyv5a-uc.a.run.app/admin/activity"
