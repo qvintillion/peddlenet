@@ -11,8 +11,8 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Static export for GitHub Pages
-  output: 'export',
+  // Conditional output based on environment
+  output: process.env.BUILD_TARGET === 'production' ? 'export' : undefined,
   trailingSlash: false,
   skipTrailingSlashRedirect: true,
   
@@ -26,6 +26,9 @@ const nextConfig = {
     unoptimized: true,
   },
   
+  // Base path for GitHub Pages (if needed)
+  basePath: process.env.BUILD_TARGET === 'production' ? '' : '',
+  assetPrefix: process.env.BUILD_TARGET === 'production' ? '' : '',
 
   // Simplified webpack configuration to fix TDZ issues
   webpack: (config, { isServer, dev }) => {
