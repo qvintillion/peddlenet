@@ -48,8 +48,9 @@ echo ""
 # Build specifically for staging
 echo "🎨 Building container image for STAGING..."
 echo "Using universal server with auto-detection..."
+echo "⚡ Forcing fresh build with cache-busting..."
 
-# Use the minimal Docker configuration that worked for production
+# Use the minimal Docker configuration with cache busting
 gcloud builds submit \
   --config=deployment/cloudbuild-minimal.yaml \
   --substitutions=_SERVICE_NAME=$SERVICE_NAME,_NODE_ENV=production,_BUILD_TARGET=staging

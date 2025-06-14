@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { RoomCodeStorage } from '@/lib/room-code-storage';
 
 // Import the room code generation logic
 function generateRoomCodeOnServer(roomId: string): string | null {
@@ -51,9 +52,6 @@ function generatePossibleRoomIds(roomCode: string): string[] {
   ].filter(id => id && id.length > 0);
 }
 
-// Simple in-memory storage - same as register route
-const roomCodeMappings = new Map<string, string>();
-
 export async function GET(
   request: NextRequest,
   { params }: { params: { code: string } }
@@ -61,8 +59,8 @@ export async function GET(
   try {
     const code = params.code.toLowerCase();
     
-    // Check stored mappings first
-    const roomId = roomCodeMappings.get(code);
+    // Check stored mappings first using shared storage
+    const roomId = RoomCodeStorage.get(code);
     
     if (roomId) {
       return NextResponse.json({
@@ -79,8 +77,8 @@ export async function GET(
       try {
         const testCode = generateRoomCodeOnServer(possibleRoomId);
         if (testCode && testCode.toLowerCase() === code) {
-          // Auto-register this mapping
-          roomCodeMappings.set(code, possibleRoomId);
+          // Auto-register this mapping using shared storage
+          RoomCodeStorage.set(code, possibleRoomId);
           console.log(`✨ Auto-resolved room code: ${code} -> ${possibleRoomId}`);
           
           return NextResponse.json({

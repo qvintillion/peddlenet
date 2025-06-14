@@ -1,12 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
+  // Detect deployment environment
+  const detectEnvironment = () => {
+    const host = request.headers.get('host') || '';
+    const forwardedHost = request.headers.get('x-forwarded-host') || '';
+    const url = request.url || '';
+    
+    // Check for Firebase preview channels (staging)
+    if (
+      host.includes('--') && host.includes('.web.app') ||
+      forwardedHost.includes('--') && forwardedHost.includes('.web.app') ||
+      // MAIN FIREBASE DOMAIN IS FINAL STAGING
+      host === 'festival-chat-peddlenet.web.app' ||
+      forwardedHost === 'festival-chat-peddlenet.web.app' ||
+      url.includes('--') ||
+      host.includes('staging') ||
+      host.includes('preview')
+    ) {
+      return 'staging';
+    }
+    
+    // Check for localhost (development)
+    if (host.includes('localhost') || host.includes('127.0.0.1')) {
+      return 'development';
+    }
+    
+    // Default to production
+    return 'production';
+  };
+  
+  const currentEnvironment = detectEnvironment();
+  
   return NextResponse.json({
     status: 'ok',
     service: 'PeddleNet Vercel API',
     version: '1.0.0',
     timestamp: Date.now(),
-    environment: process.env.NODE_ENV || 'development',
+    environment: currentEnvironment,
     endpoints: {
       health: '/api/health',
       registerRoomCode: '/api/register-room-code',

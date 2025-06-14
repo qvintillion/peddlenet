@@ -4,7 +4,9 @@ import { ServerUtils } from '@/utils/server-utils';
 
 export interface RealTimeStats {
   activeUsers: number;
+  totalUsers: number;
   activeRooms: number;
+  totalRooms: number;
   messagesPerMinute: number;
   totalMessages: number;
   peakConnections: number;
@@ -256,6 +258,92 @@ export function useAdminAnalytics() {
     }
   }, [getAdminApiUrl, getAuthHeaders, fetchDashboardData, fetchActivity]);
 
+  // Fetch detailed user data
+  const fetchDetailedUsers = useCallback(async () => {
+    try {
+      const adminUrl = getAdminApiUrl();
+      console.log('👥 Fetching detailed users from:', `${adminUrl}/users/detailed`);
+      
+      const response = await fetch(`${adminUrl}/users/detailed`, {
+        headers: getAuthHeaders(),
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication required');
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Detailed users fetched successfully');
+      return data;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('❌ Fetch detailed users error:', errorMessage);
+      throw err;
+    }
+  }, [getAdminApiUrl, getAuthHeaders]);
+
+  // Fetch detailed room data
+  const fetchDetailedRooms = useCallback(async () => {
+    try {
+      const adminUrl = getAdminApiUrl();
+      console.log('🏠 Fetching detailed rooms from:', `${adminUrl}/rooms/detailed`);
+      
+      const response = await fetch(`${adminUrl}/rooms/detailed`, {
+        headers: getAuthHeaders(),
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication required');
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Detailed rooms fetched successfully');
+      return data;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('❌ Fetch detailed rooms error:', errorMessage);
+      throw err;
+    }
+  }, [getAdminApiUrl, getAuthHeaders]);
+
+  // Remove user from room
+  const handleRemoveUser = useCallback(async (peerId: string, roomId: string, reason?: string) => {
+    try {
+      const adminUrl = getAdminApiUrl();
+      console.log('🗑️ Removing user via:', `${adminUrl}/users/${peerId}/remove`);
+      
+      const response = await fetch(`${adminUrl}/users/${peerId}/remove`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        credentials: 'include',
+        body: JSON.stringify({ roomId, reason: reason || 'Removed by admin' })
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication required');
+        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ User removed successfully:', result);
+      return { success: true, removedUser: result.removedUser };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('❌ Remove user error:', errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  }, [getAdminApiUrl, getAuthHeaders]);
+
   // Initialize dashboard
   useEffect(() => {
     // Initial data fetch
@@ -340,6 +428,9 @@ export function useAdminAnalytics() {
       broadcast: handleBroadcast,
       clearRoom: handleClearRoom,
       wipeDatabase: handleWipeDatabase,
+      fetchDetailedUsers,
+      fetchDetailedRooms,
+      removeUser: handleRemoveUser,
       refresh: () => {
         fetchDashboardData();
         fetchActivity();

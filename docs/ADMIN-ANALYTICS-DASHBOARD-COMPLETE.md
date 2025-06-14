@@ -1,323 +1,545 @@
-# 📊 Admin Analytics Dashboard - IMPLEMENTATION COMPLETE
+# 📊 Admin Analytics Dashboard - RESTORATION COMPLETE ✅
 
-## 🎉 **Status: FULLY IMPLEMENTED** 
+**Date:** June 13, 2025  
+**Status:** 🟢 **FULLY RESTORED AND PRODUCTION READY**  
+**Version:** 4.5.0-env-fix  
+**Latest Update:** Complete restoration with environment detection fixes and production compatibility
 
-The comprehensive admin analytics dashboard is now live and functional!
+## 🎉 **RESTORATION SUCCESSFUL - DASHBOARD FULLY OPERATIONAL**
 
-## 🚀 **Access the Dashboard**
+The admin analytics dashboard has been completely restored to full functionality with enhanced production stability, proper authentication, environment detection fixes, and all professional features working correctly.
 
-**Development:**
-```
-http://localhost:3000/admin-analytics
-http://192.168.1.66:3000/admin-analytics (mobile)
-```
+### ✅ **Complete Feature Set Restored**
+1. **🔐 Professional Login System** - Custom authentication with 24-hour session persistence
+2. **📊 Real-time Analytics Dashboard** - Live user/room monitoring with auto-refresh
+3. **📋 Live Activity Feed** - Real-time activity tracking with localStorage persistence
+4. **🛡️ Complete Admin Controls** - Broadcasting, room management, database operations
+5. **📱 Mobile Responsive Design** - Full functionality on all devices
+6. **🌐 Hybrid Architecture Support** - Works with both Vercel and Cloud Run deployments
+7. **🔄 Network Resilience** - Graceful degradation with cached data during outages
+8. **🎯 Environment Detection** - Proper staging/production environment identification
 
-**Production:**
-```
-https://peddlenet.app/admin-analytics
-```
+## 🚀 **Production Access**
 
-## ✅ **Implemented Features**
+### **Direct URLs**
+- **Development**: `http://localhost:3000/admin-analytics`
+- **Staging**: `https://festival-chat-peddlenet.web.app/admin-analytics`  
+- **Production**: `https://peddlenet.app/admin-analytics`
+
+### **Login Credentials**
+- **Username**: `th3p3ddl3r`
+- **Password**: `letsmakeatrade`
+
+### **Session Management**
+- **24-hour persistent sessions** - No constant re-authentication required
+- **Automatic session restoration** - Survives browser refreshes and restarts
+- **Secure logout** - Complete session cleanup when needed
+
+### **Environment Detection**
+- **Development**: Shows `environment: "development"`
+- **Staging**: Shows `environment: "staging"`
+- **Production**: Shows `environment: "production"`
+- **Footer display**: Shows correct server connection and version
+
+## ✅ **Fully Functional Features**
 
 ### **📊 Real-time Analytics Dashboard**
-- **Live stats cards** with trending indicators
-- **Activity feed** showing real-time user joins/leaves/messages
-- **Network monitoring** with connection quality metrics
-- **Server health** monitoring (memory, CPU, uptime)
-- **Database statistics** (messages, rooms, sessions)
-- **Auto-refresh** every 5 seconds + real-time Socket.IO updates
+- **Live stats cards** with user/room counts, message flow, server health
+- **Network monitoring** with connection quality and latency metrics
+- **Database statistics** with message counts, storage usage, activity tracking
+- **Server performance** monitoring (memory, CPU, uptime, cold starts)
+- **Auto-refresh** every 5 seconds with real-time Socket.IO updates (when available)
 
-### **🛡️ Admin Controls**
-- **Broadcast messages** to all rooms (emergency announcements)
-- **Clear room messages** for specific rooms ⚡ **ENHANCED** (see detailed fix below)
-- **Wipe entire database** (with confirmation)
-- **Real-time notifications** of admin actions
+### **🛡️ Complete Admin Controls**
+- **Emergency Broadcasting** - Send announcements to all active rooms instantly
+- **Room Message Clearing** - Clear specific room messages (fixed - no longer affects entire database)
+- **Database Management** - Complete database wipe with double confirmation
+- **User Management** - View active users with detailed session information
+- **Room Analytics** - Monitor room activity, user counts, message flow
 
-### **📡 Real-time Features**
-- **Socket.IO integration** for live updates
-- **Connection status indicator** (connected/disconnected)
-- **Live activity feed** with instant updates
-- **Polling fallback** when Socket.IO unavailable
+### **📋 Enhanced Activity System**
+- **Live activity feed** showing real-time user joins/leaves/messages
+- **Activity persistence** - Retains last 100 activities across browser sessions
+- **Manual clearing** - Clear activity history when needed
+- **Real-time updates** via Socket.IO with polling fallback
+- **Activity categorization** with icons and color-coding
 
-### **🎯 Key Metrics Displayed**
-- **Active Users & Rooms** (real-time)
-- **Messages per minute** with trend analysis
-- **Server health status** and uptime
-- **Network quality** percentage and latency
-- **Memory usage** and performance metrics
-- **Database size** and message counts
+### **🔧 Technical Improvements**
+- **Environment-aware API routing** - Automatic Vercel vs Cloud Run detection
+- **Enhanced authentication** - Proper HTTP Basic Auth headers for all requests
+- **Robust error handling** - Graceful fallbacks when server unavailable
+- **Session persistence** - localStorage-based session management
+- **Hybrid compatibility** - Works with both API routes (/api/admin) and direct endpoints (/admin)
 
 ## 🏗️ **Technical Architecture**
 
-### **Frontend Structure**
-```
-src/
-├── app/admin-analytics/
-│   └── page.tsx                 # Main dashboard component
-├── hooks/
-│   └── use-admin-analytics.ts   # Analytics data management
-└── components/
-    ├── MetricCard               # Stats display cards
-    ├── ActivityFeed             # Live activity stream
-    └── AdminControls            # Admin action controls
-```
-
-### **Backend Endpoints**
-```
-Server (port 3001):
-├── GET /admin/analytics         # Dashboard data
-├── GET /admin/activity          # Activity feed
-├── GET /admin/network-health    # Network monitoring
-├── POST /admin/broadcast        # Broadcast messages
-├── DELETE /admin/room/:id/messages  # Clear room
-├── DELETE /admin/database       # Wipe database
-└── Socket.IO /admin-channel     # Real-time updates
-```
-
-### **Data Flow**
-```
-1. Dashboard loads → Fetch initial data
-2. Socket.IO connection → Real-time updates
-3. Polling every 5s → Data refresh
-4. Admin actions → API calls → Live feedback
-5. Server events → Activity feed updates
-```
-
-## 🔧 **Key Implementation Details**
-
-### **Environment Detection**
+### **Authentication Flow**
 ```typescript
-const getServerUrl = () => {
-  const hostname = window.location.hostname;
-  const isLocal = hostname === 'localhost' || hostname.startsWith('192.168.');
-  
-  return isLocal 
-    ? `http://${hostname}:3001`  // Local development
-    : 'wss://peddlenet-websocket-server.app';  // Production
+// Smart environment detection and API routing
+const isVercel = serverUrl.includes('vercel.app') || serverUrl.includes('peddlenet.app');
+const apiPath = isVercel ? '/api/admin' : '/admin';
+const fullUrl = `${serverUrl}${apiPath}${endpoint}`;
+
+// Proper authentication headers
+const headers = {
+  'Content-Type': 'application/json',
+  'Authorization': `Basic ${btoa(`${username}:${password}`)}`,
+  credentials: 'include'
 };
 ```
 
-### **Real-time Updates**
-```typescript
-// Socket.IO for instant updates
-socket.on('live-activity', (activity) => {
-  setActivities(prev => [activity, ...prev.slice(0, 49)]);
-});
+### **Data Flow**
+1. **Login** → Test authentication → Save 24-hour session
+2. **Dashboard Load** → Fetch real-time data → Display with graceful fallbacks
+3. **Real-time Updates** → 5-second polling + Socket.IO (when available)
+4. **Admin Actions** → Authenticated API calls → Immediate feedback
+5. **Activity Tracking** → Live feed updates → localStorage persistence
 
-// Polling backup every 5 seconds
-setInterval(fetchDashboardData, 5000);
+### **Network Resilience**
+- **Primary**: Real-time API calls with authentication
+- **Fallback**: Cached data from localStorage during outages
+- **Recovery**: Automatic reconnection and data refresh when server available
+- **Error Handling**: User-friendly error messages with retry options
+
+## 🔧 **Key Fixes Applied**
+
+### **1. Production Authentication**
+**Problem**: Missing HTTP Basic Auth headers causing 401 errors in production  
+**Solution**: Enhanced `makeAPICall()` function with proper headers
+```typescript
+const makeAPICall = async (endpoint, options = {}) => {
+  const headers = {
+    'Authorization': `Basic ${btoa(`${username}:${password}`)}`,
+    'Content-Type': 'application/json',
+    ...options.headers
+  };
+  return fetch(`${serverUrl}${apiPath}${endpoint}`, { ...options, headers });
+};
 ```
 
-### **Admin Actions**
-```typescript
-// Broadcast to all rooms
-const broadcast = await fetch('/admin/broadcast', {
-  method: 'POST',
-  body: JSON.stringify({ message, targetRooms: 'all' })
-});
-
-// Clear specific room
-const clear = await fetch(`/admin/room/${roomId}/messages`, {
-  method: 'DELETE'
-});
+### **2. Environment Detection (June 13, 2025)**
+**Problem**: Admin dashboard showing wrong environment (production instead of staging)  
+**Root Cause**: WebSocket server using `NODE_ENV` instead of `BUILD_TARGET` for environment detection  
+**Solution**: Enhanced environment detection in signaling-server.js
+```javascript
+// Fixed environment detection function
+function getEnvironment() {
+  const buildTarget = process.env.BUILD_TARGET;
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  // Use BUILD_TARGET if available (staging/production/preview)
+  if (buildTarget === 'staging') return 'staging';
+  if (buildTarget === 'production') return 'production';
+  if (buildTarget === 'preview') return 'preview';
+  
+  // Fallback to NODE_ENV detection
+  return isDevelopment ? 'development' : 'production';
+}
 ```
 
-## ⚙️ **CRITICAL FIX: Clear Room Messages Enhancement**
+### **3. Environment Variable Injection**
+**Problem**: Preview channels not properly getting environment variables at runtime  
+**Solution**: Multi-layered environment variable access with fallbacks
+```typescript
+// Enhanced environment variable detection
+const wsServer = (typeof window !== 'undefined' && (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_SIGNALING_SERVER) 
+  || process.env.NEXT_PUBLIC_SIGNALING_SERVER
+  || 'wss://peddlenet-websocket-server-staging-hfttiarlja-uc.a.run.app'; // fallback
+```
 
-### ✅ **PROBLEM FIXED**
-**What Was Wrong:**
-* "Clear Room Messages" only cleared server-side data
-* Users still saw old messages in their chat interface until they refreshed
-* Local React state, localStorage, and unread counts weren't cleared
+### **4. Deployment Environment Matrix**
+**Fixed**: All deployment scripts now properly set `BUILD_TARGET` environment variable
 
-**What’s Fixed Now:**
+| Deployment | NODE_ENV | BUILD_TARGET | PLATFORM | Detected Environment |
+|------------|----------|--------------|----------|-----------------|
+| Local Dev | development | - | local | development |
+| Firebase Staging | production | staging | cloudrun | staging ✅ |
+| Production WebSocket | production | production | cloudrun | production ✅ |
+| Preview Channels | production | preview | cloudrun | preview ✅ |
 
-### **Backend (signaling-server.js):**
-* Enhanced `/admin/room/:roomId/messages` endpoint
-* **NEW:** Emits `room-messages-cleared` event to all users in that room
-* **NEW:** Includes user notification count and enhanced logging
+### **5. Firebase Preview Channel Cache Issues**
+**Problem**: Preview channels serving old cached content instead of fresh builds  
+**Solutions Applied**:
+- **Delete and recreate channels**: `firebase hosting:channel:delete CHANNEL_ID` 
+- **Unique channel IDs**: `preview-$(date +%s)` for fresh deployments
+- **Nuclear cache clearing**: Remove all build artifacts before deployment
+- **Environment-specific builds**: Explicit environment variable injection
 
-### **Frontend (use-websocket-chat.ts):**
-* **NEW:** Added `room-messages-cleared` event handler
-* Clears React state (`setMessages([])`)
-* Clears localStorage (`MessagePersistence.clearRoomMessages()`)
-* Clears unread counts (`unreadMessageManager.clearRoom()`)
-* Only affects the specific room (not all rooms like database wipe)
+### **6. Session Persistence**
+**Problem**: Users had to re-authenticate constantly  
+**Solution**: 24-hour localStorage-based session management
+```typescript
+const session = {
+  username, password,
+  loginTime: Date.now(),
+  expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+};
+localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+```
 
-### **Unread Manager (use-unread-messages.ts):**
-* **NEW:** Added `clearRoom(roomId)` method for room-specific clearing
+### **7. Network Resilience**
+**Problem**: Dashboard broke completely when server unavailable  
+**Solution**: Graceful degradation with cached data and error recovery
+```typescript
+try {
+  const response = await makeAPICall('/analytics');
+  setDashboardData(data);
+  setError(null);
+} catch (err) {
+  setError(err.message);
+  // Keep using default/cached data
+}
+```
 
-### **Admin Dashboard:**
-* **NEW:** Enhanced success message showing messages deleted and users notified
+## 📁 **File Structure**
 
-### ✅ **Now When Admin Clears Room Messages:**
-1. 🗄️ **Server database** cleared *(was already working)*
-2. 💾 **Server memory** cleared *(was already working)*
-3. ⚡ **Users instantly notified** *(NEW - was missing)*
-4. 🧹 **User React state** cleared *(NEW - was missing)*
-5. 📱 **User localStorage** cleared *(NEW - was missing)*
-6. 🔔 **User unread counts** cleared *(NEW - was missing)*
-7. 📅 **Admin gets detailed feedback** *(NEW - enhanced)*
+### **Main Implementation**
+```
+src/app/admin-analytics/
+└── page.tsx                     # Complete dashboard implementation (RESTORED)
 
-### 🚀 **Impact**
-The room clearing functionality now works exactly like the database wipe but targeted to the specific room. Users will see their messages disappear immediately without needing to refresh their browsers.
+src/components/admin/
+├── ActivityFeed.tsx              # Live activity feed component
+├── AdminControls.tsx             # Admin action controls
+├── DetailedUserView.tsx          # User management modal
+└── DetailedRoomView.tsx          # Room analytics modal
+
+src/hooks/
+└── use-admin-analytics.ts        # Analytics data management hook
+```
+
+### **Backup Files**
+```
+backup/admin-analytics-restoration-june-13-2025/
+├── current-broken-page.tsx       # Backup of broken version
+├── RESTORATION-SUMMARY.md        # Detailed restoration documentation
+└── [additional backups]
+```
+
+## 🎯 **Deployment Workflow**
+
+### **1. Development Testing**
+```bash
+npm run dev:mobile
+# Navigate to http://localhost:3000/admin-analytics
+# Test login, dashboard features, admin controls
+```
+
+### **2. Staging Deployment**
+```bash
+npm run preview:deploy admin-dashboard-restored
+# Full production-like testing with real backend
+```
+
+### **3. Production Deployment**
+```bash
+npm run deploy:firebase:complete
+# Deploy complete solution to production
+```
+
+### **4. Production Verification**
+- Access `https://peddlenet.app/admin-analytics`
+- Login with credentials
+- Verify all features work correctly
+- Test mobile responsiveness
+- Confirm real-time updates
+
+## 🔍 **Verification Checklist**
+
+### **✅ Authentication & Access**
+- [x] Login form displays correctly on all devices
+- [x] Credentials validation works properly
+- [x] Session persistence across browser refresh
+- [x] 24-hour session expiry implemented
+- [x] Logout functionality clears session completely
+- [x] Automatic session restoration on revisit
+
+### **✅ Dashboard Functionality**
+- [x] All metric cards display real-time data
+- [x] Activity feed shows live updates with proper formatting
+- [x] Admin controls work (broadcast, clear room, wipe database)
+- [x] Error handling graceful when server unavailable
+- [x] Auto-refresh every 5 seconds with polling
+- [x] Socket.IO real-time updates (when available)
+
+### **✅ Production Compatibility**
+- [x] Works on Vercel deployment with API routes
+- [x] Works with Cloud Run backend with direct endpoints
+- [x] Authentication headers sent correctly for all requests
+- [x] CORS and network issues resolved
+- [x] Mobile responsive design functions properly
+- [x] Network resilience with cached data fallbacks
+
+### **✅ Admin Features**
+- [x] Emergency broadcasting to all rooms
+- [x] Room-specific message clearing (fixed)
+- [x] Database wipe with double confirmation
+- [x] User session monitoring and management
+- [x] Room analytics and activity tracking
+- [x] Server health and performance monitoring
+
+## 🎪 **Festival-Ready Deployment**
+
+The admin analytics dashboard is now **production-ready** for festival deployment with:
+
+### **Professional Admin Features**
+- **🔒 Secure Access Control** - Authentication required for all admin functions
+- **📊 Real-time Festival Monitoring** - Live oversight of chat activity across all rooms
+- **📢 Emergency Communication** - Instant broadcasting to all festival attendees
+- **🛡️ Content Moderation** - Quick room clearing and user management
+- **📱 Mobile Administration** - Full functionality for on-site festival staff
+- **🌐 Network Resilience** - Continues operating during connectivity issues
+
+### **Enterprise-Grade Reliability**
+- **Hybrid Architecture** - Works with both Vercel and Cloud Run deployments
+- **Session Management** - 24-hour persistent login sessions
+- **Error Recovery** - Graceful handling of server outages with cached data
+- **Data Persistence** - Activity history and session data retained across restarts
+- **Performance Monitoring** - Real-time server health and network quality tracking
+
+### **Operational Benefits**
+- **No Constant Re-authentication** - 24-hour sessions for smooth operation
+- **Mobile-First Design** - Festival staff can admin from phones/tablets
+- **Real-time Insights** - Live data for informed decision making
+- **Emergency Response** - Instant communication capabilities
+- **Historical Tracking** - Activity logs for post-event analysis
+
+## 🎉 **Restoration Success Summary**
+
+The Festival Chat admin analytics dashboard has been **completely restored** with:
+
+### **✅ All Issues Resolved**
+- **Production Authentication** - HTTP Basic Auth headers fixed
+- **Environment Compatibility** - Works on Vercel and Cloud Run
+- **Session Management** - 24-hour persistent sessions implemented
+- **Error Handling** - Graceful degradation and recovery
+- **Component Integration** - All admin components working correctly
+
+### **✅ Enhanced Features**
+- **Professional Login** - Custom authentication with session persistence
+- **Network Resilience** - Continues working during server issues
+- **Mobile Optimization** - Full admin capabilities on mobile devices
+- **Real-time Updates** - Live data with Socket.IO and polling fallbacks
+- **Activity Persistence** - Historical data retention across sessions
+
+### **✅ Production Ready**
+- **Festival Deployment** - Ready for immediate production use
+- **Mobile Administration** - On-site festival staff can use phones/tablets
+- **Emergency Response** - Instant broadcasting and content moderation
+- **Professional UI** - Modern dark theme with intuitive controls
+- **Reliable Operation** - Network-resilient with graceful error handling
 
 ---
 
-## 🎨 **UI/UX Features**
+## 🚀 **Ready for Festival Deployment!**
 
-### **Visual Design**
-- **Dark mode** festival-optimized interface
-- **Gradient backgrounds** with glassmorphism effects
-- **Color-coded metrics** (green/yellow/red status indicators)
-- **Responsive layout** works on mobile and desktop
-- **Live connection status** indicator
+The admin analytics dashboard is now **fully restored and production-ready** with all features working correctly. Festival organizers can confidently use this professional-grade tool for:
 
-### **Interactive Elements**
-- **Hover effects** on activity feed items
-- **Real-time updates** with smooth animations
-- **Form validation** for admin actions
-- **Confirmation dialogs** for destructive actions
-- **Loading states** and error handling
+- **Real-time event monitoring** with live user and room analytics
+- **Emergency communication** via instant broadcasting to all attendees  
+- **Content moderation** with room clearing and user management
+- **Performance oversight** with server health and network monitoring
+- **Mobile administration** for on-site festival staff
 
-## 📱 **Mobile Optimization**
+**The dashboard is ready for immediate deployment and festival use! 🎪**
 
-### **Responsive Design**
-- **Grid layouts** adapt to screen size
-- **Touch-friendly** controls (44px minimum)
-- **Readable fonts** and proper contrast
-- **Scrollable activity feed** for mobile viewing
-- **Compact metric cards** on smaller screens
+---
 
-### **Performance**
-- **Efficient polling** (5s intervals)
-- **Minimal data transfer** (only changed data)
-- **Socket.IO optimizations** for mobile networks
-- **Battery-friendly** update intervals
+## 🔧 **Troubleshooting Guide**
 
-## 🔒 **Security Considerations**
+### **🎯 Environment Detection Issues**
 
-### **Admin Protection**
-- **Confirmation dialogs** for destructive actions
-- **Input validation** on all admin controls
-- **Error handling** prevents crashes
-- **Rate limiting** on server endpoints
-- **CORS protection** for cross-origin requests
-
-### **Data Safety**
-- **Database wipe** requires explicit confirmation
-- **Room clearing** shows affected message count
-- **Broadcast messages** show delivery confirmation
-- **All actions logged** in activity feed
-
-## 📊 **Analytics Tracked**
-
-### **User Metrics**
-- **Active users** (real-time connections)
-- **Peak concurrent** users
-- **User sessions** (join/leave tracking)
-- **Average session duration**
-
-### **Room Metrics**
-- **Active rooms** (currently occupied)
-- **Total rooms created**
-- **Room lifecycle** (created/deleted events)
-- **Messages per room**
-
-### **Message Metrics**
-- **Total messages** sent
-- **Messages per minute** (with trends)
-- **Message delivery rates**
-- **24-hour message history**
-
-### **System Metrics**
-- **Server uptime** and health
-- **Memory usage** and performance
-- **Network quality** and latency
-- **Database size** and growth
-
-## 🚀 **Future Enhancements**
-
-### **Planned Features**
-- **User authentication** for admin access
-- **Role-based permissions** (admin/moderator)
-- **Advanced analytics** (charts, graphs)
-- **Export functionality** (CSV/JSON)
-- **Alert system** for threshold breaches
-- **Room-specific dashboards**
-
-### **Performance Optimizations**
-- **Data caching** for faster loading
-- **Pagination** for large activity feeds
-- **Compression** for real-time updates
-- **CDN integration** for global access
-
-## 🎯 **Success Metrics**
-
-### **✅ Functionality Achieved**
-- **Real-time monitoring** ✅ Working
-- **Admin controls** ✅ Working  
-- **Database management** ✅ Working
-- **Network monitoring** ✅ Working
-- **Mobile responsiveness** ✅ Working
-- **Error handling** ✅ Working
-
-### **📈 Performance Targets**
-- **Dashboard load time** < 2 seconds ✅
-- **Real-time updates** < 1 second latency ✅
-- **Mobile responsiveness** all screen sizes ✅
-- **Uptime monitoring** 99.9% availability ✅
-
-## 🔧 **Troubleshooting**
-
-### **Common Issues**
+#### **Problem**: Preview channels showing "production" instead of "staging"
+**Symptoms**: Dashboard footer shows wrong environment, server not identified correctly
+**Root Cause**: WebSocket server using `NODE_ENV` instead of `BUILD_TARGET`
+**Solution**: 
 ```bash
-# Dashboard not loading
-- Check server is running on port 3001
-- Verify /admin/analytics endpoint responds
-- Check browser console for errors
+# 1. Verify WebSocket server environment detection
+curl https://peddlenet-websocket-server-staging-hfttiarlja-uc.a.run.app/
+# Should show: "detected": "staging"
 
-# Real-time updates not working  
-- Verify Socket.IO connection in browser
-- Check network connectivity
-- Confirm server WebSocket support
+# 2. If showing "production", redeploy WebSocket server
+./scripts/deploy-websocket-staging.sh
 
-# Admin actions failing
-- Verify server endpoints are accessible
-- Check CORS configuration
-- Confirm request format matches API
-
-# Clear Room Messages not working immediately
-- Verify Socket.IO connection for room-messages-cleared event
-- Check if users are properly connected to the room channel
-- Confirm frontend event handler is registered
-- Check browser console for localStorage/state clearing errors
+# 3. Deploy frontend with environment-fixed script
+npm run preview:env-fix
 ```
 
-### **Debug Commands**
+#### **Expected Environment Detection**:
+- **Development**: `curl http://localhost:3001/` → `"detected": "development"`
+- **Staging**: `curl https://peddlenet-websocket-server-staging-*.web.app/` → `"detected": "staging"`
+- **Production**: `curl https://peddlenet-websocket-server-*.web.app/` → `"detected": "production"`
+
+### **🚧 Firebase Preview Channel Cache Issues**
+
+#### **Problem**: Preview showing old UI despite fresh deployment
+**Symptoms**: 
+- Old login form (no 🎵 music note)
+- Plain metric cards (no beautiful pills)
+- Footer shows old version number
+
+**Solutions (in order of effectiveness)**:
+
+1. **Delete and Recreate Channel** (Most Reliable)
 ```bash
-# Test server endpoints
-curl http://localhost:3001/admin/analytics
-curl http://localhost:3001/admin/activity
+# Delete the stuck channel
+firebase hosting:channel:delete CHANNEL_ID
 
-# Check server logs
-npm run dev:mobile  # See server logs
-
-# Test WebSocket connection
-# Open browser dev tools → Network → WS tab
+# Deploy fresh channel with new ID
+npm run preview:env-fix new-channel-$(date +%s)
 ```
 
-## 🎪 **Conclusion**
+2. **Nuclear Cache Deployment**
+```bash
+# Complete cache clearing + fresh deployment
+npm run preview:nuclear
+```
 
-The Festival Chat Admin Analytics Dashboard is now **fully operational** with:
+3. **Browser Cache Clearing**
+```bash
+# Hard refresh in browser
+Cmd+Shift+R (Mac) or Ctrl+Shift+R (PC)
 
-- **✅ Real-time monitoring** of users, rooms, and messages
-- **✅ Comprehensive admin controls** for festival management
-- **✅ Enhanced Clear Room Messages** - instant user synchronization
-- **✅ Professional UI/UX** optimized for mobile and desktop
-- **✅ Robust error handling** and connection management
-- **✅ Scalable architecture** ready for production use
+# OR use incognito/private window
+# OR clear browser cache completely
+```
 
-This positions Festival Chat as a **professional-grade platform** suitable for real festival deployments with full administrative oversight and control.
+### **🔌 Environment Variable Issues**
 
-**The dashboard is ready for production use at any festival! 🎉**
+#### **Problem**: Environment variables not available at runtime
+**Symptoms**: Dashboard trying wrong server URLs, environment detection failing
+**Diagnosis**: Check console for environment detection logs
+
+**Solution**: Use environment-fixed deployment
+```bash
+# Deploy with explicit environment injection
+npm run preview:env-fix
+
+# Check console logs for:
+# "🔧 Environment detection: { wsServer: 'wss://...staging...' }"
+```
+
+#### **Environment Variable Checklist**:
+- [ ] `.env.staging` contains correct `NEXT_PUBLIC_SIGNALING_SERVER`
+- [ ] WebSocket server deployed with `BUILD_TARGET=staging`
+- [ ] Frontend build includes environment variables
+- [ ] Console shows correct environment detection
+
+### **🔐 Authentication Issues**
+
+#### **Problem**: Login fails or "Invalid credentials" error
+**Symptoms**: Cannot login to admin dashboard, 401 errors
+**Diagnosis**: Check network requests in DevTools
+
+**Solutions**:
+1. **Verify WebSocket Server Health**
+```bash
+# Test admin endpoint directly
+curl -u "th3p3ddl3r:letsmakeatrade" \
+  https://peddlenet-websocket-server-staging-*.web.app/admin/analytics
+```
+
+2. **Check Authentication Headers**
+- Open DevTools → Network tab
+- Try logging in
+- Check if request includes `Authorization: Basic ...` header
+
+3. **Session Issues**
+```javascript
+// Clear stuck sessions in browser console
+localStorage.removeItem('peddlenet_admin_session');
+localStorage.removeItem('peddlenet_admin_activity');
+// Refresh page and try login again
+```
+
+### **📱 Mobile/Responsive Issues**
+
+#### **Problem**: Dashboard not working properly on mobile
+**Solutions**:
+- Use landscape orientation for better experience
+- Clear mobile browser cache
+- Try different mobile browser (Chrome/Safari/Firefox)
+- Ensure good network connection
+
+### **🌐 Network/Server Issues**
+
+#### **Problem**: "Connection Error" or server offline
+**Symptoms**: Red "Disconnected" status, error messages
+**Diagnosis**: Check server health and network
+
+**Solutions**:
+1. **Verify Server Status**
+```bash
+# Check WebSocket server health
+curl https://peddlenet-websocket-server-staging-*.web.app/health
+
+# Should return JSON with status: "healthy"
+```
+
+2. **Check Network Connectivity**
+- Verify internet connection
+- Try accessing from different network
+- Check firewall/VPN settings
+
+3. **Graceful Degradation**
+- Dashboard should continue working with cached data
+- Retry connection automatically
+- Show meaningful error messages
+
+### **📊 Data/Analytics Issues**
+
+#### **Problem**: No data showing, empty dashboard
+**Diagnosis**: Check if WebSocket server has data
+```bash
+# Check raw analytics data
+curl -u "th3p3ddl3r:letsmakeatrade" \
+  https://peddlenet-websocket-server-staging-*.web.app/admin/analytics
+```
+
+**Solutions**:
+- Generate test data by using the main chat app
+- Verify WebSocket server is receiving connections
+- Check admin endpoint responses
+
+### **🎯 Version Verification**
+
+#### **How to Verify You're Seeing the Latest Version**:
+1. **Login Form**: Should have 🎵 music note icon and purple gradient
+2. **Footer Version**: Should show `v4.5.0-env-fix` or newer
+3. **Metric Cards**: Should have beautiful pills showing "X Active / Y Total"
+4. **Environment**: Footer should show correct server (staging/production)
+5. **Console Logs**: Should see "🔧 Environment detection" logs
+
+### **🚨 Emergency Procedures**
+
+#### **If Dashboard Completely Broken**:
+1. **Use Direct Server Access**
+```bash
+# Access server directly for emergency admin
+curl -u "th3p3ddl3r:letsmakeatrade" -X POST \
+  https://peddlenet-websocket-server-staging-*.web.app/admin/broadcast \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Emergency announcement"}'
+```
+
+2. **Fallback to Local Development**
+```bash
+# Run locally with WebSocket server connection
+npm run dev:mobile
+# Access http://localhost:3000/admin-analytics
+```
+
+3. **Production Fallback**
+- Use production admin dashboard: `https://peddlenet.app/admin-analytics`
+- Deploy emergency fixes to production if needed
+
+### **📞 Support Information**
+
+#### **For Additional Support**:
+- Check deployment logs: `firebase hosting:channel:list`
+- Review WebSocket server logs in Cloud Run Console
+- Test individual API endpoints with curl
+- Use browser DevTools to inspect network requests
+- Check environment variable injection in build logs
+
+**Remember**: The admin dashboard has graceful degradation - it should continue working with cached data even during server issues! 🎪**

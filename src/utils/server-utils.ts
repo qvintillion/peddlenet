@@ -12,6 +12,7 @@ export const ServerUtils = {
     const currentHostname = window.location.hostname;
     const currentProtocol = window.location.protocol;
     const currentOrigin = window.location.origin;
+    const environment = this.detectEnvironment();
     
     console.log('🔍 HTTP Server URL detection:');
     console.log('  - NEXT_PUBLIC_SIGNALING_SERVER:', envUrl);
@@ -19,14 +20,7 @@ export const ServerUtils = {
     console.log('  - Current hostname:', currentHostname);
     console.log('  - Current protocol:', currentProtocol);
     console.log('  - Current origin:', currentOrigin);
-    
-    // 🚀 VERCEL DETECTION: If we're on a Vercel domain, use the current origin for API calls
-    if (currentHostname.includes('.vercel.app') || 
-        currentHostname.includes('peddlenet.app') ||
-        (currentHostname !== 'localhost' && !currentHostname.match(/^\d+\.\d+\.\d+\.\d+$/))) {
-      console.log('🚀 Vercel deployment detected, using current origin for API:', currentOrigin);
-      return currentOrigin;
-    }
+    console.log('  - Detected environment:', environment);
     
     // PRIORITY: If we're on localhost, always use local server
     if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
@@ -47,6 +41,25 @@ export const ServerUtils = {
       const httpUrl = `http://${currentHostname}:3001`;
       console.log('🌐 Using current IP for HTTP:', httpUrl);
       return httpUrl;
+    }
+    
+    // 🚀 VERCEL PRODUCTION: Use current origin for API calls
+    if (environment === 'production' && 
+        (currentHostname.includes('.vercel.app') || currentHostname.includes('peddlenet.app'))) {
+      console.log('🚀 Vercel production detected, using current origin for API:', currentOrigin);
+      return currentOrigin;
+    }
+    
+    // 🎭 STAGING/PREVIEW: Use Cloud Run server from environment variable
+    if ((environment === 'staging' || environment === 'development') && envUrl) {
+      if (envUrl.startsWith('wss://')) {
+        const httpUrl = envUrl.replace('wss://', 'https://');
+        console.log('🎭 Using staging Cloud Run HTTP URL:', httpUrl);
+        return httpUrl;
+      } else if (envUrl.startsWith('https://')) {
+        console.log('🎭 Using staging Cloud Run HTTPS URL:', envUrl);
+        return envUrl;
+      }
     }
     
     // Production: Convert WSS to HTTPS for HTTP calls (Cloud Run fallback)
@@ -145,23 +158,83 @@ export const ServerUtils = {
     if (typeof window === 'undefined') return '/admin';
     
     const currentHostname = window.location.hostname;
+    const environment = this.detectEnvironment();
     
-    // If we're on Vercel (or similar platform), use /api/admin
-    if (currentHostname.includes('.vercel.app') || 
-        currentHostname.includes('peddlenet.app') ||
-        (currentHostname !== 'localhost' && !currentHostname.match(/^\d+\.\d+\.\d+\.\d+$/))) {
+    console.log('🔧 Admin API Path Detection:');
+    console.log('  - hostname:', currentHostname);
+    console.log('  - environment:', environment);
+    
+    // For Vercel production deployments, use Vercel API routes
+    if (environment === 'production' && 
+        (currentHostname.includes('.vercel.app') || currentHostname.includes('peddlenet.app'))) {
       console.log('🚀 Using Vercel API path: /api/admin');
       return '/api/admin';
     }
     
-    // For localhost or Cloud Run, use /admin
-    console.log('🌐 Using Cloud Run API path: /admin');
+    // For staging/preview (Firebase) and development, use Cloud Run admin endpoints
+    console.log('🌍 Using Cloud Run API path: /admin');
     return '/admin';
   },
 
   /**
-   * Test if the HTTP server is reachable
+   * Detect current deployment environment based on URL patterns
    */
+  detectEnvironment(): 'development' | 'staging' | 'production' {
+    if (typeof window === 'undefined') return 'development';
+    
+    const hostname = window.location.hostname;
+    const href = window.location.href;
+    
+    console.log('🔍 Environment Detection Debug:');
+    console.log('  - hostname:', hostname);
+    console.log('  - href:', href);
+    
+    // Development - localhost or IP addresses
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+      console.log('🏠 Detected: development (localhost/IP)');
+      return 'development';
+    }
+    
+    // STAGING DETECTION (Enhanced - Firebase domains including preview channels)
+    const isStagingDomain = (
+      // Firebase preview channels (festival-chat-peddlenet--preview-name.web.app)
+      /^festival-chat-peddlenet--[\w-]+\.web\.app$/.test(hostname) ||
+      // Main Firebase staging domain
+      hostname === 'festival-chat-peddlenet.web.app' ||
+      // Generic preview channel pattern
+      (href.includes('--') && href.includes('.web.app')) ||
+      // Other staging patterns
+      hostname.includes('staging') ||
+      hostname.includes('preview')
+    );
+    
+    if (isStagingDomain) {
+      console.log('🎭 Detected: staging (Firebase/preview)');
+      return 'staging';
+    }
+    
+    // PRODUCTION DETECTION (Vercel domains ONLY)
+    const isProductionDomain = (
+      hostname.includes('peddlenet.app') ||
+      hostname.includes('.vercel.app')
+    );
+    
+    if (isProductionDomain) {
+      console.log('🚀 Detected: production (Vercel)');
+      return 'production';
+    }
+    
+    // FALLBACK: Default to staging for unknown Firebase domains
+    if (hostname.includes('.web.app') || hostname.includes('.firebaseapp.com')) {
+      console.log('🎭 Fallback: staging (unknown Firebase domain)');
+      return 'staging';
+    }
+    
+    // Final fallback: development for truly unknown domains
+    console.log('❓ Fallback: development (unknown domain)');
+    return 'development';
+  },
+  
   async testHttpHealth(): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
       const serverUrl = this.getHttpServerUrl();
@@ -199,25 +272,34 @@ export const ServerUtils = {
     httpUrl: string;
     webSocketUrl: string;
     adminApiPath: string;
-    environment: 'development' | 'production';
-    platform: 'localhost' | 'vercel' | 'cloudrun' | 'other';
+    environment: 'development' | 'staging' | 'production';
+    platform: 'localhost' | 'vercel' | 'cloudrun' | 'firebase' | 'other';
     protocol: string;
     hostname: string;
+    isPreviewChannel: boolean;
   } {
     const httpUrl = this.getHttpServerUrl();
     const webSocketUrl = this.getWebSocketServerUrl();
     const adminApiPath = this.getAdminApiPath();
-    const environment = httpUrl.includes('localhost') || httpUrl.includes('192.168.') || httpUrl.includes('10.') ? 'development' : 'production';
+    const environment = this.detectEnvironment();
     
-    let platform: 'localhost' | 'vercel' | 'cloudrun' | 'other' = 'other';
+    let platform: 'localhost' | 'vercel' | 'cloudrun' | 'firebase' | 'other' = 'other';
+    let isPreviewChannel = false;
+    
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname;
+      const href = window.location.href;
+      
       if (hostname === 'localhost' || hostname === '127.0.0.1') {
         platform = 'localhost';
-      } else if (hostname.includes('.vercel.app') || hostname.includes('peddlenet.app')) {
+      } else if (hostname.includes('.vercel.app')) {
         platform = 'vercel';
       } else if (httpUrl.includes('run.app')) {
         platform = 'cloudrun';
+      } else if (hostname.includes('.web.app') || hostname.includes('.firebaseapp.com')) {
+        platform = 'firebase';
+        // Detect Firebase preview channels
+        isPreviewChannel = href.includes('--') || /--[\w-]+\.web\.app$/.test(hostname);
       }
     }
     
@@ -228,7 +310,8 @@ export const ServerUtils = {
       environment,
       platform,
       protocol: typeof window !== 'undefined' ? window.location.protocol : 'http:',
-      hostname: typeof window !== 'undefined' ? window.location.hostname : 'localhost'
+      hostname: typeof window !== 'undefined' ? window.location.hostname : 'localhost',
+      isPreviewChannel
     };
   }
 };
@@ -238,7 +321,8 @@ if (typeof window !== 'undefined') {
   setTimeout(() => {
     try {
       (window as any).ServerUtils = ServerUtils;
-      console.log('🔧 Server Utils loaded - Vercel + Cloud Run support');
+      console.log('🔧 Server Utils loaded - Enhanced environment detection');
+      console.log('📊 Current environment:', ServerUtils.getEnvironmentInfo());
     } catch (error) {
       console.warn('ServerUtils initialization failed:', error);
     }

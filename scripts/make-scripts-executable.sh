@@ -1,32 +1,64 @@
 #!/bin/bash
 
-# Make Essential Festival Chat Scripts Executable
-# Updated for streamlined workflow (June 12, 2025)
+# 🔧 Make Scripts Executable - Comprehensive Permission Fix
+# ======================================================
+# Ensures all scripts have proper execute permissions
+# Run after cloning or if permissions get reset
 
-echo "🚀 Making essential Festival Chat scripts executable..."
+echo "🔧 Making all scripts executable..."
+echo "=================================="
 
-# Core development
-chmod +x scripts/dev-mobile.sh
+# Count scripts for reporting
+script_count=0
+tool_count=0
 
-# Preview environment
-chmod +x scripts/deploy-preview-simple.sh
-chmod +x scripts/preview-manager.sh
+# Make scripts executable
+if [ -d "scripts" ]; then
+    for script in scripts/*.sh; do
+        if [ -f "$script" ]; then
+            chmod +x "$script"
+            script_count=$((script_count + 1))
+        fi
+    done
+    echo "✅ Made $script_count scripts executable in scripts/"
+else
+    echo "⚠️  No scripts directory found"
+fi
 
-# Deployment
-chmod +x scripts/deploy-websocket-staging.sh
-chmod +x scripts/deploy-websocket-cloudbuild.sh
+# Make tools executable
+if [ -d "tools" ]; then
+    for tool in tools/*.sh; do
+        if [ -f "$tool" ]; then
+            chmod +x "$tool"
+            tool_count=$((tool_count + 1))
+        fi
+    done
+    echo "✅ Made $tool_count tools executable in tools/"
+else
+    echo "⚠️  No tools directory found"
+fi
 
-# Main deployment script (root level)
-chmod +x deploy.sh
+# Make root-level scripts executable
+root_count=0
+for script in *.sh; do
+    if [ -f "$script" ]; then
+        chmod +x "$script"
+        root_count=$((root_count + 1))
+    fi
+done
 
-echo "✅ Essential scripts made executable"
-echo "🎆 Your streamlined deployment workflow is ready!"
+if [ $root_count -gt 0 ]; then
+    echo "✅ Made $root_count scripts executable in project root"
+fi
+
+# Summary
+total_count=$((script_count + tool_count + root_count))
 echo ""
-echo "📜 Available commands:"
-echo "  npm run dev:mobile"
-echo "  npm run preview:deploy feature-name"
-echo "  npm run preview:list"
-echo "  npm run preview:manage"
-echo "  npm run preview:cleanup"
-echo "  npm run deploy:firebase:complete"
-echo "  ./deploy.sh"
+echo "🎉 Permission Fix Complete!"
+echo "============================"
+echo "📊 Total scripts made executable: $total_count"
+echo "   • Scripts directory: $script_count"
+echo "   • Tools directory: $tool_count" 
+echo "   • Project root: $root_count"
+echo ""
+echo "🚀 Ready to run scripts!"

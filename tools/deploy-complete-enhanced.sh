@@ -4,6 +4,7 @@
 # Deploys WebSocket server to STAGING Cloud Run and rebuilds Firebase with the URL
 # ENHANCED: Comprehensive debugging, cache clearing, and error detection
 # FEATURES: Auto-detects environment variables, validates URLs, clears all caches
+# CACHE-BUSTING: Uses BUILD_ID in Docker builds to force fresh server deployments
 
 set -e
 
@@ -220,6 +221,7 @@ echo ""
 
 # Build and deploy to Cloud Run
 echo "🏗️ Building container image for STAGING..."
+echo "⚡ Using cache-busting for fresh server build..."
 gcloud builds submit \
   --config=deployment/cloudbuild-minimal.yaml \
   --substitutions=_SERVICE_NAME=$SERVICE_NAME,_BUILD_TARGET=staging

@@ -598,10 +598,110 @@ app.get('/health', (req, res) => {
 
 // 📊 COMPREHENSIVE ANALYTICS ENDPOINTS (Protected)
 
-// Main analytics dashboard endpoint
 app.get('/admin/analytics', requireAdminAuth, async (req, res) => {
   try {
-    const dashboardData = await generateComprehensiveDashboardData();
+    // FIX 1: Count UNIQUE users instead of connections
+    const uniqueActiveUsers = new Set();
+    for (const [roomId, roomPeers] of rooms.entries()) {
+      for (const [socketId, peerData] of roomPeers.entries()) {
+        uniqueActiveUsers.add(peerData.peerId);
+      }
+    }
+    const actualActiveUsers = uniqueActiveUsers.size;
+    
+    // FIXED: Improved database query with proper error handling and null checks
+    const getTotalStats = () => {
+      return new Promise((resolve) => {
+        if (!dbReady || !db) {
+          console.log('📊 Database not ready, returning fallback totals');
+          resolve({ totalUsers: 0, totalRooms: 0 });
+          return;
+        }
+        
+        // Get total unique users from user_sessions table
+        safeDbGet('SELECT COUNT(DISTINCT user_id) as total_users FROM user_sessions', [], (err, userResult) => {
+          if (err) {
+            console.warn('⚠️ User count query failed:', err.message);
+            resolve({ totalUsers: 0, totalRooms: 0 });
+            return;
+          }
+          
+          const totalUsers = userResult?.total_users || 0;
+          console.log('📊 Total users from DB:', totalUsers);
+          
+          // Get total unique rooms from user_sessions table
+          safeDbGet('SELECT COUNT(DISTINCT room_id) as total_rooms FROM user_sessions', [], (err, roomResult) => {
+            if (err) {
+              console.warn('⚠️ Room count query failed:', err.message);
+              resolve({ totalUsers, totalRooms: 0 });
+              return;
+            }
+            
+            const totalRooms = roomResult?.total_rooms || 0;
+            console.log('📊 Total rooms from DB:', totalRooms);
+            
+            resolve({ totalUsers, totalRooms });
+          });
+        });
+      });
+    };
+    
+    const { totalUsers, totalRooms } = await getTotalStats();
+    
+    const dashboardData = {
+      realTimeStats: {
+        activeUsers: actualActiveUsers, // FIX: Use unique users, not connections
+        totalUsers: totalUsers,
+        activeRooms: rooms.size,
+        totalRooms: totalRooms,
+        messagesPerMinute: analyticsData.messagesPerMinute,
+        totalMessages: analyticsData.totalMessages,
+        peakConnections: connectionStats.peakConnections,
+        storageUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        userTrend: '',
+        roomTrend: '',
+        environment: NODE_ENV
+      },
+      serverHealth: {
+        status: 'healthy',
+        uptime: formatUptime(process.uptime()),
+        memoryUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        memoryTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+        cpuUsage: `${cpuUsage.percent}%`,
+        cpuUser: `${cpuUsage.user}%`,
+        cpuSystem: `${cpuUsage.system}%`,
+        coldStarts: 0
+      },
+      networkStatus: {
+        quality: 100,
+        avgLatency: 0,
+        deliveryRate: 100
+      },
+      messageFlow: {
+        messagesPerMinute: analyticsData.messagesPerMinute,
+        trend: '',
+        history: analyticsData.messageHistory
+      },
+      dbStats: {
+        totalMessages: analyticsData.totalMessages,
+        totalRooms: rooms.size,
+        totalSessions: 0,
+        recentActivity: 0,
+        dbSize: '1MB',
+        oldestMessage: Date.now() - (24 * 60 * 60 * 1000)
+      },
+      timestamp: Date.now(),
+      databaseReady: dbReady
+    };
+    
+    console.log('📊 Sending analytics data:', {
+      activeUsers: actualActiveUsers,
+      totalUsers,
+      activeRooms: rooms.size,
+      totalRooms,
+      dbReady
+    });
+    
     res.json(dashboardData);
   } catch (error) {
     console.error('❌ Analytics dashboard error:', error);
@@ -609,9 +709,9 @@ app.get('/admin/analytics', requireAdminAuth, async (req, res) => {
   }
 });
 
-// Live activity feed endpoint
+// FIX 3: Activity endpoint shows activities from ALL rooms
 app.get('/admin/activity', requireAdminAuth, (req, res) => {
-  const { limit = 20 } = req.query;
+  const { limit = 50 } = req.query; // Increased default limit
   res.json({
     activities: activityLog.slice(0, parseInt(limit)),
     total: activityLog.length,

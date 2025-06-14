@@ -1,77 +1,47 @@
+// API proxy to WebSocket server broadcast endpoint
 import { NextRequest, NextResponse } from 'next/server';
 
-// Simple authentication check
-function isAuthenticated(request: NextRequest): boolean {
-  const authHeader = request.headers.get('authorization');
-  
-  if (!authHeader || !authHeader.startsWith('Basic ')) {
-    return false;
+// Get the WebSocket server URL
+function getWebSocketServerUrl() {
+  // In development, use local server
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3001';
   }
   
-  const base64Credentials = authHeader.split(' ')[1];
-  const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
-  const [username, password] = credentials.split(':');
-  
-  const validUsername = process.env.ADMIN_USERNAME || 'th3p3ddl3r';
-  const validPassword = process.env.ADMIN_PASSWORD || 'letsmakeatrade';
-  
-  return username === validUsername && password === validPassword;
+  // In production, use the Cloud Run server
+  return process.env.WEBSOCKET_SERVER_URL || 'https://peddlenet-websocket-server-hfttiarlja-uc.a.run.app';
 }
 
 export async function POST(request: NextRequest) {
-  // Check authentication
-  if (!isAuthenticated(request)) {
-    return NextResponse.json(
-      { error: 'Authentication required' },
-      { 
-        status: 401,
-        headers: {
-          'WWW-Authenticate': 'Basic realm="Festival Chat Admin Dashboard"'
-        }
-      }
-    );
-  }
-
   try {
     const body = await request.json();
-    const { message, targetRooms = 'all', priority = 'normal' } = body;
-
-    if (!message || !message.trim()) {
-      return NextResponse.json(
-        { error: 'Message content required' },
-        { status: 400 }
-      );
+    const { message } = body;
+    
+    if (!message) {
+      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
-
-    // For Vercel deployment, we can't directly broadcast to WebSocket connections
-    // Instead, we'll simulate success and note the limitation
-    console.log(`📢 Admin broadcast: ${message} (target: ${targetRooms})`);
-
-    return NextResponse.json({
-      success: true,
-      messagesSent: 0, // No active connections on Vercel
-      targetRooms,
-      timestamp: Date.now(),
-      note: 'Vercel deployment - broadcast logged but requires WebSocket server for delivery'
+    
+    const serverUrl = getWebSocketServerUrl();
+    console.log('🌐 Proxying broadcast request to:', `${serverUrl}/admin/broadcast`);
+    
+    const response = await fetch(`${serverUrl}/admin/broadcast`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message }),
     });
 
-  } catch (error) {
-    console.error('Broadcast error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+    if (!response.ok) {
+      console.error('❌ WebSocket server broadcast failed:', response.status, response.statusText);
+      return NextResponse.json({ error: 'Failed to send broadcast' }, { status: response.status });
+    }
 
-// Handle OPTIONS for CORS
-export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
+    const data = await response.json();
+    console.log('✅ Broadcast sent successfully');
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('❌ Broadcast API error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

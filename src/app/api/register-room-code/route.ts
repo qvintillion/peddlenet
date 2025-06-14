@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// Simple in-memory storage for room codes
-// In production, you'd want to use a database like Vercel KV or similar
-const roomCodeMappings = new Map<string, string>();
+import { RoomCodeStorage } from '@/lib/room-code-storage';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +16,7 @@ export async function POST(request: NextRequest) {
     const normalizedCode = roomCode.toLowerCase();
 
     // Check if code is already taken by a different room
-    const existingRoomId = roomCodeMappings.get(normalizedCode);
+    const existingRoomId = RoomCodeStorage.get(normalizedCode);
     if (existingRoomId && existingRoomId !== roomId) {
       return NextResponse.json(
         { error: 'Room code already taken by another room' },
@@ -27,8 +24,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Register the mapping
-    roomCodeMappings.set(normalizedCode, roomId);
+    // Register the mapping using shared storage
+    RoomCodeStorage.set(normalizedCode, roomId);
     
     console.log(`📋 Registered room code: ${normalizedCode} -> ${roomId}`);
 

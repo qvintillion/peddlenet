@@ -1,7 +1,7 @@
 steps:
   # Simple Docker build with minimal dependencies - supports service name substitution
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-f', 'Dockerfile.minimal', '-t', 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}', '.']
+    args: ['build', '-f', 'Dockerfile.minimal', '--build-arg', 'BUILD_DATE=${BUILD_ID}', '-t', 'gcr.io/$PROJECT_ID/${_SERVICE_NAME}', '.']
 
   # Push the image  
   - name: 'gcr.io/cloud-builders/docker'

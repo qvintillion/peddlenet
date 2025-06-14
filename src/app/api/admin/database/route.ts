@@ -33,16 +33,6 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
-    const { confirm } = body;
-
-    if (confirm !== 'WIPE_EVERYTHING') {
-      return NextResponse.json(
-        { error: 'Confirmation required: send "WIPE_EVERYTHING"' },
-        { status: 400 }
-      );
-    }
-
     // For Vercel deployment, we only have in-memory storage to clear
     // In a real implementation, this would clear database tables
     console.log('🗑️ Vercel: Database wipe requested - clearing in-memory storage');

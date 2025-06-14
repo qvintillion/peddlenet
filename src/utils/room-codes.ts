@@ -52,6 +52,18 @@ export class RoomCodeManager {
   }
 
   /**
+   * Get the base URL for room code API calls (Next.js API routes, not WebSocket server)
+   */
+  static getRoomCodeApiUrl(): string {
+    if (typeof window === 'undefined') return 'http://localhost:3000';
+    
+    // For room codes, we always use the frontend URL (same origin) because room code endpoints are Next.js API routes
+    const currentOrigin = window.location.origin;
+    console.log('🎯 Using room code API URL (Next.js API routes):', currentOrigin);
+    return currentOrigin;
+  }
+
+  /**
    * Extract room ID from room code (now with server lookup AND reverse engineering)
    */
   static async getRoomIdFromCode(code: string): Promise<string | null> {
@@ -68,8 +80,8 @@ export class RoomCodeManager {
       
       // Still check server to make sure room is active (optional verification)
       try {
-        const serverUrl = ServerUtils.getHttpServerUrl();
-        const response = await fetch(`${serverUrl}/resolve-room-code/${encodeURIComponent(normalizedCode)}`, {
+        const apiUrl = this.getRoomCodeApiUrl();
+        const response = await fetch(`${apiUrl}/api/resolve-room-code/${encodeURIComponent(normalizedCode)}`, {
           method: 'GET',
           signal: AbortSignal.timeout(5000), // 5 second timeout
         });
@@ -94,13 +106,13 @@ export class RoomCodeManager {
     }
     
     // Try server lookup for room codes created by other users
-    console.log('🌐 Checking server for room code:', normalizedCode);
+    console.log('🌐 Checking Next.js API for room code:', normalizedCode);
     
     try {
-      const serverUrl = ServerUtils.getHttpServerUrl();
-      console.log('🔗 Requesting:', `${serverUrl}/resolve-room-code/${encodeURIComponent(normalizedCode)}`);
+      const apiUrl = this.getRoomCodeApiUrl();
+      console.log('🔗 Requesting:', `${apiUrl}/api/resolve-room-code/${encodeURIComponent(normalizedCode)}`);
       
-      const response = await fetch(`${serverUrl}/resolve-room-code/${encodeURIComponent(normalizedCode)}`, {
+      const response = await fetch(`${apiUrl}/api/resolve-room-code/${encodeURIComponent(normalizedCode)}`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -109,14 +121,14 @@ export class RoomCodeManager {
         mode: 'cors'
       });
       
-      console.log('📡 Server response status:', response.status, response.statusText);
+      console.log('📡 API response status:', response.status, response.statusText);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('📄 Server response data:', data);
+        console.log('📄 API response data:', data);
         
         if (data.success && data.roomId) {
-          console.log('✅ Found room code on server:', normalizedCode, '->', data.roomId);
+          console.log('✅ Found room code on API:', normalizedCode, '->', data.roomId);
           // Cache it locally for future use (but don't await - do it in background)
           this.storeCodeMapping(data.roomId, normalizedCode).catch(err => 
             console.warn('Failed to cache room code mapping:', err)
@@ -124,11 +136,11 @@ export class RoomCodeManager {
           return data.roomId;
         }
       } else if (response.status === 404) {
-        console.log('💬 Room code not found on server (using cached/fallback):', normalizedCode);
-        // This is expected behavior - server doesn't have all room codes
+        console.log('💬 Room code not found on API (using cached/fallback):', normalizedCode);
+        // This is expected behavior - API doesn't have all room codes
         // Continue to reverse engineering without treating this as an error
       } else {
-        console.warn('⚠️ Server response not OK:', response.status, response.statusText);
+        console.warn('⚠️ API response not OK:', response.status, response.statusText);
       }
     } catch (error) {
       // Only log network errors, not 404s which are expected
@@ -253,7 +265,7 @@ export class RoomCodeManager {
   }
 
   /**
-   * Store room code mapping for session AND register with server
+   * Store room code mapping for session AND register with Next.js API
    */
   static async storeCodeMapping(roomId: string, code: string): Promise<void> {
     const normalizedCode = code.toLowerCase();
@@ -269,12 +281,12 @@ export class RoomCodeManager {
       console.warn('Failed to store room code mapping locally:', error);
     }
     
-    // Register with server so others can find it (with better error handling)
+    // Register with Next.js API so others can find it (with better error handling)
     try {
-      const serverUrl = ServerUtils.getHttpServerUrl();
-      console.log('📡 Registering room code with server:', `${serverUrl}/register-room-code`);
+      const apiUrl = this.getRoomCodeApiUrl();
+      console.log('📡 Registering room code with Next.js API:', `${apiUrl}/api/register-room-code`);
       
-      const response = await fetch(`${serverUrl}/register-room-code`, {
+      const response = await fetch(`${apiUrl}/api/register-room-code`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -288,22 +300,22 @@ export class RoomCodeManager {
         mode: 'cors'
       });
       
-      console.log('📡 Server registration response:', response.status, response.statusText);
+      console.log('📡 API registration response:', response.status, response.statusText);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
       const data = await response.json();
-      console.log('📄 Server registration data:', data);
+      console.log('📄 API registration data:', data);
       
       if (data.success) {
-        console.log('✅ Room code registered with server:', normalizedCode, '->', roomId);
+        console.log('✅ Room code registered with Next.js API:', normalizedCode, '->', roomId);
       } else {
-        console.warn('⚠️ Server rejected room code registration:', data.error);
+        console.warn('⚠️ API rejected room code registration:', data.error);
       }
     } catch (error) {
-      console.error('❌ Failed to register room code with server:', error);
+      console.error('❌ Failed to register room code with Next.js API:', error);
       console.error('Registration error details:', {
         roomId,
         code: normalizedCode,
@@ -528,23 +540,25 @@ export class RoomCodeDiagnostics {
   }
   
   /**
-   * Test server connectivity for room codes
+   * Test server connectivity for room codes (now tests Next.js API routes)
    */
   static async testServerConnectivity(): Promise<{
     serverReachable: boolean;
-    httpUrl: string;
+    apiUrl: string;
     health?: any;
     roomCodeEndpoints?: {
       register: boolean;
       resolve: boolean;
     };
+    debugInfo?: any;
     error?: string;
   }> {
     try {
-      const serverUrl = ServerUtils.getHttpServerUrl();
+      // Use the room code API URL (Next.js API routes)
+      const apiUrl = RoomCodeManager.getRoomCodeApiUrl();
       
       // Test health endpoint
-      const healthResponse = await fetch(`${serverUrl}/health`, {
+      const healthResponse = await fetch(`${apiUrl}/api/health`, {
         method: 'GET',
         signal: AbortSignal.timeout(5000)
       });
@@ -552,7 +566,7 @@ export class RoomCodeDiagnostics {
       if (!healthResponse.ok) {
         return {
           serverReachable: false,
-          httpUrl: serverUrl,
+          apiUrl,
           error: `Health check failed: HTTP ${healthResponse.status}`
         };
       }
@@ -566,7 +580,7 @@ export class RoomCodeDiagnostics {
       // Test register endpoint
       let registerWorks = false;
       try {
-        const registerResponse = await fetch(`${serverUrl}/register-room-code`, {
+        const registerResponse = await fetch(`${apiUrl}/api/register-room-code`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ roomId: testRoomId, roomCode: testCode }),
@@ -580,7 +594,7 @@ export class RoomCodeDiagnostics {
       // Test resolve endpoint
       let resolveWorks = false;
       try {
-        const resolveResponse = await fetch(`${serverUrl}/resolve-room-code/${testCode}`, {
+        const resolveResponse = await fetch(`${apiUrl}/api/resolve-room-code/${testCode}`, {
           method: 'GET',
           signal: AbortSignal.timeout(5000)
         });
@@ -589,20 +603,35 @@ export class RoomCodeDiagnostics {
         console.warn('Resolve endpoint test failed:', error);
       }
       
+      // Get debug info about stored room codes
+      let debugInfo = null;
+      try {
+        const debugResponse = await fetch(`${apiUrl}/api/debug/room-codes`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(5000)
+        });
+        if (debugResponse.ok) {
+          debugInfo = await debugResponse.json();
+        }
+      } catch (error) {
+        console.warn('Debug endpoint failed:', error);
+      }
+      
       return {
         serverReachable: true,
-        httpUrl: serverUrl,
+        apiUrl,
         health,
         roomCodeEndpoints: {
           register: registerWorks,
           resolve: resolveWorks
-        }
+        },
+        debugInfo
       };
       
     } catch (error) {
       return {
         serverReachable: false,
-        httpUrl: ServerUtils.getHttpServerUrl(),
+        apiUrl: RoomCodeManager.getRoomCodeApiUrl(),
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }

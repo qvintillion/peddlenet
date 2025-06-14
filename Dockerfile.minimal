@@ -1,7 +1,11 @@
-# Minimal Dockerfile for immediate deployment
+# Minimal Dockerfile for immediate deployment - CACHE BUSTING VERSION
 FROM node:18-alpine
 
 WORKDIR /app
+
+# CACHE BUSTER: Add timestamp to force fresh build
+ARG BUILD_DATE
+RUN echo "Build date: ${BUILD_DATE}" > /tmp/build_date
 
 # Copy package.json from root (has all dependencies)
 COPY package.json package-lock.json ./

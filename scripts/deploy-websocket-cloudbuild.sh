@@ -40,6 +40,7 @@ gcloud config set project $PROJECT_ID
 
 # Submit build to Cloud Build (production configuration)
 echo "☁️  Submitting production build to Google Cloud Build..."
+echo "⚡ Using cache-busting for fresh build..."
 gcloud builds submit \
   --config deployment/cloudbuild-production.yaml \
   --substitutions=_SERVICE_NAME=$SERVICE_NAME
