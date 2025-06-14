@@ -768,125 +768,33 @@ export default function AdminAnalyticsPage() {
     }
   };
 
-  // 🔧 CRITICAL FIX: Authentication with direct API call (not using state)
+  // 🔧 ENHANCED DEBUG: Authentication with comprehensive logging
   const handleLogin = async (username: string, password: string) => {
     console.log('\n🔐 [LOGIN DEBUG] === LOGIN ATTEMPT START ===');
     console.log('[LOGIN DEBUG] Username:', username);
     console.log('[LOGIN DEBUG] Password length:', password.length);
     console.log('[LOGIN DEBUG] Timestamp:', new Date().toISOString());
-    console.log('[LOGIN DEBUG] isClient:', isClient);
     
     setIsLoading(true);
     setLoginError('');
 
     try {
-      // 🔧 CRITICAL FIX: Make direct API call with explicit credentials instead of relying on state
-      const makeDirectAPICall = async (endpoint: string, options: RequestInit = {}) => {
-        console.log('\n🔧 [DIRECT API DEBUG] === API CALL START ===');
-        console.log('[DIRECT API DEBUG] Endpoint:', endpoint);
-        console.log('[DIRECT API DEBUG] Username:', username);
-        console.log('[DIRECT API DEBUG] isClient:', isClient);
-
-        if (!isClient) {
-          const errorMsg = 'Not client-side';
-          console.error('[DIRECT API DEBUG] Error:', errorMsg);
-          throw new Error(errorMsg);
-        }
-
-        const headers = {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${btoa(`${username}:${password}`)}`,
-          ...options.headers
-        };
-
-        console.log('[DIRECT API DEBUG] Auth header:', headers.Authorization);
-
-        const hostname = window.location.hostname;
-        const isLocal = hostname === 'localhost' || hostname.startsWith('192.168.') || hostname.startsWith('10.');
-        
-        const wsServer = (typeof window !== 'undefined' && (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_SIGNALING_SERVER) 
-          || process.env.NEXT_PUBLIC_SIGNALING_SERVER
-          || 'wss://peddlenet-websocket-server-staging-hfttiarlja-uc.a.run.app';
-        
-        console.log('[DIRECT API DEBUG] Environment:', {
-          hostname,
-          isLocal,
-          wsServer,
-          processEnv: process.env.NEXT_PUBLIC_SIGNALING_SERVER
-        });
-        
-        // For staging/production, always use the WebSocket server directly
-        if (!isLocal && wsServer) {
-          const apiServerUrl = wsServer.replace('wss://', 'https://');
-          const fullUrl = `${apiServerUrl}/admin${endpoint}`;
-          console.log('[DIRECT API DEBUG] Using WebSocket server:', fullUrl);
-          
-          try {
-            const response = await fetch(fullUrl, {
-              ...options,
-              headers
-            });
-            
-            console.log('[DIRECT API DEBUG] Response status:', response.status);
-            console.log('[DIRECT API DEBUG] Response ok:', response.ok);
-            
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error('[DIRECT API DEBUG] Response error:', errorText);
-              throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-            }
-            
-            console.log('[DIRECT API DEBUG] === API CALL SUCCESS ===\n');
-            return response;
-          } catch (error) {
-            console.error('[DIRECT API DEBUG] WebSocket server API call failed:', error);
-            throw error;
-          }
-        }
-        
-        // For local development, try API routes
-        if (isLocal) {
-          const apiUrl = `/api/admin${endpoint}`;
-          console.log('[DIRECT API DEBUG] Trying API routes:', apiUrl);
-          
-          try {
-            const response = await fetch(apiUrl, {
-              ...options,
-              headers
-            });
-            
-            console.log('[DIRECT API DEBUG] API routes response status:', response.status);
-            
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error('[DIRECT API DEBUG] API routes error:', errorText);
-              throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-            }
-            
-            console.log('[DIRECT API DEBUG] API routes success!');
-            return response;
-          } catch (error) {
-            console.error('[DIRECT API DEBUG] API routes failed:', error);
-            throw error;
-          }
-        }
-        
-        throw new Error('Unable to connect to admin API - no available endpoints');
-      };
+      // Try to authenticate using the makeAPICall helper
+      const testCredentials = { username, password };
+      setCredentials(testCredentials);
       
-      console.log('[LOGIN DEBUG] Making direct API call to /admin/analytics...');
-      const response = await makeDirectAPICall('/analytics');
+      console.log('[LOGIN DEBUG] Making test API call to /admin/analytics...');
+      const response = await makeAPICall('/analytics');
       
       console.log('[LOGIN DEBUG] Authentication response:', {
         status: response.status,
         ok: response.ok,
-        statusText: response.statusText
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
       });
       
       if (response.ok) {
         console.log('[LOGIN DEBUG] Authentication successful!');
-        // 🔧 CRITICAL FIX: Set credentials AFTER successful authentication
-        setCredentials({ username, password });
         setIsConnected(true);
         saveSession(username, password);
         console.log('[LOGIN DEBUG] Session saved successfully');
@@ -1143,6 +1051,12 @@ export default function AdminAnalyticsPage() {
             <p className="text-purple-200 text-sm sm:text-base">
               Real-time monitoring and administration dashboard
             </p>
+            
+            {/* 🔧 DEBUG INFO PANEL */}
+            <div className="mt-4 text-xs bg-gray-900/50 p-3 rounded border border-gray-700">
+              <div className="text-yellow-300 font-mono">DEBUG MODE ACTIVE</div>
+              <div className="text-gray-400 mt-1">Check browser console for detailed logs</div>
+            </div>
           </div>
         </div>
 
