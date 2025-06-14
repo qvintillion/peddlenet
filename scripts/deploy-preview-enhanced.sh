@@ -1,6 +1,6 @@
 #!/bin/bash
-# Enhanced Preview Deploy with Environment Variable Injection
-# Fixes Firebase preview channel environment variable loading
+# FIXED Enhanced Preview Deploy - Uses Current Staging Server
+# Gets WebSocket URL from .env.staging (updated by deploy-websocket-staging.sh)
 
 CHANNEL_NAME=${1:-"preview-$(date +%m%d-%H%M)"}
 
@@ -14,13 +14,28 @@ if [ -f ".env.local" ]; then
     echo "📦 Backed up .env.local"
 fi
 
-# Step 2: Inject preview environment variables
+# Step 2: Get WebSocket URL from staging environment (updated by deploy-websocket-staging.sh)
+if [ -f ".env.staging" ]; then
+    WEBSOCKET_URL=$(grep "NEXT_PUBLIC_SIGNALING_SERVER" .env.staging | cut -d'=' -f2)
+    echo "✅ Using current staging WebSocket server: $WEBSOCKET_URL"
+else
+    echo "❌ .env.staging not found. Run deploy-websocket-staging.sh first"
+    exit 1
+fi
+
+# Verify WebSocket URL is set
+if [ -z "$WEBSOCKET_URL" ]; then
+    echo "❌ WebSocket URL not found in .env.staging. Run deploy-websocket-staging.sh first"
+    exit 1
+fi
+
+# Step 3: Inject preview environment variables with current staging server
 cat > .env.local << EOF
 # Preview Channel Environment - Auto-generated
 # Generated on $(date)
 
-# WebSocket server for admin dashboard (staging)
-NEXT_PUBLIC_SIGNALING_SERVER=wss://peddlenet-websocket-server-staging-250496240301.us-central1.run.app
+# WebSocket server from current staging deployment
+NEXT_PUBLIC_SIGNALING_SERVER=$WEBSOCKET_URL
 
 # Preview environment flags
 NEXT_PUBLIC_ENV=preview
@@ -33,12 +48,12 @@ FIREBASE_PROJECT_ID=festival-chat-peddlenet
 EOF
 
 echo "✅ Injected preview environment variables"
-echo "   - WebSocket server: staging"
+echo "   - WebSocket server: $WEBSOCKET_URL"
 echo "   - Environment: preview"
 echo "   - Channel: $CHANNEL_NAME"
 echo ""
 
-# Step 3: Build with preview environment
+# Step 4: Build with preview environment
 echo "🔨 Building with preview environment..."
 npm run build
 
@@ -50,7 +65,7 @@ fi
 echo "✅ Build completed successfully"
 echo ""
 
-# Step 4: Deploy to preview channel
+# Step 5: Deploy to preview channel
 echo "🚀 Deploying to Firebase preview channel..."
 npx firebase hosting:channel:deploy $CHANNEL_NAME --expires 7d
 
@@ -59,7 +74,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Step 5: Restore original .env.local
+# Step 6: Restore original .env.local
 if [ -f ".env.local.backup."* ]; then
     LATEST_BACKUP=$(ls -t .env.local.backup.* | head -n1)
     mv "$LATEST_BACKUP" .env.local
@@ -71,5 +86,11 @@ echo "✅ Preview deployed successfully!"
 echo "🌐 URL: https://festival-chat-peddlenet--$CHANNEL_NAME.web.app"
 echo "🔧 Admin: https://festival-chat-peddlenet--$CHANNEL_NAME.web.app/admin-analytics"
 echo "⏰ Expires: 7 days"
+echo "🔌 Using WebSocket: $WEBSOCKET_URL"
+echo ""
+echo "🎯 Your optimized workflow:"
+echo "   1. Make UI/backend changes"
+echo "   2. ./scripts/deploy-websocket-staging.sh  (updates backend)"
+echo "   3. npm run preview:deploy                 (deploys frontend with new backend)"
 echo ""
 echo "🧪 Test the admin dashboard to verify WebSocket connection works"

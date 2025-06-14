@@ -26,8 +26,6 @@ interface ActivityFeedProps {
 }
 
 export function ActivityFeed({ activities, onClearActivity }: ActivityFeedProps) {
-  const [showFullLog, setShowFullLog] = useState(false);
-
   // Convert server activity to display activity
   const convertServerActivity = (serverActivity: ServerActivity): Activity => {
     const data = serverActivity.data || {};
@@ -80,8 +78,12 @@ export function ActivityFeed({ activities, onClearActivity }: ActivityFeedProps)
         break;
       
       case 'admin-action':
+      case 'admin-broadcast':
+      case 'admin-room-broadcast':
+      case 'admin-room-clear':
+      case 'admin-database-wipe':
         frontendType = 'broadcast';
-        description = `Admin action: ${data.action || 'Unknown'}`;
+        description = `Admin: ${serverActivity.type.replace('admin-', '').replace('-', ' ')}`;
         details = data.message || JSON.stringify(data).substring(0, 100);
         roomCode = data.roomId;
         break;
@@ -109,11 +111,43 @@ export function ActivityFeed({ activities, onClearActivity }: ActivityFeedProps)
     };
   };
 
-  // Get last 100 activities and convert them
-  const allActivities = activities.slice(0, 100).map(convertServerActivity);
-  
-  // Show only 10 in collapsed view, or all 100 in expanded view
-  const displayActivities = showFullLog ? allActivities : allActivities.slice(0, 10);
+  // Get all activities for scrollable display
+  const displayActivities = activities.slice(0, 100).map(convertServerActivity);
+
+  // Download activity log as CSV
+  const downloadActivityLog = (activities: Activity[]) => {
+    const csvHeaders = 'Timestamp,Type,Description,Details,Room Code,Username\n';
+    
+    const csvContent = activities.map(activity => {
+      const timestamp = new Date(activity.timestamp).toISOString();
+      const type = activity.type;
+      const description = activity.description.replace(/,/g, ';'); // Replace commas to avoid CSV issues
+      const details = (activity.details || '').replace(/,/g, ';').replace(/\n/g, ' ');
+      const roomCode = activity.roomCode || '';
+      const username = activity.username || '';
+      
+      return `"${timestamp}","${type}","${description}","${details}","${roomCode}","${username}"`;
+    }).join('\n');
+    
+    const fullCsv = csvHeaders + csvContent;
+    
+    // Create and download the file
+    const blob = new Blob([fullCsv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    const now = new Date();
+    const filename = `peddlenet-activity-log-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}.csv`;
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    console.log(`📥 Downloaded activity log: ${filename} (${activities.length} activities)`);
+  };
 
   const getActivityIcon = (type: Activity['type']) => {
     switch (type) {
@@ -141,25 +175,23 @@ export function ActivityFeed({ activities, onClearActivity }: ActivityFeedProps)
 
   return (
     <div className="bg-gray-800/80 rounded-lg backdrop-blur-sm border border-gray-700/50 h-full flex flex-col">
-      <div className="p-6 flex-shrink-0">
+      <div className="p-4 sm:p-6 flex-shrink-0">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold flex items-center">
-            <span className="text-2xl mr-2">📊</span>
+          <h3 className="text-lg sm:text-xl font-semibold flex items-center">
+            <span className="text-xl sm:text-2xl mr-2">📊</span>
             Live Activity Feed
           </h3>
           <div className="flex items-center space-x-2">
             <div className="text-xs text-gray-400">
-              {showFullLog ? `${allActivities.length}/100 activities` : `${Math.min(allActivities.length, 10)}/10 recent`}
+              {displayActivities.length} activities
             </div>
-            {allActivities.length > 10 && (
-              <button
-                onClick={() => setShowFullLog(!showFullLog)}
-                className="text-blue-400 hover:text-blue-300 transition-colors text-xs px-2 py-1 bg-blue-500/20 rounded"
-                title={showFullLog ? 'Show recent only' : 'View full activity log'}
-              >
-                {showFullLog ? '📋 Recent' : '📜 Full Log'}
-              </button>
-            )}
+            <button
+              onClick={() => downloadActivityLog(displayActivities)}
+              className="text-gray-400 hover:text-green-400 transition-colors text-sm"
+              title="Download activity log as CSV"
+            >
+              📥
+            </button>
             <button
               onClick={onClearActivity}
               className="text-gray-400 hover:text-red-400 transition-colors text-sm"
@@ -171,8 +203,9 @@ export function ActivityFeed({ activities, onClearActivity }: ActivityFeedProps)
         </div>
       </div>
 
-      <div className="flex-1 px-6 pb-6 overflow-hidden">
-        <div className="h-full overflow-y-auto space-y-3 pr-2">
+      {/* 🔧 FIXED: Fixed height scrollable container - shows ~10 activities, scrolls to 100 */}
+      <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+        <div className="h-[650px] overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800 border border-gray-700/30 rounded-lg p-3">
           {displayActivities.length === 0 ? (
             <div className="text-center text-gray-400 py-8">
               <div className="text-4xl mb-2">🌙</div>
@@ -180,45 +213,60 @@ export function ActivityFeed({ activities, onClearActivity }: ActivityFeedProps)
               <p className="text-sm">Activity will appear here as users interact with the system</p>
             </div>
           ) : (
-            displayActivities.map((activity) => (
-              <div
-                key={activity.id}
-                className="flex items-start space-x-3 p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700/70 transition-colors flex-shrink-0"
-              >
-                <div className="text-lg flex-shrink-0">
-                  {getActivityIcon(activity.type)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className={`text-sm font-medium ${getActivityColor(activity.type)}`}>
-                      {activity.description}
-                    </p>
-                    <span className="text-xs text-gray-400 flex-shrink-0 ml-2">
-                      {new Date(activity.timestamp).toLocaleTimeString()}
-                    </span>
+            <>
+              {/* Scrollable list of all activities within fixed height container */}
+              {displayActivities.map((activity, index) => (
+                <div
+                  key={activity.id}
+                  className="flex items-start space-x-3 p-3 rounded-lg transition-colors flex-shrink-0 bg-gray-700/50 hover:bg-gray-700/70"
+                >
+                  <div className="text-lg flex-shrink-0">
+                    {getActivityIcon(activity.type)}
                   </div>
-                  {activity.details && (
-                    <p className="text-xs text-gray-400 mt-1 break-words">
-                      {activity.details}
-                    </p>
-                  )}
-                  {activity.roomCode && (
-                    <span className="inline-block bg-purple-600/20 text-purple-300 text-xs px-2 py-1 rounded mt-1">
-                      {activity.roomCode}
-                    </span>
-                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <p className={`text-sm font-medium ${getActivityColor(activity.type)}`}>
+                        {activity.description}
+                      </p>
+                      <span className="text-xs text-gray-400 flex-shrink-0 ml-2">
+                        {new Date(activity.timestamp).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    {activity.details && (
+                      <p className="text-xs text-gray-400 mt-1 break-words">
+                        {activity.details}
+                      </p>
+                    )}
+                    {activity.roomCode && (
+                      <span className="inline-block bg-purple-600/20 text-purple-300 text-xs px-2 py-1 rounded mt-1">
+                        {activity.roomCode}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
-          
-          {showFullLog && allActivities.length === 100 && (
-            <div className="text-center text-gray-400 py-4 border-t border-gray-600/50">
-              <p className="text-xs">Showing last 100 activities • Older activities cleared from memory</p>
-            </div>
+              ))}
+              
+              {displayActivities.length === 100 && (
+                <div className="text-center text-gray-400 py-4 border-t border-gray-600/50">
+                  <p className="text-xs">Showing last 100 activities • Older activities cleared from memory</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
+
+      {/* 🔧 ADDED: Scroll indicator for better UX */}
+      {displayActivities.length > 8 && (
+        <div className="px-4 sm:px-6 pb-2 flex-shrink-0">
+          <div className="text-center">
+            <div className="inline-flex items-center text-xs text-gray-500 bg-gray-800/50 px-3 py-1 rounded-full">
+              <span className="mr-1">📜</span>
+              Scroll to see all {displayActivities.length} activities
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

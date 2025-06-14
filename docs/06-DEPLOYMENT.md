@@ -70,32 +70,43 @@ Festival Chat supports multiple deployment platforms:
 
 ## 🛠️ Available Deployment Scripts
 
-### **🚀 Super-Quick Deploy (Fastest)**
-```bash
-npm run deploy:firebase:super-quick
-```
-**Use when**: Rapid iteration during development  
-**Time**: ~1-2 minutes  
-**What it does**: Minimal output, skips health checks, cache-busting built-in  
-**Deploys**: Hosting + Functions  
+### **🎯 OPTIMIZED WORKFLOW (FIXED - June 14, 2025)**
 
-### **⚡ Quick Deploy (Fast)** 
+**✅ THE CORRECT WORKFLOW FOR UI/BACKEND CHANGES:**
 ```bash
-npm run deploy:firebase:quick
+# 1. Make your UI/backend changes
+# 2. Deploy updated WebSocket staging server
+./scripts/deploy-websocket-staging.sh
+
+# 3. Deploy frontend preview (automatically uses new staging server)
+npm run preview:deploy
 ```
-**Use when**: Most frontend changes, UI fixes, content updates  
+
+**🔧 WHAT WAS FIXED:**
+- **❌ Before**: Preview script used hardcoded old WebSocket URL
+- **✅ After**: Preview script dynamically reads from `.env.staging` 
+- **⚡ Result**: Fast, optimized workflow - changes show up immediately!
+
+**📋 WHEN TO USE EACH SCRIPT:**
+
+#### **🚀 Quick Preview (Optimized - USE THIS)**
+```bash
+npm run preview:deploy
+```
+**Use when**: Testing UI/backend changes after updating staging server  
+**Prerequisites**: Run `./scripts/deploy-websocket-staging.sh` first  
 **Time**: ~2-3 minutes  
-**What it does**: Skips Cloud Run, rebuilds and deploys Functions + Hosting  
-**Deploys**: Hosting + Functions  
+**What it does**: Automatically uses current staging WebSocket server from `.env.staging`  
+**Benefits**: ✅ Fast iteration, ✅ Always uses latest backend changes  
 
-### **🔧 Complete Deploy (Full Infrastructure)**
+#### **🔥 Firebase Complete (When Things Break)**
 ```bash
 npm run deploy:firebase:complete
 ```
-**Use when**: Infrastructure changes, Cloud Run updates, first-time deployment  
+**Use when**: UI synchronization issues, comprehensive cache busting needed  
 **Time**: ~5-8 minutes  
-**What it does**: Updates Cloud Run + rebuilds + deploys everything  
-**Deploys**: Universal Server + Hosting + Functions  
+**What it does**: Nuclear option - rebuilds everything, updates Cloud Run, clears all caches  
+**Benefits**: ✅ Fixes stubborn cache issues, ✅ Complete infrastructure refresh  
 
 ### **🎭 Staging-Only WebSocket Deploy**
 ```bash

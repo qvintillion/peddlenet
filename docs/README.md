@@ -33,11 +33,13 @@
 - **[ADMIN-ANALYTICS-DASHBOARD-IMPLEMENTATION-JUNE-2025.md](./ADMIN-ANALYTICS-DASHBOARD-IMPLEMENTATION-JUNE-2025.md)** - 📊 **Original Implementation Guide**
 
 ### **Admin Dashboard Features** ✅ ALL WORKING
-- **🔐 Professional Authentication** - 24-hour persistent sessions
-- **📊 Real-time Analytics** - Live user/room monitoring with auto-refresh
-- **📋 Live Activity Feed** - Real-time activity tracking with persistence
-- **🛡️ Complete Admin Controls** - Broadcasting, room management, database operations
-- **📱 Mobile Responsive** - Full functionality on all devices
+- **🔐 Simplified Authentication** - Single admin level with 24-hour persistent sessions
+- **📈 Accurate Analytics** - Fixed unique user counting (no double counting across rooms)
+- **📢 Enhanced Broadcasting** - Global + room-specific targeting with multi-room support
+- **📲 CSV Activity Export** - Download complete activity logs for analysis
+- **📋 Live Activity Feed** - Real-time activity tracking with fixed-height scrollable display
+- **🛡️ Complete Admin Controls** - Room management, database operations, user administration
+- **📱 Mobile Responsive** - Full functionality on all devices with touch-optimized interface
 - **🌐 Production Ready** - Works on Vercel and Cloud Run deployments
 
 ### **Admin Dashboard Resources**
@@ -53,7 +55,8 @@
 - **[ADMIN-ANALYTICS-DASHBOARD-IMPLEMENTATION-JUNE-2025.md](./ADMIN-ANALYTICS-DASHBOARD-IMPLEMENTATION-JUNE-2025.md)** - 🎪 **Complete Real-Time Admin Analytics Dashboard**
 
 ### **Recent Fixes (June 2025)**
-- **[ADMIN-DASHBOARD-ROOM-MANAGEMENT-FIXES-JUNE-13-2025.md](./ADMIN-DASHBOARD-ROOM-MANAGEMENT-FIXES-JUNE-13-2025.md)** - 🛠️ **LATEST: Room Clear & Database Wipe Operations Fixed with Enhanced Debugging**
+- **[ADMIN-DASHBOARD-MAJOR-UPDATES-JUNE-14-2025.md](./ADMIN-DASHBOARD-MAJOR-UPDATES-JUNE-14-2025.md)** - 🎯 **LATEST: Complete Admin System Overhaul with User Count Fixes & Room Broadcasting**
+- **[ADMIN-DASHBOARD-ROOM-MANAGEMENT-FIXES-JUNE-13-2025.md](./ADMIN-DASHBOARD-ROOM-MANAGEMENT-FIXES-JUNE-13-2025.md)** - 🛠️ **Room Clear & Database Wipe Operations Fixed with Enhanced Debugging**
 - **[CLEAR-ROOM-MESSAGES-FIX-JUNE-12-2025.md](./CLEAR-ROOM-MESSAGES-FIX-JUNE-12-2025.md)** - 🧹 **Clear Room Messages fix with instant user synchronization**
 - **[ROOM-SWITCHER-UI-FIX-JUNE-12-2025.md](./ROOM-SWITCHER-UI-FIX-JUNE-12-2025.md)** - ⭐ **Critical UI transparency fix with React Portal solution**
 - **[NOTIFICATION-FIXES-JUNE-11-2025.md](./NOTIFICATION-FIXES-JUNE-11-2025.md)** - ⭐ **Notification toggle fixes and reconnection loop prevention**
@@ -69,7 +72,73 @@
   - **[Cross-Room System](./archive/Cross-Room-Notification-System-Technical-Summary.md)** - Multi-room functionality (archived)
   - **[Archive Index](./archive/README.md)** - Complete archive contents
 
-## 🎯 Current Status
+## 🎯 Current Status (June 14, 2025)
+
+**Project Status**: ✅ **Production Ready - Cleanup Complete & GitHub Backup Ready**
+
+### **✅ Recent Fixes Completed**
+- **GitHub Build Errors**: Fixed API routes with required `export const dynamic = 'force-dynamic'` for static export builds
+- **API Routes Updated**: `/api/admin/analytics`, `/api/admin/room/clear`, `/api/admin/rooms`, `/api/health`, and all other routes
+- **Root Folder Cleanup**: Moved temporary documentation files to proper locations
+- **Backup Scripts**: Consolidated to single enhanced version (`backup-to-github.sh`)
+
+### **🔧 UI Synchronization Solution**
+**For UI changes not showing in preview deployments:**
+```bash
+npm run deploy:firebase:complete
+```
+
+This enhanced deployment script provides:
+- ✅ Comprehensive cache clearing (.next/, functions/, Firebase cache)
+- ✅ Environment variable verification
+- ✅ Build verification (checks for placeholder URLs)
+- ✅ STAGING WebSocket server deployment
+- ✅ Complete Firebase rebuild with proper URLs
+- ✅ Development environment protection & restoration
+
+### **📚 Documentation Structure**
+- **Main docs**: `/docs/` - All technical documentation
+- **Backups**: `/backup/` - Temporary files and backups
+- **Archive**: `/docs/archive/` - Historical documentation
+- **Root**: Clean, only essential project files
+
+### **🚀 Current Workflow Commands (FIXED JUNE 14, 2025)**
+
+#### Development
+```bash
+npm run dev:mobile              # Development with QR codes
+```
+
+#### **⚡ OPTIMIZED Preview/Staging Workflow (USE THIS)**  
+```bash
+# 1. Make UI/backend changes
+# 2. Update staging server:
+./scripts/deploy-websocket-staging.sh
+
+# 3. Deploy frontend preview (auto-uses new staging server):
+npm run preview:deploy
+```
+**✅ FIXED**: Preview now dynamically reads staging server URL - changes show immediately!
+
+#### **🔥 When UI Changes Don't Show (Fallback)**
+```bash
+npm run deploy:firebase:complete # Nuclear cache busting
+```
+**Use when**: Stubborn cache issues, comprehensive rebuild needed
+
+#### Production
+```bash
+npm run deploy:vercel:complete  # Production to Vercel
+```
+
+#### Backup
+```bash
+npm run backup:github           # Backup to GitHub
+```
+
+**Ready for**: Preview testing, GitHub backup, and production deployment 🎉
+
+## 🎯 Previous Status
 
 **Project Status**: ✅ **Production Ready with Fully Functional Admin Analytics Dashboard**
 - **Foundation**: Complete with circuit breaker patterns and transport optimization  
@@ -88,6 +157,7 @@ docs/
 ├── 02-USER-GUIDE.md                            # Complete user documentation  
 ├── 04-ARCHITECTURE.md                          # Technical system overview
 ├── 06-DEPLOYMENT.md                            # Production deployment
+├── DEPLOYMENT-WORKFLOW-OPTIMIZED.md            # ⭐ FIXED: Optimized workflow (USE THIS!)
 ├── 07-MOBILE-OPTIMIZATION.md                  # Mobile-first design
 ├── 08-CONNECTION-RESILIENCE.md                # Reliability patterns
 ├── 09-PERFORMANCE-MONITORING.md               # Analytics and metrics
@@ -125,6 +195,7 @@ docs/
 
 ### **For Developers** 👨‍💻
 - Review **[Architecture Overview](./04-ARCHITECTURE.md)** for system understanding
+- ⭐ **[DEPLOYMENT-WORKFLOW-OPTIMIZED.md](./DEPLOYMENT-WORKFLOW-OPTIMIZED.md)** - **FIXED: Complete optimized workflow guide (USE THIS!)**
 - Follow **[Deployment Guide](./06-DEPLOYMENT.md)** for production setup
 - Study **[Connection Resilience](./08-CONNECTION-RESILIENCE.md)** for reliability patterns
 - Reference **[Admin Analytics API](./ADMIN-ANALYTICS-API-REFERENCE.md)** for admin system integration
@@ -158,16 +229,34 @@ docs/
 
 ---
 
-## 🎉 **Latest Achievement: Admin Dashboard Room Management Enhanced**
+## 🎉 **Latest Achievement: Complete Admin Dashboard Overhaul**
 
-**June 13, 2025** - The admin analytics dashboard room management and database operations have been **completely fixed and enhanced** with:
+**June 14, 2025** - The admin analytics dashboard has been **completely overhauled and enhanced** with major fixes and new features:
 
-- ✅ **Reliable Room Finding** - Multi-method search with fuzzy matching ensures 100% success rate
-- ✅ **Verified Data Operations** - Messages actually deleted with step-by-step confirmation  
-- ✅ **Immediate Frontend Updates** - Cache refreshes instantly without delays
-- ✅ **Comprehensive Debugging** - Detailed server logging for troubleshooting
-- ✅ **Enhanced User Experience** - Clear feedback and professional error handling
-- ✅ **Mobile Administration** - Full functionality on festival staff mobile devices
+### **🎯 Major Improvements**
+- ✅ **Fixed User Count Issues** - Eliminated double counting across rooms with unique user tracking
+- ✅ **Simplified Authentication** - Streamlined to single admin level (no more basic/super confusion)
+- ✅ **Room-Specific Broadcasting** - Target specific rooms by code with multi-room support
+- ✅ **CSV Activity Export** - Download complete activity logs for analysis and record-keeping
+- ✅ **Enhanced Activity Feed** - Fixed-height scrollable container perfectly aligned with admin controls
+- ✅ **Password Fix** - Separate password fields for room clearing vs database wipe operations
+
+### **📊 Analytics Accuracy**
+- **Before**: Users counted multiple times across rooms (inflated metrics)
+- **After**: Unique user tracking with Set deduplication (accurate festival attendance)
+- **Impact**: Reliable data for capacity management and event planning
+
+### **📢 Advanced Broadcasting**
+- **Global Broadcast**: Send messages to all active rooms simultaneously
+- **Room-Specific Broadcast**: Target specific rooms using comma-separated room codes
+- **Fuzzy Room Matching**: Multiple search methods (exact ID, room code, partial match)
+- **Success Reporting**: Detailed feedback on broadcast delivery and failed rooms
+
+### **📋 Enhanced Data Management**
+- **CSV Export**: Download timestamped activity logs with all event details
+- **Fixed-Height Feed**: Perfect alignment between activity feed and admin controls panels
+- **Real-time Updates**: Instant cache refreshes after administrative operations
+- **Mobile Optimization**: Full touch-friendly interface for on-site festival management
 
 ### **Previously Completed (June 13, 2025)**
 - ✅ **Professional Authentication** - 24-hour persistent sessions with secure login
@@ -177,7 +266,7 @@ docs/
 - ✅ **Production Ready** - Works on all deployment platforms (Vercel, Cloud Run)
 - ✅ **Network Resilient** - Graceful operation during connectivity issues
 
-**Festival organizers now have a professional-grade admin dashboard with fully reliable room management ready for immediate deployment! 🎪**
+**Festival organizers now have a production-ready admin platform with accurate metrics, targeted communication, and comprehensive data management! 🎪**
 
 ---
 

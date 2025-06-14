@@ -134,7 +134,7 @@ export function DetailedRoomView({ isOpen, onClose, fetchDetailedRooms, deleteRo
             <h2 className="text-xl sm:text-3xl font-bold flex items-center">
               <span className="text-2xl sm:text-4xl mr-2 sm:mr-3">🏠</span>
               <div>
-                <div>Active Rooms</div>
+                <div>Rooms</div>
                 <div className="text-sm sm:text-base text-gray-400">({filteredRooms.length})</div>
               </div>
             </h2>

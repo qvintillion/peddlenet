@@ -125,7 +125,7 @@ export function DetailedUserView({ isOpen, onClose, fetchDetailedUsers, removeUs
             <h2 className="text-xl sm:text-3xl font-bold flex items-center">
               <span className="text-2xl sm:text-4xl mr-2 sm:mr-3">👥</span>
               <div>
-                <div>Active Users</div>
+                <div>Users</div>
                 <div className="text-sm sm:text-base text-gray-400">({filteredUsers.length})</div>
               </div>
             </h2>

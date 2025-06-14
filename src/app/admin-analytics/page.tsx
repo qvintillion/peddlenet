@@ -64,6 +64,12 @@ interface DashboardData {
     dbSize: string;
     oldestMessage: number;
   };
+  // 🔧 SIMPLIFIED: Basic admin only
+  admin?: {
+    requestedBy: string;
+    adminLevel: 'basic';
+    availableFeatures: string[];
+  };
   timestamp: number;
   databaseReady: boolean;
 }
@@ -266,7 +272,7 @@ function MetricCard({ title, value, subvalue, icon, color, onClick, isClickable 
   );
 }
 
-// 🔧 ENHANCED DEBUG: Environment-aware Login Form Component with detailed logging
+// 🔧 ENHANCED: Login Form Component with dual admin levels
 function LoginForm({ onLogin, error, isLoading }: {
   onLogin: (username: string, password: string) => Promise<void>;
   error: string;
@@ -392,10 +398,18 @@ function LoginForm({ onLogin, error, isLoading }: {
           </button>
         </form>
 
-        {/* 🔧 HYDRATION FIX: Only show default credentials in non-production and when client-side */}
+        {/* 🔧 SIMPLIFIED: Show single admin level */}
         {isClient && !isProduction() && (
           <div className="mt-6 text-center text-sm text-gray-400">
-            <p>Default credentials: th3p3ddl3r / letsmakeatrade</p>
+            <div className="bg-gray-900/50 p-3 rounded border">
+              <p className="font-medium text-gray-300 mb-2">Admin Access:</p>
+              <div className="space-y-1">
+                <p><strong>Admin:</strong> th3p3ddl3r / letsmakeatrade</p>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Full admin access with all features
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -965,7 +979,7 @@ export default function AdminAnalyticsPage() {
     }
   }, [credentials, isClient]);
 
-  // 🔧 FIXED: Admin action handlers with correct API endpoints
+  // 🔧 ENHANCED: Admin action handlers with new endpoints
   const handleBroadcast = async (message: string) => {
     if (!credentials) return;
 
@@ -992,6 +1006,36 @@ export default function AdminAnalyticsPage() {
     } catch (error) {
       console.error('Broadcast failed:', error);
       alert(`❌ Broadcast failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // 🔧 NEW: Room-specific broadcast handler
+  const handleRoomBroadcast = async (message: string, roomCodes: string[]) => {
+    if (!credentials) return;
+
+    try {
+      const response = await makeAPICall('/broadcast/room', {
+        method: 'POST',
+        body: JSON.stringify({ message, roomCodes })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`✅ Room broadcast sent to ${result.roomsTargeted}/${result.totalRequested} rooms (${result.messagesSent} messages)!`);
+        
+        // Show details if some failed
+        if (result.failedRooms && result.failedRooms.length > 0) {
+          console.log('⚠️ Failed rooms:', result.failedRooms);
+        }
+        
+        // Refresh activity data immediately
+        await fetchActivityData();
+      } else {
+        throw new Error('Failed to send room broadcast');
+      }
+    } catch (error) {
+      console.error('Room broadcast failed:', error);
+      alert(`❌ Room broadcast failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -1117,10 +1161,23 @@ export default function AdminAnalyticsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-black to-purple-900 text-white">
       <div className="container mx-auto px-4 py-8">
-        {/* Header with Logout */}
+        {/* Header with Logout and Admin Level */}
         <div className="mb-8">
-          {/* Top bar with logout */}
-          <div className="flex justify-end mb-4">
+          {/* Top bar with admin info and logout */}
+          <div className="flex justify-between items-center mb-4">
+            {/* 🔧 SIMPLIFIED: Single admin level indicator */}
+            <div className="flex items-center gap-4">
+              {dashboardData.admin && (
+                <div className="px-3 py-1 rounded-full text-sm border bg-blue-500/20 text-blue-200 border-blue-500/50">
+                  <span className="mr-1">👤</span>
+                  Admin
+                </div>
+              )}
+              <span className="text-gray-400 text-sm">
+                Welcome, {credentials.username}
+              </span>
+            </div>
+            
             <button
               onClick={handleLogout}
               className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition-colors flex items-center text-sm"
@@ -1141,7 +1198,7 @@ export default function AdminAnalyticsPage() {
               <h1 className="text-2xl sm:text-4xl font-bold">PeddleNet Admin</h1>
             </div>
             <p className="text-purple-200 text-sm sm:text-base">
-              Real-time monitoring and administration dashboard
+              Enhanced real-time monitoring and administration dashboard
             </p>
           </div>
         </div>
@@ -1197,7 +1254,7 @@ export default function AdminAnalyticsPage() {
           <MetricCard
             title="Users"
             value={`${dashboardData.realTimeStats.activeUsers}/${dashboardData.realTimeStats.totalUsers}`}
-            subvalue={`Peak: ${dashboardData.realTimeStats.peakUsers || 0} • ${dashboardData.realTimeStats.userTrend}`}
+            subvalue={`Active / Total (Peak: ${dashboardData.realTimeStats.peakUsers || 0})`}
             icon="👥"
             color={dashboardData.realTimeStats.activeUsers > 10 ? 'green' : dashboardData.realTimeStats.activeUsers > 5 ? 'yellow' : 'gray'}
             onClick={() => setShowUserDetails(true)}
@@ -1231,12 +1288,14 @@ export default function AdminAnalyticsPage() {
             />
           </div>
 
-          {/* Admin Controls - Ensure it doesn't clip on mobile */}
+          {/* 🔧 ENHANCED: Admin Controls with new features */}
           <div className="w-full min-w-0">
             <AdminControls
               onBroadcast={handleBroadcast}
+              onRoomBroadcast={handleRoomBroadcast}
               onClearRoom={handleClearRoom}
               onWipeDatabase={handleWipeDatabase}
+              adminLevel={dashboardData.admin?.adminLevel || 'basic'}
             />
           </div>
         </div>
@@ -1335,15 +1394,45 @@ export default function AdminAnalyticsPage() {
           </div>
         </div>
 
+        {/* 🔧 NEW: Admin Features Summary */}
+        {dashboardData.admin && (
+          <div className="mt-8 bg-gray-800/80 rounded-lg p-6 backdrop-blur-sm border border-gray-700/50">
+            <h3 className="text-xl font-semibold mb-4 flex items-center">
+              <span className="text-2xl mr-2">🔧</span>
+              Enhanced Admin Features
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-medium text-green-400 mb-2">✅ Fixed Issues:</h4>
+                <ul className="text-sm space-y-1 text-gray-300">
+                  <li>• Unique user counting (no double counting across rooms)</li>
+                  <li>• All rooms visible (active + inactive with history)</li>
+                  <li>• Room-specific broadcasting by code</li>
+                  <li>• Enhanced historical tracking</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-medium text-purple-400 mb-2">🔐 Admin Features:</h4>
+                <ul className="text-sm space-y-1 text-gray-300">
+                  <li>• Full admin access</li>
+                  <li>• All features enabled</li>
+                  <li>• Current Level: <strong>{dashboardData.admin.adminLevel}</strong></li>
+                  <li>• Available Features: {dashboardData.admin.availableFeatures.length}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="mt-8 text-center text-gray-400 text-sm">
           <div suppressHydrationWarning>Last updated: {dashboardData.timestamp > 0 ? new Date(dashboardData.timestamp).toLocaleTimeString() : 'Loading...'}</div>
           <div className="mt-1">
-            PeddleNet Admin Dashboard v4.6.0-DEBUG-MODE • 
+            PeddleNet Admin Dashboard v1.1.0-admin-enhanced • 
             Build: {process.env.NODE_ENV} • 
             Server: {process.env.NEXT_PUBLIC_SIGNALING_SERVER?.split('//')[1]?.split('.')[0] || 'unknown'} • 
             {isConnected ? ' Real-time updates active' : ' Using cached data'} • 
-            User: {credentials.username}
+            Admin: {credentials.username} ({dashboardData.admin?.adminLevel || 'basic'})
           </div>
         </div>
       </div>

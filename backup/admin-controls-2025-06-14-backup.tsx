@@ -5,7 +5,7 @@ interface AdminControlsProps {
   onRoomBroadcast?: (message: string, roomCodes: string[]) => Promise<void>;
   onClearRoom: (roomCode: string) => Promise<void>;
   onWipeDatabase: () => Promise<void>;
-  adminLevel: 'basic'; // 🔧 SIMPLIFIED: Single admin level
+  adminLevel: 'basic'; // 🔧 SIMPLIFIED: Only basic admin now
 }
 
 export function AdminControls({ 
@@ -76,7 +76,7 @@ export function AdminControls({
     if (!roomCodeToClear.trim()) return;
     
     // 🔧 FIXED: Check password requirement
-    if (clearRoomPassword !== 'letsmakeatrade') {
+    if (clearRoomPassword !== 'clear_wipe_2025') {
       alert('❌ Incorrect password for clearing room messages');
       return;
     }
@@ -97,7 +97,7 @@ export function AdminControls({
 
   const handleWipeDatabase = async () => {
     // 🔧 FIXED: Check password requirement
-    if (wipeDbPassword !== 'letsmakeatrade') {
+    if (wipeDbPassword !== 'clear_wipe_2025') {
       alert('❌ Incorrect password for database wipe');
       return;
     }
@@ -290,7 +290,7 @@ export function AdminControls({
                 type="password"
                 value={clearRoomPassword}
                 onChange={(e) => setClearRoomPassword(e.target.value)}
-                placeholder="Enter admin password"
+                placeholder="Enter password: clear_wipe_2025"
                 className="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-3 text-white mb-3 text-sm"
               />
             )}
@@ -327,7 +327,7 @@ export function AdminControls({
               type="password"
               value={wipeDbPassword}
               onChange={(e) => setWipeDbPassword(e.target.value)}
-              placeholder="Enter admin password"
+              placeholder="Enter password: clear_wipe_2025"
               className="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-3 text-white mb-3 text-sm"
             />
             

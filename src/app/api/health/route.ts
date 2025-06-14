@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Required for static export builds
+export const dynamic = 'force-dynamic';
+export const revalidate = false;
+
 export async function GET(request: NextRequest) {
   // Detect deployment environment
   const detectEnvironment = () => {

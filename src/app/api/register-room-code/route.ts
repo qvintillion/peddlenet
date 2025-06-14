@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RoomCodeStorage } from '@/lib/room-code-storage';
 
+// Required for static export builds
+export const dynamic = 'force-dynamic';
+export const revalidate = false;
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

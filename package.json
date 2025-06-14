@@ -28,7 +28,7 @@
     "lint": "next lint",
     "deploy:vercel": "vercel --prod",
     "deploy:vercel:complete": "chmod +x scripts/deploy-production-vercel.sh && ./scripts/deploy-production-vercel.sh",
-    "backup:github": "chmod +x backup-to-github-enhanced.sh && ./backup-to-github-enhanced.sh",
+    "backup:github": "chmod +x backup-to-github.sh && ./backup-to-github.sh",
     "build:firebase": "npm run build",
     "deploy:firebase": "npm run build:firebase && cd functions && npm run build && cd .. && firebase deploy",
     "preview:firebase": "npx firebase hosting:channel:deploy preview",
