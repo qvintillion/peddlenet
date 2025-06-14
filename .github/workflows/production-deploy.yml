@@ -65,7 +65,7 @@ jobs:
           grep -r "hfttiarlja" out/ || echo "Target URL not found"
           grep -r "padyxgyv5a" out/ || echo "Old URL not found (good)"
         env:
-          BUILD_TARGET: production
+          BUILD_TARGET: github-pages
           NODE_ENV: production
           # Use GitHub secret if .env.production is not available
           NEXT_PUBLIC_SIGNALING_SERVER: ${{ secrets.NEXT_PUBLIC_SIGNALING_SERVER || 'wss://peddlenet-websocket-server-hfttiarlja-uc.a.run.app' }}
