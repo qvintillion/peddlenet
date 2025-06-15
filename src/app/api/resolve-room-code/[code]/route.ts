@@ -3,7 +3,6 @@ import { RoomCodeStorage } from '@/lib/room-code-storage';
 
 // Required for static export builds
 export const dynamic = 'force-dynamic';
-export const revalidate = false;
 
 // Import the room code generation logic
 function generateRoomCodeOnServer(roomId: string): string | null {

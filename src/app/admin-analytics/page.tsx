@@ -5,6 +5,7 @@ import { ActivityFeed } from '@/components/admin/ActivityFeed';
 import { AdminControls } from '@/components/admin/AdminControls';
 import { DetailedUserView } from '@/components/admin/DetailedUserView';
 import { DetailedRoomView } from '@/components/admin/DetailedRoomView';
+import { MeshNetworkStatus } from '@/components/admin/MeshNetworkStatus';
 
 // Force dynamic rendering (no static generation)
 export const dynamic = 'force-dynamic';
@@ -1248,6 +1249,9 @@ export default function AdminAnalyticsPage() {
             </div>
           </div>
         )}
+
+        {/* 🌐 MESH NETWORK STATUS - Prominent placement above main metrics */}
+        <MeshNetworkStatus isLoading={isLoading} />
 
         {/* 🔧 ENHANCED: Interactive Metrics Grid - Beautiful pills for active/total */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

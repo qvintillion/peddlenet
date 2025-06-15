@@ -37,10 +37,13 @@ echo "🚀 Starting development servers with in-memory persistence..."
 echo "📱 Mobile URLs:"
 echo "   App: http://$LOCAL_IP:3000"
 echo "   Diagnostics: http://$LOCAL_IP:3000/diagnostics"
-echo "🔌 Server URL: http://$LOCAL_IP:3001"
+echo "🔌 Server URLs:"
+echo "   WebSocket: http://$LOCAL_IP:3001"
+echo "   PeerJS: Cloud Service (peerjs.com)"
 echo "   Health check: http://$LOCAL_IP:3001/health"
 echo "   Debug rooms: http://$LOCAL_IP:3001/debug/rooms"
 echo "💾 Database: In-memory (no persistence)"
+echo "🌐 Mesh Network: Cloud P2P + WebSocket fallback"
 echo ""
 echo "📝 Instructions:"
 echo "   1. Connect your mobile device to the same WiFi network"
@@ -58,23 +61,24 @@ fi
 # Dependencies check
 echo "🔍 Checking dependencies..."
 
-# Use the universal server
+# Use the universal server (skip local PeerJS for now)
 SERVER_FILE="signaling-server.js"
 if [ ! -f "$SERVER_FILE" ]; then
     echo "❌ Universal server file not found. Make sure you're in the project root directory."
     exit 1
 fi
 
-echo "🔧 Using server: $SERVER_FILE"
+echo "🔧 Using WebSocket server: $SERVER_FILE"
+echo "🔧 Using PeerJS: Cloud service (automatic fallback)"
 
 # Create data directory if it doesn't exist
 mkdir -p data
 
-# Start both servers concurrently with optional auto-restart
+# Start both servers concurrently
 if command -v concurrently &> /dev/null; then
 # Use concurrently - restart disabled for better development control
 concurrently \
---names "Next,Universal-Server" \
+--names "Next,WebSocket" \
 --prefix-colors "blue,green" \
 --kill-others-on-fail \
             "NEXT_PUBLIC_DETECTED_IP=$LOCAL_IP npm run dev" \
@@ -86,20 +90,20 @@ else
     # Try again with concurrently
     if command -v npx concurrently &> /dev/null; then
         npx concurrently \
-            --names "Next,Universal-Server" \
+            --names "Next,WebSocket" \
             --prefix-colors "blue,green" \
             "NEXT_PUBLIC_DETECTED_IP=$LOCAL_IP npm run dev" \
             "node $SERVER_FILE"
     else
         # Fallback: start server in background, then Next.js
-        echo "Starting signaling server in background..."
+        echo "Starting WebSocket server in background..."
         node "$SERVER_FILE" &
-        SERVER_PID=$!
+        WS_PID=$!
         
         echo "Starting Next.js development server..."
         NEXT_PUBLIC_DETECTED_IP="$LOCAL_IP" npm run dev
         
         # Clean up on exit
-        trap "kill $SERVER_PID 2>/dev/null" EXIT
+        trap "kill $WS_PID 2>/dev/null" EXIT
     fi
 fi

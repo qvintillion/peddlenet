@@ -1,0 +1,82 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+// Required for static export builds
+export const dynamic = 'force-dynamic';
+
+// Simple in-memory storage for room codes (API route level)
+const roomCodeMappings = new Map<string, string>();
+
+export async function POST(request: NextRequest) {
+  try {
+    console.log('📋 Room code registration attempt');
+    
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      console.error('❌ Failed to parse request body:', parseError);
+      return NextResponse.json(
+        { error: 'Invalid JSON in request body' },
+        { status: 400 }
+      );
+    }
+
+    const { roomId, roomCode } = body;
+
+    if (!roomId || !roomCode) {
+      console.error('❌ Missing required fields:', { roomId: !!roomId, roomCode: !!roomCode });
+      return NextResponse.json(
+        { error: 'roomId and roomCode are required' },
+        { status: 400 }
+      );
+    }
+
+    const normalizedCode = roomCode.toLowerCase();
+
+    // Check if code is already taken by a different room
+    const existingRoomId = roomCodeMappings.get(normalizedCode);
+    if (existingRoomId && existingRoomId !== roomId) {
+      console.warn(`⚠️ Room code conflict: ${normalizedCode} already maps to ${existingRoomId}, requested for ${roomId}`);
+      return NextResponse.json(
+        { error: 'Room code already taken by another room' },
+        { status: 409 }
+      );
+    }
+
+    // Register the mapping
+    roomCodeMappings.set(normalizedCode, roomId);
+    
+    console.log(`✅ Room code registered: ${normalizedCode} -> ${roomId}`);
+    console.log(`📋 Total room codes stored: ${roomCodeMappings.size}`);
+
+    return NextResponse.json({
+      success: true,
+      roomId,
+      roomCode: normalizedCode,
+      totalCodes: roomCodeMappings.size
+    });
+
+  } catch (error) {
+    console.error('❌ Room code registration error:', error);
+    return NextResponse.json(
+      { 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: Date.now()
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// Add CORS headers
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}

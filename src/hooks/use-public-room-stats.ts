@@ -45,11 +45,23 @@ export function usePublicRoomStats() {
               activeUsers: data.activeUsers || 0,
               lastUpdated: Date.now(),
             };
+          } else if (response.status === 404) {
+            // 404 is expected for rooms that don't exist yet - handle silently
+            // Don't log anything for 404s to keep console clean
+            return {
+              roomId,
+              activeUsers: 0,
+              lastUpdated: Date.now(),
+            };
           } else {
+            // Only log warnings for non-404 errors
             console.warn(`Failed to fetch stats for room ${roomId}: ${response.status}`);
           }
         } catch (error) {
-          console.warn(`Failed to fetch stats for room ${roomId}:`, error.message);
+          // Only log actual network/fetch errors, not expected 404s
+          if (!error.message.includes('404')) {
+            console.warn(`Failed to fetch stats for room ${roomId}:`, error.message);
+          }
         }
         
         // Return zero users if endpoint fails

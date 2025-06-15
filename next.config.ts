@@ -11,9 +11,16 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // 🚀 VERCEL DEPLOYMENT: Use default output for Vercel (no static export)
-  // Static export only for explicit GitHub Pages builds
-  output: process.env.VERCEL ? undefined : (process.env.BUILD_TARGET === 'github-pages' ? 'export' : undefined),
+  // 🚀 DEPLOYMENT OUTPUT LOGIC (FIXED):
+  // Only use static export for explicit GitHub Pages builds
+  // Firebase should ALWAYS use regular Next.js builds with SSR/functions
+  output: (() => {
+    if (process.env.VERCEL) return undefined; // Vercel default
+    if (process.env.BUILD_TARGET === 'github-pages') return 'export'; // ONLY for GitHub Pages
+    // Firebase (staging, production, etc.) should NEVER use static export
+    return undefined; // Default: regular Next.js build with SSR support
+  })(),
+  
   trailingSlash: false,
   skipTrailingSlashRedirect: true,
   
@@ -31,15 +38,20 @@ const nextConfig = {
   basePath: '',
   assetPrefix: '',
 
-  // Simplified webpack configuration to fix TDZ issues
+  // Simplified webpack configuration for dev stability
   webpack: (config, { isServer, dev }) => {
-    // Only apply optimizations in production
-    if (!dev) {
-      // Disable aggressive optimizations that can cause TDZ issues
+    // DEV: Keep it simple to avoid cache corruption
+    if (dev) {
+      // Reduce cache complexity in development
+      config.cache = {
+        type: 'memory', // Use memory cache instead of filesystem
+      };
+    } else {
+      // Production: Use the stable configurations
       config.optimization = {
         ...config.optimization,
-        moduleIds: 'named', // Use named module IDs instead of numbers
-        chunkIds: 'named', // Use named chunk IDs
+        moduleIds: 'named',
+        chunkIds: 'named',
       };
     }
     

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useWebSocketChat } from '@/hooks/use-websocket-chat';
+import { useHybridChat } from '@/hooks/use-hybrid-chat';
 import { useMessageNotifications } from '@/hooks/use-push-notifications';
 import { useRoomBackgroundNotifications } from '@/hooks/use-background-notifications';
 import { useBackgroundNotifications } from '@/hooks/use-background-notifications';
@@ -22,6 +22,7 @@ import { useRoomUnreadTracker } from '@/hooks/use-unread-messages';
 // Import QRPeerUtils dynamically to avoid initialization issues
 // import { QRPeerUtils } from '@/utils/qr-peer-utils';
 import { RoomCodeDiagnosticPanel } from '@/components/RoomCodeDiagnostics';
+import { MeshNetworkDebug } from '@/components/MeshNetworkDebug';
 
 // Disable static generation for chat pages to avoid SSR issues
 export const dynamic = 'force-dynamic';
@@ -86,24 +87,38 @@ export default function ChatRoomPage() {
   const [showDebug, setShowDebug] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [connectionError, setConnectionError] = useState<{type: string, message: string} | null>(null);
 
-  // Use WebSocket chat instead of P2P (more reliable for multi-user)
+  // Use Hybrid Chat with mesh networking capabilities
   const {
     peerId,
     status,
-    isRetrying,
-    retryCount,
-    messages: serverMessages,
-    connectToPeer,
+    messages: hybridMessages,
     sendMessage,
     onMessage,
-    getConnectedPeers,
     forceReconnect,
-    isSignalingConnected
-  } = useWebSocketChat(roomId, displayName);
+    meshEnabled,
+    setMeshEnabled,
+    attemptP2PUpgrade,
+    preferredRoute,
+    setPreferredRoute,
+    currentRoute,
+    connectionQuality,
+    hybridStats,
+    webSocket,
+    p2p,
+    getConnectionDiagnostics
+  } = useHybridChat(roomId, displayName);
+
+  // Backwards compatibility with WebSocket-only interface
+  const isSignalingConnected = webSocket?.connected || false;
+  const isRetrying = !status.isConnected && status.signalStrength !== 'none';
+  const retryCount = 0; // Not exposed in hybrid hook
+  const connectToPeer = () => attemptP2PUpgrade();
+  const getConnectedPeers = () => [...(webSocket?.peers || []), ...(p2p?.peers || [])];
 
   // Set up message notifications
   const { triggerNotification } = useMessageNotifications(roomId, displayName);
@@ -135,6 +150,11 @@ export default function ChatRoomPage() {
   // Server-based room discovery (no signaling needed for WebSocket chat)
   // isSignalingConnected is already available from the WebSocket hook
   const refreshRoomPeers = () => forceReconnect();
+
+  // Detect if we're on client side for hydration safety
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Detect if we're on mobile for UI purposes
   const [isMobile, setIsMobile] = useState(false);
@@ -259,11 +279,11 @@ export default function ChatRoomPage() {
     });
   }, [roomId]);
 
-  // Handle incoming messages from the hook - simplified to avoid infinite loops
+  // Handle incoming messages from the hybrid hook
   useEffect(() => {
-    // Simply use the messages from the WebSocket hook directly
-    setMessages(serverMessages);
-  }, [serverMessages]);
+    // Use messages from the hybrid chat hook directly
+    setMessages(hybridMessages);
+  }, [hybridMessages]);
 
   // Set up push notifications for real-time messages (simple approach)
   useEffect(() => {
@@ -466,7 +486,8 @@ export default function ChatRoomPage() {
               className="w-[42px] h-[32px]"
             />
           </button>
-          {process.env.NODE_ENV === 'development' && (
+          {(process.env.NODE_ENV === 'development' || process.env.BUILD_TARGET === 'staging' || 
+            (isClient && (window.location.hostname.includes('firebase') || window.location.hostname.includes('web.app')))) && (
             <button
               onClick={() => setShowDebug(!showDebug)}
               className="text-xs sm:text-sm text-gray-400 hover:text-white"
@@ -573,8 +594,11 @@ export default function ChatRoomPage() {
                       <span>Server: {isSignalingConnected ? 'Connected' : 'Disconnected'}</span>
                     </div>
                     <div className="text-gray-400">
-                      Mode: WebSocket Server (Persistent Rooms)
+                    Mode: Hybrid ({currentRoute === 'websocket' ? 'Server' : 'P2P'} + {meshEnabled ? 'Mesh' : 'Fallback'})
                     </div>
+            <div className="text-gray-400">
+              P2P Active: {p2p?.connected ? 'Yes' : 'No'} | Mesh: {meshEnabled ? 'Enabled' : 'Disabled'}
+            </div>
                     <NetworkStatus />
                     <MobileNetworkInfo />
                   </div>
@@ -729,6 +753,22 @@ export default function ChatRoomPage() {
             {/* Connection Test Component */}
             <ConnectionTest className="" />
             
+            {/* Mesh Network Debug */}
+            <MeshNetworkDebug
+              className=""
+              meshEnabled={meshEnabled}
+              setMeshEnabled={setMeshEnabled}
+              attemptP2PUpgrade={attemptP2PUpgrade}
+              hybridStats={hybridStats}
+              connectionQuality={connectionQuality}
+              webSocket={webSocket}
+              p2p={p2p}
+              currentRoute={currentRoute}
+              preferredRoute={preferredRoute}
+              setPreferredRoute={setPreferredRoute}
+              getConnectionDiagnostics={getConnectionDiagnostics}
+            />
+            
             {/* Room Code Diagnostics */}
             <RoomCodeDiagnosticPanel p2pHook={{
               peerId,
@@ -768,18 +808,30 @@ export default function ChatRoomPage() {
               <h4 className="font-semibold text-sm mb-2 text-white">🔍 Connection Status</h4>
               <div className="text-xs space-y-1 text-gray-300">
                 <div>Environment: {(() => {
-                  const isDev = process.env.NODE_ENV === 'development' || 
-                               (typeof window !== 'undefined' && (
-                                 window.location.hostname === 'localhost' ||
-                                 window.location.hostname === '127.0.0.1' ||
-                                 window.location.port === '3000'
-                               ));
-                  return isDev ? 'development' : 'production';
-                })()} {typeof window !== 'undefined' && window.location.port === '3000' ? '(localhost:3000)' : ''}</div>
+                  const isDev = process.env.NODE_ENV === 'development';
+                  const isStaging = process.env.BUILD_TARGET === 'staging';
+                  const isLocalhost = isClient && (
+                    window.location.hostname === 'localhost' ||
+                    window.location.hostname === '127.0.0.1' ||
+                    window.location.port === '3000'
+                  );
+                  const isFirebase = isClient && (
+                    window.location.hostname.includes('firebase') ||
+                    window.location.hostname.includes('web.app')
+                  );
+                  
+                  if (isDev || isLocalhost) return 'development';
+                  if (isStaging || isFirebase) return 'staging';
+                  return 'production';
+                })()} {isClient && window.location.port === '3000' ? '(localhost:3000)' : ''}</div>
                 <div>Server Connected: {isSignalingConnected ? 'Yes' : 'No'}</div>
                 <div>Message Count: {messages.length}</div>
                 <div>Online Users: {status.connectedPeers}</div>
-                <div>Connection Mode: WebSocket Server</div>
+                <div>Connection Mode: Hybrid Chat (WS + P2P)</div>
+                <div>Current Route: {currentRoute}</div>
+                <div>Mesh Enabled: {meshEnabled ? 'Yes' : 'No'}</div>
+                <div>P2P Connected: {p2p?.connected ? 'Yes' : 'No'}</div>
+                <div>WebSocket Connected: {webSocket?.connected ? 'Yes' : 'No'}</div>
                 <div>Room Persistence: ✅ Yes (survives refreshes)</div>
                 <div>Peer ID: {peerId ? `${peerId.substring(0, 12)}...` : 'None'}</div>
                 <div>Room ID: {roomId}</div>
@@ -787,6 +839,18 @@ export default function ChatRoomPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Floating Debug Button for Staging */}
+      {!showDebug && isClient && (process.env.BUILD_TARGET === 'staging' || 
+        (window.location.hostname.includes('firebase') || window.location.hostname.includes('web.app'))) && (
+        <button
+          onClick={() => setShowDebug(true)}
+          className="fixed bottom-20 right-4 w-12 h-12 bg-yellow-600 hover:bg-yellow-700 text-white rounded-full shadow-lg transition-all duration-300 z-50 flex items-center justify-center font-bold text-sm border-2 border-yellow-400"
+          title="Open Mesh Network Debug Panel"
+        >
+          🌐
+        </button>
       )}
 
       {/* QR Modal */}

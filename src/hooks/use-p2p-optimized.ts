@@ -50,6 +50,17 @@ export function useP2POptimized(roomId: string, displayName?: string) {
   const pendingConnections = useRef<Set<string>>(new Set());
   const initializingRef = useRef<boolean>(false);
 
+  // Enhanced debugging for all environments (not just staging)
+  const debugP2P = useCallback((stage: string, data: any) => {
+    console.log(`🔍 P2P Debug [${stage}]:`, data);
+    // Store debug info globally for inspection
+    if (typeof window !== 'undefined') {
+      if (!window.P2PDebugLog) window.P2PDebugLog = [];
+      window.P2PDebugLog.push({ stage, data, timestamp: Date.now() });
+      if (window.P2PDebugLog.length > 50) window.P2PDebugLog = window.P2PDebugLog.slice(-50);
+    }
+  }, []);
+
   // Enhanced STUN/TURN configuration for better NAT traversal
   const getICEConfiguration = (): RTCConfiguration => ({
     iceServers: [
@@ -85,10 +96,15 @@ export function useP2POptimized(roomId: string, displayName?: string) {
 
   // Enhanced PeerJS configuration with production-ready fallbacks
   const getPeerConfigs = (): PeerConfig[] => {
-    // Only use localhost in development
+    // Always try cloud first for better reliability in development
     const configs: PeerConfig[] = [];
     
-    // Development only: Local PeerJS server
+    // Production: Use default PeerJS cloud with enhanced config (more reliable)
+    configs.push({
+      config: getICEConfiguration()
+    });
+    
+    // Development only: Local PeerJS server as fallback
     if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
       configs.push({
         host: 'localhost',
@@ -98,11 +114,6 @@ export function useP2POptimized(roomId: string, displayName?: string) {
         config: getICEConfiguration()
       });
     }
-    
-    // Production: Use default PeerJS cloud with enhanced config
-    configs.push({
-      config: getICEConfiguration()
-    });
     
     return configs;
   };
@@ -179,11 +190,17 @@ export function useP2POptimized(roomId: string, displayName?: string) {
   }, [roomId, peerId]);
 
   const setupConnection = useCallback((conn: DataConnection, isIncoming = false) => {
+    // Validate connection object
+    if (!conn || typeof conn.on !== 'function' || !conn.peer) {
+      console.error('❌ Invalid connection object passed to setupConnection');
+      return;
+    }
+    
     const connId = conn.peer;
     
     if (connectionsRef.current.has(connId) || pendingConnections.current.has(connId)) {
       console.log(`🚫 Rejecting duplicate connection from ${connId}`);
-      try { conn.close(); } catch (e) { /* ignore */ }
+      try { conn.close?.(); } catch (e) { /* ignore */ }
       return;
     }
     
@@ -254,9 +271,17 @@ export function useP2POptimized(roomId: string, displayName?: string) {
       handleClose();
     };
 
-    // Remove existing listeners and add new ones
+    // Remove existing listeners and add new ones (safely)
     ['data', 'open', 'close', 'error'].forEach(event => {
-      conn.removeAllListeners?.(event);
+      try {
+        if (typeof conn.removeAllListeners === 'function') {
+          conn.removeAllListeners(event);
+        } else if (typeof conn.off === 'function') {
+          conn.off(event);
+        }
+      } catch (e) {
+        // Ignore cleanup errors
+      }
     });
 
     conn.on('data', handleData);
@@ -271,6 +296,12 @@ export function useP2POptimized(roomId: string, displayName?: string) {
 
   const connectToPeer = useCallback(async (targetPeerId: string): Promise<boolean> => {
     if (!peerRef.current || !targetPeerId || targetPeerId === peerId) {
+      return false;
+    }
+
+    // Check if peer is actually connected and ready
+    if (peerRef.current.disconnected || peerRef.current.destroyed) {
+      console.warn(`⚠️ Cannot connect to ${targetPeerId}: Peer is disconnected or destroyed`);
       return false;
     }
 
@@ -298,11 +329,18 @@ export function useP2POptimized(roomId: string, displayName?: string) {
       
       const conn = peerRef.current.connect(targetPeerId, connectionConfig);
       
+      // Validate that conn is a valid connection object
+      if (!conn || typeof conn.on !== 'function') {
+        console.error(`❌ Invalid connection object returned for ${targetPeerId}`);
+        pendingConnections.current.delete(targetPeerId);
+        return false;
+      }
+      
       return new Promise<boolean>((resolve) => {
         const timeout = setTimeout(() => {
           console.log(`⏰ Connection timeout: ${targetPeerId}`);
           pendingConnections.current.delete(targetPeerId);
-          try { conn.close(); } catch (e) { /* ignore */ }
+          try { conn.close?.(); } catch (e) { /* ignore */ }
           resolve(false);
         }, 10000);
 
@@ -328,7 +366,13 @@ export function useP2POptimized(roomId: string, displayName?: string) {
   }, [peerId, roomId, effectiveDisplayName, setupConnection]);
 
   const autoConnectToRoomPeers = useCallback(async () => {
-    if (!peerId) return;
+    if (!peerId || !peerRef.current) return;
+
+    // Only attempt connections if our peer is properly connected
+    if (peerRef.current.disconnected || peerRef.current.destroyed) {
+      console.warn('⚠️ Auto-connect skipped: Peer is disconnected or destroyed');
+      return;
+    }
 
     const availablePeers = discoverPeers().filter(peer => {
       return !connectionsRef.current.has(peer) && 
@@ -341,6 +385,12 @@ export function useP2POptimized(roomId: string, displayName?: string) {
     console.log(`🎯 Auto-connecting to ${availablePeers.length} peers`);
     
     for (const targetPeer of availablePeers) {
+      // Check if peer is still connected before each attempt
+      if (peerRef.current.disconnected || peerRef.current.destroyed) {
+        console.warn('⚠️ Auto-connect interrupted: Peer disconnected');
+        break;
+      }
+      
       await connectToPeer(targetPeer);
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
@@ -399,6 +449,7 @@ export function useP2POptimized(roomId: string, displayName?: string) {
       return new Promise((resolve) => {
         try {
           console.log(`🚀 Trying PeerJS config ${configIndex + 1}:`, config.host || 'default');
+          debugP2P('config-attempt', { configIndex: configIndex + 1, config: config.host || 'default' });
           
           const peerConfig: any = {
             debug: 0,
@@ -416,6 +467,15 @@ export function useP2POptimized(roomId: string, displayName?: string) {
           newPeer.on('open', (id: string) => {
             clearTimeout(timeout);
             console.log(`✅ P2P ready with config ${configIndex + 1}:`, id);
+            debugP2P('peer-open', { configIndex: configIndex + 1, peerId: id, config: config.host || 'default' });
+            
+            // Ensure peer is properly connected before proceeding
+            if (newPeer.disconnected || newPeer.destroyed) {
+              console.warn('⚠️ Peer disconnected immediately after open');
+              resolve(false);
+              return;
+            }
+            
             setPeer(newPeer);
             setPeerId(id);
             peerRef.current = newPeer;
@@ -438,12 +498,14 @@ export function useP2POptimized(roomId: string, displayName?: string) {
           newPeer.on('error', (error: any) => {
             clearTimeout(timeout);
             console.warn(`⚠️ Config ${configIndex + 1} error:`, error.type);
+            debugP2P('peer-error', { configIndex: configIndex + 1, error: error.type, message: error.message, config: config.host || 'default' });
             try { newPeer.destroy(); } catch (e) { /* ignore */ }
             resolve(false);
           });
 
           newPeer.on('close', () => {
             console.log('🔒 Peer closed');
+            debugP2P('peer-closed', { configIndex: configIndex + 1, peerId: id || 'unknown' });
             setPeer(null);
             setPeerId(null);
             setConnections(new Map());
@@ -495,6 +557,7 @@ export function useP2POptimized(roomId: string, displayName?: string) {
       
       // All configurations failed - use local mode
       console.warn('❌ All PeerJS configurations failed - using local mode');
+      debugP2P('fallback-local', { reason: 'all-configs-failed', totalConfigs: configs.length });
       const localPeerId = generateShortId('local');
       console.log('🏠 Local mode with ID:', localPeerId);
       setPeerId(localPeerId);
@@ -504,6 +567,22 @@ export function useP2POptimized(roomId: string, displayName?: string) {
     };
 
     initializeWithFallbacks();
+
+    // Expose debug function globally in all environments
+    if (typeof window !== 'undefined') {
+      window.P2PDebug = {
+        getLog: () => window.P2PDebugLog || [],
+        clearLog: () => { window.P2PDebugLog = []; },
+        getCurrentState: () => ({
+          peerId,
+          isInitialized,
+          connections: Array.from(connections.keys()),
+          pendingConnections: Array.from(pendingConnections.current),
+          status
+        })
+      };
+      console.log('🔍 P2P Debug tools available: window.P2PDebug.getLog(), window.P2PDebug.getCurrentState()');
+    }
 
     return () => {
       if (peerRef.current && !peerRef.current.destroyed) {

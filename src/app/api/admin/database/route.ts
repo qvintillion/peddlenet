@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Required for static export builds
+export const dynamic = 'force-dynamic';
+
 // Simple authentication check
 function isAuthenticated(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization');

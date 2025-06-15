@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create Favicon</title>
+</head>
+<body>
+    <script>
+        // Simple script to convert SVG to ICO for favicon
+        fetch('/favicon.svg')
+            .then(response => response.text())
+            .then(svg => {
+                const blob = new Blob([svg], { type: 'image/svg+xml' });
+                const url = URL.createObjectURL(blob);
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = 32;
+                canvas.height = 32;
+                
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0, 32, 32);
+                    canvas.toBlob(blob => {
+                        const link = document.createElement('a');
+                        link.download = 'favicon.ico';
+                        link.href = URL.createObjectURL(blob);
+                        link.click();
+                    }, 'image/png');
+                };
+                
+                img.src = url;
+            });
+    </script>
+</body>
+</html>

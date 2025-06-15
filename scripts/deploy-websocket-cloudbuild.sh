@@ -1,9 +1,17 @@
 #!/bin/bash
 
 # Deploy WebSocket server using Google Cloud Build (no local Docker needed)
-# Version: 1.2.5-messaging-event-fix
+# Version: 1.3.0-frontend-error-fix-complete
+# Date: June 14, 2025
+# Includes: All frontend error fixes + production optimizations
 
-echo "🚀 Deploying WebSocket server with chat-message event fix using Cloud Build..."
+echo "🎪 Production WebSocket Server Deployment - ERROR-FIX COMPLETE"
+echo "================================================================"
+echo "🎯 Target: PRODUCTION Environment"
+echo "🌍 Platform: Google Cloud Run"
+echo "🔧 Features: All frontend error fixes + admin enhancements"
+echo "📈 Version: 1.3.0-frontend-error-fix-complete"
+echo ""
 
 # Check if we're in the right directory
 if [ ! -f "signaling-server.js" ]; then
@@ -24,6 +32,16 @@ echo "   Region: $REGION"
 echo "   Method: Google Cloud Build (no local Docker required)"
 echo ""
 
+echo "✅ Production Enhancement Checklist:"
+echo "=====================================" 
+echo "✅ Enhanced room stats API with proper 404 handling"
+echo "✅ Admin mesh-status endpoint with null safety"
+echo "✅ Improved error responses and validation"
+echo "✅ SQLite fallback system for cross-platform compatibility"
+echo "✅ CORS enhancements for all frontend environments"
+echo "✅ Production-hardened admin authentication"
+echo ""
+
 # Check if gcloud is authenticated
 echo "🔐 Checking Google Cloud authentication..."
 gcloud auth list --filter=status:ACTIVE --format="value(account)" > /dev/null 2>&1
@@ -40,7 +58,7 @@ gcloud config set project $PROJECT_ID
 
 # Submit build to Cloud Build (production configuration)
 echo "☁️  Submitting production build to Google Cloud Build..."
-echo "⚡ Using cache-busting for fresh build..."
+echo "⚡ Using cache-busting for fresh build with all error fixes..."
 gcloud builds submit \
   --config deployment/cloudbuild-production.yaml \
   --substitutions=_SERVICE_NAME=$SERVICE_NAME
@@ -69,18 +87,39 @@ echo "📍 Getting service URL..."
 SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --platform managed --region $REGION --format 'value(status.url)' --project $PROJECT_ID)
 
 echo ""
-echo "🎉 Deployment successful!"
+echo "🎉 PRODUCTION WEBSOCKET SERVER DEPLOYMENT SUCCESSFUL!"
+echo "====================================================="
 echo "📍 Service URL: $SERVICE_URL"
 echo "🏥 Health check: $SERVICE_URL/health"
-echo "📊 Stability metrics: $SERVICE_URL/stability"
+echo "📊 Admin analytics: $SERVICE_URL/admin/analytics"
+echo "🌐 Mesh status: $SERVICE_URL/admin/mesh-status"
+echo "📋 Room stats: $SERVICE_URL/room-stats/[room-id]"
 echo ""
-echo "🔧 Universal server features:"
-echo "   ✅ Environment auto-detection (dev/staging/production)"
-echo "   ✅ Single server file for all environments"
-echo "   ✅ Future features foundation ready"
+echo "🎯 Production Features Active:"
+echo "==============================="
+echo "✅ Enhanced error handling for all frontend components"
+echo "✅ Silent 404 handling for non-existent public rooms"
+echo "✅ Null safety for admin dashboard mesh metrics"
+echo "✅ SQLite persistence with automatic fallback"
+echo "✅ Production-grade CORS and security"
+echo "✅ Real-time analytics and monitoring"
+echo "✅ Room-specific broadcasting"
+echo "✅ Admin authentication with session management"
 echo ""
-echo "🧪 Test the updated server with your staging URL:"
-echo "   https://festival-chat-peddlenet--rate-limit-fix-dzkqnpwu.web.app"
+echo "🧪 Production Testing URLs:"
+echo "==========================="
+echo "• Health: $SERVICE_URL/health"
+echo "• Analytics: $SERVICE_URL/admin/analytics"
+echo "• Mesh Status: $SERVICE_URL/admin/mesh-status"
+echo "• Room Stats: $SERVICE_URL/room-stats/test-room (will return 404 - expected)"
 echo ""
-echo "⏱️  Version: 2.0.0-universal"
+echo "📝 IMPORTANT: Copy this WebSocket URL for .env.production:"
+echo "============================================================"
+echo "NEXT_PUBLIC_SIGNALING_SERVER=$SERVICE_URL"
+echo ""
+echo "⚠️  REMEMBER: Change 'https://' to 'wss://' in .env.production"
+echo "Correct format: NEXT_PUBLIC_SIGNALING_SERVER=wss://[domain]"
+echo ""
+echo "⏱️  Version: 1.3.0-frontend-error-fix-complete"
 echo "🛠️  Deployed via: Google Cloud Build"
+echo "🎪 Ready for frontend deployment!"

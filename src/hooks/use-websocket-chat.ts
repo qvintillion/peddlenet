@@ -654,16 +654,28 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       });
     });
 
-    // Enhanced peer management
+    // Enhanced peer management with strict deduplication
     socket.on('room-peers', (peers: any[]) => {
       console.log('Enhanced room peers total:', peers.length);
-      const uniquePeerNames = Array.from(new Set(peers.map(p => p.displayName)))
-        .filter(name => name !== effectiveDisplayName && name && name.trim());
+      
+      // First, filter out invalid peer data
+      const validPeers = peers.filter(p => 
+        p && 
+        p.displayName && 
+        typeof p.displayName === 'string' && 
+        p.displayName.trim() && 
+        p.displayName !== effectiveDisplayName
+      );
+      
+      // Then, get unique display names (case-sensitive but trimmed)
+      const uniquePeerNames = Array.from(
+        new Set(validPeers.map(p => p.displayName.trim()))
+      ).filter(name => name && name !== effectiveDisplayName);
       
       const namedUsers = uniquePeerNames.filter(name => !name.startsWith('User_'));
       const anonymousUsers = uniquePeerNames.filter(name => name.startsWith('User_'));
       
-      console.log('Enhanced peers:', {
+      console.log('Enhanced unique peers:', {
         total: uniquePeerNames.length,
         named: namedUsers.length,
         anonymous: anonymousUsers.length,
@@ -680,19 +692,27 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
         return;
       }
       
-      const isAnonymous = peer.displayName.startsWith('User_');
+      const trimmedName = peer.displayName.trim();
+      
+      // Skip if it's ourselves
+      if (trimmedName === effectiveDisplayName) {
+        return;
+      }
+      
+      const isAnonymous = trimmedName.startsWith('User_');
       const logMessage = isAnonymous 
-        ? `📝 Anonymous user joined: ${peer.displayName}`
-        : `👋 User joined: ${peer.displayName}`;
+        ? `📝 Anonymous user joined: ${trimmedName}`
+        : `👋 User joined: ${trimmedName}`;
       
       console.log(logMessage, peer.isReconnection ? '(reconnection)' : '(new)');
       
-      if (peer.displayName !== effectiveDisplayName) {
-        setConnectedPeers(prev => {
-          if (prev.includes(peer.displayName)) return prev;
-          return [...prev, peer.displayName];
-        });
-      }
+      setConnectedPeers(prev => {
+        // Ensure no duplicates by checking trimmed names
+        if (prev.some(name => name.trim() === trimmedName)) {
+          return prev;
+        }
+        return [...prev, trimmedName];
+      });
     });
 
     socket.on('peer-left', (peer: any) => {
@@ -701,16 +721,23 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
         return;
       }
       
-      const isAnonymous = peer.displayName.startsWith('User_');
+      const trimmedName = peer.displayName.trim();
+      
+      // Skip if it's ourselves
+      if (trimmedName === effectiveDisplayName) {
+        return;
+      }
+      
+      const isAnonymous = trimmedName.startsWith('User_');
       const logMessage = isAnonymous 
-        ? `📝 Anonymous user left: ${peer.displayName}`
-        : `👋 User left: ${peer.displayName}`;
+        ? `📝 Anonymous user left: ${trimmedName}`
+        : `👋 User left: ${trimmedName}`;
       
       console.log(logMessage, 'reason:', peer.reason);
       
-      if (peer.displayName !== effectiveDisplayName) {
-        setConnectedPeers(prev => prev.filter(name => name !== peer.displayName));
-      }
+      setConnectedPeers(prev => 
+        prev.filter(name => name.trim() !== trimmedName)
+      );
     });
 
   }, [roomId, effectiveDisplayName, connectionCooldown, retryCount, startHealthMonitoring, stopHealthMonitoring]);

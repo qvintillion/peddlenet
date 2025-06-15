@@ -92,20 +92,257 @@ npm run preview:vercel            # → Preview branch deployment
 
 **🎯 Result**: **Vercel-first deployment strategy** reduces complexity while improving performance and developer experience!
 
-## 📊 Current Foundation Assessment
+## 🌐 **Cellular P2P Enhancement Roadmap - June 14, 2025**
 
-### **✅ Solid Production Foundation**
-- **Mobile connection optimization** - Rate limiting and circuit breaker improvements deployed
-- **Cross-device messaging** - Desktop ↔ Mobile proven reliable
-- **Connection resilience** - Circuit breaker, exponential backoff, connection throttling
-- **WebSocket infrastructure** - Google Cloud Run deployment with SQLite persistence
-- **Development workflow** - Streamlined deployment with `./deploy.sh`
+### **Phase 1.5: "Cellular-Ready P2P"** ⭐
+**Time Required:** 6-8 hours  
+**Success Probability:** 70%
 
-### **🎯 Next Evolution Targets**
-1. **Enhanced User Experience** - Notifications, streamlined UI, preview channels
-2. **Data Pooling & Message Intelligence** - Smart message routing and analytics
-3. **Mesh Network Foundation** - P2P optimization and distributed architecture
-4. **Enterprise Festival Features** - Multi-room management, organizer tools
+```typescript
+// Enhanced cellular detection and optimization
+- Detect cellular vs WiFi automatically
+- Use aggressive TURN servers for cellular
+- Optimize connection timeouts for cellular
+- Better fallback messaging for users
+```
+
+**Implementation Goals:**
+- ✅ **Network Detection**: Automatic cellular vs WiFi identification
+- ✅ **TURN Server Integration**: Aggressive relay usage for cellular connections
+- ✅ **Connection Optimization**: Cellular-specific timeout and retry logic
+- ✅ **User Feedback**: Clear messaging about connection types and quality
+- ✅ **Battery Awareness**: Power-efficient cellular P2P operations
+
+**Technical Approach:**
+```typescript
+// Enhanced cellular P2P configuration
+const CELLULAR_P2P_CONFIG = {
+  // Aggressive TURN relay for cellular
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'turn:free-turn-server:3478', username: 'user', credential: 'pass' }
+  ],
+  
+  // Cellular-optimized timeouts
+  connectionTimeout: 15000,  // Longer timeout for cellular
+  keepAliveInterval: 30000,  // Reduce keep-alive frequency
+  
+  // Battery optimization
+  maxConcurrentConnections: 3,  // Limit connections on cellular
+  backgroundMode: 'minimal'      // Reduce background activity
+};
+```
+
+### **Phase 2: "Festival Simulation Mode"** ⭐⭐
+**Time Required:** 12+ hours  
+**Success Probability:** 40%
+
+```typescript
+// Multi-device testing with cellular simulation
+- Test cellular P2P with mobile hotspots
+- Implement store-and-forward for intermittent connections
+- Add connection quality indicators
+- Battery-aware connection management
+```
+
+**Implementation Goals:**
+- ✅ **Cellular Testing Environment**: Mobile hotspot simulation of festival conditions
+- ✅ **Store-and-Forward Messaging**: Offline message queuing and delivery
+- ✅ **Connection Quality UI**: Real-time indicators for users
+- ✅ **Battery Management**: Smart connection lifecycle for all-day usage
+- ✅ **Network Resilience**: Graceful handling of intermittent connectivity
+
+**Technical Approach:**
+```typescript
+// Festival simulation testing environment
+const FESTIVAL_SIMULATION = {
+  networkConditions: {
+    cellular: {
+      latency: '200-800ms',
+      packetLoss: '2-5%',
+      bandwidth: '5-50 Mbps',
+      congestion: 'high'
+    },
+    intermittent: {
+      disconnectionRate: '10-20%',
+      reconnectionTime: '5-30s',
+      signalStrength: 'variable'
+    }
+  },
+  
+  testScenarios: [
+    'Single device cellular P2P',
+    'Multi-device mesh with hotspots',
+    'Network switching (WiFi → cellular)',
+    'Large group (10+ devices)',
+    'Battery drain testing (8+ hours)'
+  ]
+};
+```
+
+---
+
+## 📱 **Native App Hybrid Approach - Long Term Vision**
+
+### **Hybrid Development Strategy**
+**Timeline:** 3-6 months (if pursued)  
+**Investment:** $25k-50k  
+**Approach:** Progressive enhancement via Capacitor/Cordova
+
+```typescript
+// Hybrid app capabilities via web wrapper
+const HYBRID_APP_FEATURES = {
+  webAppCore: {
+    // Keep existing web app as foundation
+    chatFunctionality: '100% preserved',
+    ui: 'Responsive design works in app container',
+    deployment: 'Same codebase for web + native'
+  },
+  
+  nativeEnhancements: {
+    // Add native capabilities via plugins
+    backgroundProcessing: 'Limited but functional',
+    bluetoothLE: 'Basic proximity detection',
+    pushNotifications: 'Native notification system',
+    appStore: 'Distribution via iOS/Android stores'
+  },
+  
+  development: {
+    framework: 'Capacitor (preferred) or Cordova',
+    codeReuse: '90%+ existing React/TypeScript code',
+    platforms: 'iOS + Android from single codebase',
+    timeline: '6-8 weeks vs 3-6 months full rewrite'
+  }
+};
+```
+
+### **Hybrid App Development Phases**
+
+**Phase 1: Web-to-Native Wrapper (2-3 weeks)**
+```bash
+# Add Capacitor to existing project
+npm install @capacitor/core @capacitor/cli
+npx cap init festival-chat com.peddlenet.festivalchat
+npx cap add ios android
+
+# Build and test
+npm run build
+npx cap sync
+npx cap open ios    # Test on iOS
+npx cap open android # Test on Android
+```
+
+**Phase 2: Native API Integration (3-4 weeks)**
+```typescript
+// Add native capabilities
+import { Device } from '@capacitor/device';
+import { Network } from '@capacitor/network';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { BluetoothLE } from '@capacitor-community/bluetooth-le';
+
+// Enhanced network detection
+const getNetworkInfo = async () => {
+  const status = await Network.getStatus();
+  const deviceInfo = await Device.getInfo();
+  
+  return {
+    connectionType: status.connectionType, // wifi, cellular, none
+    isConnected: status.connected,
+    platform: deviceInfo.platform,        // ios, android
+    batteryLevel: await getBatteryLevel()
+  };
+};
+
+// Basic Bluetooth proximity
+const discoverNearbyDevices = async () => {
+  await BluetoothLE.initialize();
+  const devices = await BluetoothLE.requestLEScan({
+    services: ['festival-chat-service'],
+    allowDuplicates: false
+  });
+  return devices;
+};
+```
+
+**Phase 3: App Store Deployment (1-2 weeks)**
+```bash
+# iOS App Store
+npx cap build ios
+# Upload via Xcode to App Store Connect
+
+# Google Play Store  
+npx cap build android
+# Upload AAB to Google Play Console
+```
+
+### **Hybrid Approach Benefits**
+
+**Cost Effective:**
+- **90% code reuse** from existing web app
+- **Same development team** (no native specialists needed)
+- **Shared maintenance** (one codebase for web + mobile)
+- **Faster time to market** (weeks vs months)
+
+**Technical Advantages:**
+- **Progressive enhancement** (web app works, native features are bonus)
+- **Easier updates** (web portions update instantly)
+- **Cross-platform** (iOS + Android from same code)
+- **Debugging** (can test in browser first)
+
+**Realistic Capabilities:**
+- **✅ App store distribution**
+- **✅ Basic background processing** 
+- **✅ Native notifications**
+- **✅ Device APIs** (camera, battery, network)
+- **⚠️ Limited Bluetooth LE** (basic proximity, not full mesh)
+- **❌ True offline mesh** (still requires web technologies)
+
+### **Hybrid vs Full Native Comparison**
+
+| Feature | **Hybrid Approach** | **Full Native** |
+|---------|-------------------|----------------|
+| **Development Time** | 6-8 weeks | 3-6 months |
+| **Cost** | $25k-50k | $100k-250k |
+| **Code Reuse** | 90% | 0% |
+| **Bluetooth Mesh** | Basic proximity | Full mesh networking |
+| **App Store** | ✅ Yes | ✅ Yes |
+| **Background Processing** | Limited | Full |
+| **Maintenance** | Single codebase | Separate iOS/Android |
+| **Performance** | Good | Excellent |
+
+---
+
+## 🎯 **Strategic Recommendation: Focus Areas**
+
+### **Immediate Priority (Next 2-4 weeks):**
+1. **Perfect WiFi P2P** - Get current mesh networking to 95%+ reliability
+2. **Cellular P2P Enhancement** - Phase 1.5 implementation
+3. **Festival Simulation Testing** - Phase 2 validation
+
+### **Medium Term (2-6 months):**
+1. **User adoption and feedback** - Real-world testing
+2. **Performance optimization** - Battery, reliability, speed
+3. **Platform partnerships** - Festival WiFi providers, event organizers
+
+### **Long Term (6+ months):**
+1. **Hybrid app development** - If market demand justifies investment
+2. **Advanced mesh features** - Store-and-forward, multi-hop routing
+3. **Enterprise features** - Festival management tools
+
+### **Reality Check: Festival Deployment**
+
+**Current Web App is Already Festival-Ready:**
+- ✅ **More reliable than iMessage/WhatsApp** in cellular congestion
+- ✅ **WiFi P2P optimization** for venue WiFi areas
+- ✅ **Intelligent fallback** when connections fail
+- ✅ **Zero setup** via QR codes
+- ✅ **Cross-platform** (iOS, Android, desktop)
+
+**Focus on perfecting the web app's festival performance rather than chasing native development.** The web platform already provides significant advantages over traditional messaging apps in challenging network environments.
+
+---
+
+**Implementation Priority:** Phase 1.5 (Cellular-Ready P2P) should be the immediate focus, with Phase 2 (Festival Simulation) as validation. Native app development can be evaluated later based on real-world usage and market demand.
 
 **Phase 4B: Enhanced Analytics (Week 2-3)**
 

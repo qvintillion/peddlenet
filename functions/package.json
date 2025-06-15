@@ -1,6 +1,7 @@
 {
   "name": "functions",
   "description": "Cloud Functions for Firebase",
+  "type": "module",
   "scripts": {
     "build": "npm run build:next && npm run copy:next && npm run build:functions",
     "build:next": "cd .. && npm run build",

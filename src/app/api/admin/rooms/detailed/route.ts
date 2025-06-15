@@ -1,6 +1,10 @@
 // API proxy to WebSocket server rooms detailed endpoint
 import { NextRequest, NextResponse } from 'next/server';
 
+// Required for static export builds
+export const dynamic = 'force-dynamic';
+
+
 // Get the WebSocket server URL
 function getWebSocketServerUrl() {
   // In development, use local server

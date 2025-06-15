@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Required for static export builds
 export const dynamic = 'force-dynamic';
-export const revalidate = false;
+
 
 // Get the WebSocket server URL
 function getWebSocketServerUrl() {

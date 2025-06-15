@@ -1,6 +1,10 @@
 // API proxy to WebSocket server database wipe endpoint
 import { NextRequest, NextResponse } from 'next/server';
 
+// Force dynamic rendering (no static generation)
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 // Get the WebSocket server URL
 function getWebSocketServerUrl() {
   // In development, use local server
@@ -14,7 +18,12 @@ function getWebSocketServerUrl() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Check if this is a valid request
+    if (!request) {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    }
+
+    const body = await request.json().catch(() => ({}));
     const { confirm } = body;
     
     if (confirm !== 'WIPE_ALL_DATA') {
@@ -44,4 +53,9 @@ export async function POST(request: NextRequest) {
     console.error('❌ Database wipe API error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
+}
+
+// Add GET handler to prevent build errors
+export async function GET() {
+  return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
 }
