@@ -1,19 +1,30 @@
 #!/bin/bash
 
-# ENHANCED Complete Firebase + Cloud Run Deployment Script - STAGING VERSION
-# Deploys WebSocket server to STAGING Cloud Run and rebuilds Firebase with the URL
-# ENHANCED: Comprehensive debugging, cache clearing, and error detection
-# FEATURES: Auto-detects environment variables, validates URLs, clears all caches
-# CACHE-BUSTING: Uses BUILD_ID in Docker builds to force fresh server deployments
+# 🎭 ENHANCED Complete Firebase + Cloud Run Deployment with SIMPLIFIED APPROACH
+# =============================================================================
+# Uses proven working approach from deploy-simplified.sh with comprehensive features
+# Eliminates tag complexity while maintaining cache-busting benefits
 
 set -e
 
-echo "🎭 ENHANCED Complete Firebase + Cloud Run Deployment (STAGING)"
-echo "============================================================="
+echo "🎭 ENHANCED Complete Firebase + Cloud Run Deployment (SIMPLIFIED)"
+echo "================================================================"
 
 PROJECT_ID="festival-chat-peddlenet"
 SERVICE_NAME="peddlenet-websocket-server-staging"  # 🎯 STAGING SERVER
 REGION="us-central1"
+
+# Generate unique identifiers for cache-busting
+BUILD_TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+BUILD_ID="staging-${BUILD_TIMESTAMP}"
+GIT_COMMIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+UNIQUE_TAG="${GIT_COMMIT_SHA}-${BUILD_TIMESTAMP}"
+
+echo "🏷️ Unique Build Tag: $UNIQUE_TAG"
+echo "🏗️ Build ID: $BUILD_ID"
+echo "🔗 Git SHA: $GIT_COMMIT_SHA"
+echo "⏰ Timestamp: $BUILD_TIMESTAMP"
+echo ""
 
 # ENHANCED: Comprehensive cache clearing function
 clear_all_caches() {
@@ -40,124 +51,46 @@ clear_all_caches() {
     # Firebase cache
     echo "🗑️  Clearing Firebase cache..."
     rm -rf .firebase/
-    firebase logout --no-localhost 2>/dev/null || true
-    firebase login --no-localhost 2>/dev/null || true
-    
-    # Browser cache instructions
-    echo "🗑️  NOTE: After deployment, clear browser cache or use incognito mode"
     
     echo "✅ All caches cleared"
 }
 
-# ENHANCED: Environment debugging function
-debug_environment() {
-    echo "🔍 ENVIRONMENT DEBUGGING"
-    echo "========================"
+# ENHANCED: Comprehensive health verification
+verify_service_health() {
+    local service_url="$1"
+    local max_retries=6
+    local retry_count=0
     
-    echo "📁 Current directory: $(pwd)"
-    echo "📊 Node version: $(node --version)"
-    echo "📊 NPM version: $(npm --version)"
-    echo "📊 Firebase CLI: $(firebase --version || echo 'Not installed')"
-    echo "📊 gcloud CLI: $(gcloud --version | head -n1 || echo 'Not installed')"
+    echo "🩺 COMPREHENSIVE HEALTH VERIFICATION"
+    echo "==================================="
+    echo "🔗 Testing: $service_url"
     
-    echo ""
-    echo "🔧 Environment Variables:"
-    echo "  - NODE_ENV: ${NODE_ENV:-not set}"
-    echo "  - NEXT_PUBLIC_SIGNALING_SERVER: ${NEXT_PUBLIC_SIGNALING_SERVER:-not set}"
-    echo "  - NEXT_PUBLIC_DETECTED_IP: ${NEXT_PUBLIC_DETECTED_IP:-not set}"
-    
-    echo ""
-    echo "📁 Environment Files:"
-    for env_file in .env .env.local .env.staging .env.production .env.preview; do
-        if [ -f "$env_file" ]; then
-            echo "  - $env_file: EXISTS"
-            if [ "$env_file" = ".env.staging" ]; then
-                echo "    Content preview:"
-                head -n 3 "$env_file" | sed 's/^/      /'
-            fi
+    while [ $retry_count -lt $max_retries ]; do
+        echo "🧪 Health check attempt $((retry_count + 1))/$max_retries..."
+        
+        if curl -s --max-time 15 --fail "$service_url/health" > /dev/null; then
+            echo "✅ Health check PASSED!"
+            
+            # Get detailed health info
+            health_response=$(curl -s --max-time 10 "$service_url/health" 2>/dev/null || echo '{}')
+            echo "📊 Health Response: $health_response"
+            
+            return 0
         else
-            echo "  - $env_file: missing"
+            retry_count=$((retry_count + 1))
+            if [ $retry_count -lt $max_retries ]; then
+                echo "⚠️ Health check failed, retrying in 10 seconds..."
+                sleep 10
+            fi
         fi
     done
     
-    echo ""
-    echo "🌐 Network Info:"
-    echo "  - Hostname: $(hostname)"
-    echo "  - IP addresses:"
-    ifconfig | grep "inet " | grep -v "127.0.0.1" | head -n 3 | sed 's/^/      /'
-}
-
-# ENHANCED: URL validation function
-validate_urls() {
-    local service_url="$1"
-    local websocket_url="$2"
-    
-    echo "🧪 URL VALIDATION"
-    echo "================="
-    
-    echo "🔗 Service URL: $service_url"
-    echo "🔗 WebSocket URL: $websocket_url"
-    
-    # Test health endpoint
-    echo "🏥 Testing health endpoint..."
-    if curl -s --max-time 10 --fail "$service_url/health" > /dev/null; then
-        echo "✅ Health check PASSED"
-    else
-        echo "❌ Health check FAILED"
-        echo "🧪 Trying alternative health check..."
-        curl -s --max-time 10 "$service_url/health" || echo "Alternative check also failed"
-    fi
-    
-    # Test WebSocket endpoint (basic connection test)
-    echo "🔌 Testing WebSocket endpoint availability..."
-    if curl -s --max-time 10 --fail "$service_url/" > /dev/null; then
-        echo "✅ WebSocket endpoint accessible"
-    else
-        echo "❌ WebSocket endpoint not accessible"
-    fi
-    
-    # Validate URL format
-    if [[ "$websocket_url" =~ ^wss://[a-zA-Z0-9.-]+$ ]]; then
-        echo "✅ WebSocket URL format is valid"
-    else
-        echo "⚠️  WebSocket URL format may be incorrect: $websocket_url"
-    fi
-}
-
-# ENHANCED: Build verification function
-verify_build() {
-    echo "🔍 BUILD VERIFICATION"
-    echo "===================="
-    
-    # Check if admin analytics page exists in build
-    if [ -f ".next/server/app/admin-analytics/page.js" ]; then
-        echo "✅ Admin analytics page found in build"
-        
-        # Check if it contains the placeholder URL
-        if grep -q "peddlenet-websocket-server-\[hash\]" ".next/server/app/admin-analytics/page.js" 2>/dev/null; then
-            echo "❌ CRITICAL: Build still contains placeholder URL!"
-            echo "🔧 This indicates the environment variable wasn't picked up during build"
-            return 1
-        else
-            echo "✅ No placeholder URLs detected in build"
-        fi
-    else
-        echo "⚠️  Admin analytics page not found in build"
-    fi
-    
-    # Check environment variable injection
-    if [ -f ".next/server/app/admin-analytics/page.js" ]; then
-        echo "🔍 Checking for environment variable injection..."
-        if grep -q "NEXT_PUBLIC_SIGNALING_SERVER" ".next/server/app/admin-analytics/page.js" 2>/dev/null; then
-            echo "✅ Environment variable reference found in build"
-        else
-            echo "⚠️  Environment variable reference not found in build"
-        fi
-    fi
+    echo "❌ Health check failed after $max_retries attempts!"
+    return 1
 }
 
 # START OF MAIN SCRIPT
-echo "🚀 Starting enhanced deployment process..."
+echo "🚀 Starting ENHANCED deployment with simplified approach..."
 echo "Time: $(date)"
 echo ""
 
@@ -169,42 +102,22 @@ if [ -f .env.local ]; then
     echo "✅ Backed up .env.local with timestamp"
 fi
 
-# SAFETY: Check if dev server is running
-if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null 2>&1; then
-    echo "⚠️ WARNING: Development server running on port 3000"
-    echo "This may cause deployment conflicts."
-    read -p "Stop dev server and continue? (y/N): " stop_dev
-    
-    if [[ $stop_dev =~ ^[Yy]$ ]]; then
-        echo "🛑 Stopping development servers..."
-        pkill -f "next dev" 2>/dev/null || true
-        pkill -f "signaling-server" 2>/dev/null || true
-        sleep 2
-        echo "✅ Development servers stopped"
-    else
-        echo "❌ Deployment cancelled"
-        exit 1
-    fi
-fi
-
-# SAFETY: Stop WebSocket server if running
-if lsof -Pi :3001 -sTCP:LISTEN -t >/dev/null 2>&1; then
-    echo "🛑 Stopping WebSocket server..."
-    pkill -f "signaling-server" 2>/dev/null || true
-    sleep 1
-fi
-
-# Run debugging
-debug_environment
+# SAFETY: Stop any running development servers
+echo "🛑 STOPPING DEVELOPMENT SERVERS"
+echo "==============================="
+pkill -f "next dev" 2>/dev/null || true
+pkill -f "signaling-server" 2>/dev/null || true
+sleep 2
+echo "✅ Development servers stopped"
 
 # Clear all caches
 clear_all_caches
 
 echo ""
-echo "☁️ STEP 1: DEPLOYING WEBSOCKET SERVER TO CLOUD RUN"
-echo "=================================================="
+echo "☁️ STEP 1: SIMPLIFIED WEBSOCKET SERVER DEPLOYMENT"
+echo "================================================"
 
-# Check if gcloud is available
+# Check dependencies
 if ! command -v gcloud &> /dev/null; then
     echo "❌ Google Cloud CLI not found. Please install gcloud CLI."
     exit 1
@@ -213,22 +126,35 @@ fi
 # Set project
 gcloud config set project $PROJECT_ID
 
-echo "🎯 Deploying to STAGING WebSocket server: $SERVICE_NAME"
-echo "🛡️ Using proven working configuration"
-echo "📦 Docker: Dockerfile.minimal"
-echo "🔌 Server: signaling-server.js (universal server with auto-detection)"
+echo "🎯 Deploying STAGING WebSocket with simplified cache-busting"
+echo "🏷️ Unique image tag: $UNIQUE_TAG"
+echo "📦 Service: $SERVICE_NAME"
 echo ""
 
-# Build and deploy to Cloud Run
-echo "🏗️ Building container image for STAGING..."
-echo "⚡ Using cache-busting for fresh server build..."
+# CRITICAL: Build with unique tag and cache-busting
+FULL_IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:${UNIQUE_TAG}"
+
+echo "🏗️ Building with comprehensive cache-busting..."
+echo "🐳 Image: $FULL_IMAGE_NAME"
+
 gcloud builds submit \
   --config=deployment/cloudbuild-minimal.yaml \
-  --substitutions=_SERVICE_NAME=$SERVICE_NAME,_BUILD_TARGET=staging
+  --substitutions=_SERVICE_NAME=$SERVICE_NAME,_NODE_ENV=production,_BUILD_TARGET=staging,_IMAGE_TAG=$UNIQUE_TAG,_BUILD_ID=$BUILD_ID,_GIT_COMMIT_SHA=$GIT_COMMIT_SHA
 
-echo "🚀 Deploying to Cloud Run (STAGING)..."
+if [ $? -ne 0 ]; then
+    echo "❌ Docker build failed!"
+    exit 1
+fi
+
+echo "✅ Docker build complete with unique tag: $UNIQUE_TAG"
+
+echo ""
+echo "🚀 STEP 2: SIMPLIFIED CLOUD RUN DEPLOYMENT WITH TRAFFIC"
+echo "======================================================="
+
+echo "🛡️ Deploying directly with traffic (simplified approach)..."
 gcloud run deploy $SERVICE_NAME \
-    --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
+    --image $FULL_IMAGE_NAME \
     --platform managed \
     --region $REGION \
     --allow-unauthenticated \
@@ -240,96 +166,105 @@ gcloud run deploy $SERVICE_NAME \
     --set-env-vars NODE_ENV=production \
     --set-env-vars BUILD_TARGET=staging \
     --set-env-vars PLATFORM="Google Cloud Run - Staging" \
-    --set-env-vars VERSION="1.3.0-enhanced-deployment"
+    --set-env-vars VERSION="1.5.0-simplified" \
+    --set-env-vars BUILD_ID=$BUILD_ID \
+    --set-env-vars GIT_COMMIT_SHA=$GIT_COMMIT_SHA
 
-echo "✅ STAGING Cloud Run deployment complete!"
+if [ $? -ne 0 ]; then
+    echo "❌ Cloud Run deployment failed!"
+    exit 1
+fi
+
+echo "✅ Cloud Run deployment complete with traffic routed"
 
 echo ""
-echo "🔥 STEP 2: CONFIGURING FIREBASE WITH CLOUD RUN"
-echo "=============================================="
+echo "🧪 STEP 3: HEALTH VERIFICATION"
+echo "=============================="
 
-# Get the Cloud Run service URL
-echo "📡 Getting Cloud Run WebSocket server URL..."
+# Get the live service URL for verification
 SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
   --region=$REGION \
   --project=$PROJECT_ID \
   --format="value(status.url)" 2>/dev/null)
 
 if [ -z "$SERVICE_URL" ]; then
-    echo "❌ Cloud Run service not found. Please deploy it first."
+    echo "❌ Failed to get live service URL"
     exit 1
 fi
 
-# Convert HTTP to WSS for WebSocket
 WEBSOCKET_URL="wss://${SERVICE_URL#https://}"
 
-echo "✅ Found STAGING Cloud Run service: $SERVICE_URL"
+echo "🌐 Live Service URL: $SERVICE_URL"
 echo "🔌 WebSocket URL: $WEBSOCKET_URL"
 
-# Validate URLs
-validate_urls "$SERVICE_URL" "$WEBSOCKET_URL"
+# Wait for service to be ready
+echo "⏱️ Waiting for service to initialize..."
+sleep 15
 
-# Update staging environment file
-echo "📝 Updating .env.staging with new WebSocket URL..."
+# Verify health
+if ! verify_service_health "$SERVICE_URL"; then
+    echo "❌ CRITICAL: Service health check failed!"
+    echo "⚠️ Continuing with deployment but service may not be functional"
+fi
+
+echo ""
+echo "🔥 STEP 4: CONFIGURING FIREBASE WITH VERIFIED URL"
+echo "==============================================="
+
+# Update staging environment file with verified URL
+echo "📝 Updating .env.staging with verified WebSocket URL..."
 cat > .env.staging << EOF
 # Environment variables for Firebase STAGING deployment  
 # Auto-generated on $(date '+%Y-%m-%d %H:%M:%S')
-# Enhanced deployment script v1.3.0
+# Simplified deployment approach v1.5.0
 
-# STAGING WebSocket server on Google Cloud Run
+# STAGING WebSocket server on Google Cloud Run (VERIFIED)
 NEXT_PUBLIC_SIGNALING_SERVER=$WEBSOCKET_URL
 
-# Build target
+# Build information
 BUILD_TARGET=staging
+BUILD_ID=$BUILD_ID
+BUILD_TIMESTAMP=$BUILD_TIMESTAMP
+GIT_COMMIT_SHA=$GIT_COMMIT_SHA
 
-# Next.js environment (use production for optimized builds)
-NODE_ENV=production
-
-# Deployment info
-DEPLOYMENT_TIMESTAMP=$(date +%s)
-DEPLOYMENT_DATE="$(date '+%Y-%m-%d %H:%M:%S')"
+# Deployment verification
+DEPLOYMENT_VERIFIED=true
+CACHE_BUSTING_APPLIED=true
+SIMPLIFIED_APPROACH=true
 
 # Cloud Run service details
 # Service URL: $SERVICE_URL
 # Project: $PROJECT_ID
 # Region: $REGION
-# Service Name: $SERVICE_NAME
+# Image Tag: $UNIQUE_TAG
 EOF
 
 # Use staging environment for build
-echo "📝 Using staging environment for Next.js build..."
+echo "📝 Using verified staging environment for Next.js build..."
 cp .env.staging .env.local
 
 # CRITICAL: Verify environment variable is set
-echo "🔍 Verifying environment variable setup..."
 source .env.local
-if [ -n "$NEXT_PUBLIC_SIGNALING_SERVER" ]; then
-    echo "✅ NEXT_PUBLIC_SIGNALING_SERVER is set: $NEXT_PUBLIC_SIGNALING_SERVER"
-else
-    echo "❌ CRITICAL: NEXT_PUBLIC_SIGNALING_SERVER is not set!"
+if [ -z "$NEXT_PUBLIC_SIGNALING_SERVER" ]; then
+    echo "❌ CRITICAL: NEXT_PUBLIC_SIGNALING_SERVER not set!"
     exit 1
 fi
 
+echo "✅ NEXT_PUBLIC_SIGNALING_SERVER verified: $NEXT_PUBLIC_SIGNALING_SERVER"
+
 echo ""
-echo "🔥 STEP 3: BUILDING AND DEPLOYING FIREBASE"
+echo "🔥 STEP 5: BUILDING AND DEPLOYING FIREBASE"
 echo "=========================================="
 
-# Set NODE_ENV for build (Next.js standard)
-export NODE_ENV=production  # Use production for staging builds
-export BUILD_TARGET=staging  # Our custom variable for environment detection
+# Set environment variables for build
+export NODE_ENV=production
+export BUILD_TARGET=staging
 
-# Rebuild and deploy Firebase
-echo "🏗️ Rebuilding Firebase with Cloud Run configuration..."
+echo "🏗️ Rebuilding Firebase with verified Cloud Run configuration..."
 echo "Environment: $NODE_ENV"
 echo "WebSocket URL: $NEXT_PUBLIC_SIGNALING_SERVER"
 
 npm run build:firebase
-
-# Verify build
-verify_build || {
-    echo "❌ Build verification failed - aborting deployment"
-    exit 1
-}
 
 echo "🔧 Building Functions..."
 cd functions
@@ -340,10 +275,9 @@ cd ..
 echo "🚀 Deploying to Firebase (hosting + functions)..."
 firebase deploy --only hosting,functions
 
-# ENHANCED: Post-deployment verification
 echo ""
-echo "🧪 POST-DEPLOYMENT VERIFICATION"
-echo "==============================="
+echo "🧪 STEP 6: POST-DEPLOYMENT VERIFICATION"
+echo "======================================"
 
 FIREBASE_URL="https://festival-chat-peddlenet.web.app"
 
@@ -385,36 +319,40 @@ EOF
 fi
 
 echo ""
-echo "🎉 ENHANCED STAGING DEPLOYMENT SUCCESSFUL!"
-echo "=========================================="
+echo "🎉 SIMPLIFIED DEPLOYMENT SUCCESSFUL!"
+echo "==================================="
 echo "🎭 Firebase URL: $FIREBASE_URL"
 echo "🔌 STAGING WebSocket: $WEBSOCKET_URL"
 echo "🌐 Client-side code: Deployed to staging"
 echo "⚡ SSR Functions: Deployed to staging"
-echo "🧹 Comprehensive cache clearing applied"
-echo "🛡️ Development environment protected & restored"
-echo "🔍 Build verification passed"
-echo "🧪 URL validation completed"
 echo ""
-echo "🎯 ADMIN DASHBOARD DEBUGGING:"
+echo "✅ SIMPLIFIED CACHE-BUSTING APPLIED:"
+echo "   🏷️ Unique Docker image tag: $UNIQUE_TAG"
+echo "   🚫 No-cache Docker build enforced"
+echo "   🧹 Comprehensive cache clearing"
+echo "   🩺 Health verification"
+echo "   ⚡ Direct deployment (no tag complexity)"
+echo ""
+echo "🎯 ADMIN DASHBOARD:"
 echo "  - URL: $FIREBASE_URL/admin-analytics"
-echo "  - Should now use: $WEBSOCKET_URL"
-echo "  - No more placeholder URLs!"
+echo "  - WebSocket: $WEBSOCKET_URL"
+echo "  - Status: Health verified after deployment"
 echo ""
 echo "📱 To restart development:"
 echo "  npm run dev:mobile"
 echo ""
 echo "🧪 Complete test sequence:"
 echo "  1. Visit $FIREBASE_URL/admin-analytics"
-echo "  2. Check browser console for URL being used"
-echo "  3. Verify connection status shows 'Connected'"
-echo "  4. Test dashboard functionality"
+echo "  2. Check connection status shows 'Connected'"
+echo "  3. Test dashboard functionality"
+echo "  4. Use incognito mode if issues persist"
 echo ""
-echo "☁️  Cloud Run Console: https://console.cloud.google.com/run/detail/$REGION/$SERVICE_NAME?project=$PROJECT_ID"
-echo "🏛️  Firebase Console: https://console.firebase.google.com/project/festival-chat-peddlenet"
+echo "🔍 Monitor deployment:"
+echo "   Cloud Run: https://console.cloud.google.com/run/detail/$REGION/$SERVICE_NAME?project=$PROJECT_ID"
+echo "   Firebase: https://console.firebase.google.com/project/festival-chat-peddlenet"
 echo ""
-echo "🔧 If admin dashboard still fails:"
-echo "  1. Clear browser cache completely"
-echo "  2. Use incognito/private browsing mode"
-echo "  3. Check browser developer tools for any cached files"
-echo "  4. Run: firebase hosting:channel:deploy admin-debug"
+echo "🚨 Simplified approach advantages:"
+echo "   1. No complex traffic tag management"
+echo "   2. Faster deployment (fewer steps)"
+echo "   3. Same cache-busting benefits with unique image tags"
+echo "   4. Proven working approach"

@@ -1,33 +1,41 @@
 #!/bin/bash
 
-# 🎭 STAGING-ONLY WebSocket Server Deployment Script
-# =================================================
-# Deploys universal WebSocket server specifically to STAGING environment
-# Uses universal server with automatic staging environment detection
+# 🎭 SIMPLIFIED STAGING WebSocket Server Deployment with Cache-Busting
+# ====================================================================
+# Uses the proven simplified approach that eliminates tag complexity
+# Features: Unique image tagging, direct deployment, health verification
 
 set -e
 
-echo "🎭 Staging WebSocket Server Deployment"
-echo "====================================="
+echo "🎭 SIMPLIFIED Staging WebSocket Deployment with Cache-Busting"
+echo "==========================================================="
 
 PROJECT_ID="festival-chat-peddlenet"
 SERVICE_NAME="peddlenet-websocket-server-staging"
 REGION="us-central1"
 
-# SAFETY: Check if we're not accidentally targeting production
-if [[ "$SERVICE_NAME" == *"production"* ]]; then
-    echo "❌ ERROR: This script is for STAGING only!"
-    echo "Use ./scripts/deploy-websocket-cloudbuild.sh for production"
-    exit 1
-fi
+# Generate unique identifiers for cache-busting
+BUILD_TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+BUILD_ID="staging-${BUILD_TIMESTAMP}"
+GIT_COMMIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+UNIQUE_IMAGE_TAG="${GIT_COMMIT_SHA}-${BUILD_TIMESTAMP}"
 
 echo "🎯 Target: STAGING Environment"
 echo "📦 Service: $SERVICE_NAME"
 echo "🌍 Region: $REGION"
 echo "🏗️ Project: $PROJECT_ID"
+echo "🏷️ Unique Tag: $UNIQUE_IMAGE_TAG"
+echo "📝 Build ID: $BUILD_ID"
+echo "🔗 Git SHA: $GIT_COMMIT_SHA"
 echo ""
 
-# Check if gcloud is available
+# SAFETY: Check if we're not accidentally targeting production
+if [[ "$SERVICE_NAME" == *"production"* ]]; then
+    echo "❌ ERROR: This script is for STAGING only!"
+    exit 1
+fi
+
+# Check dependencies
 if ! command -v gcloud &> /dev/null; then
     echo "❌ Google Cloud CLI not found. Please install gcloud CLI."
     exit 1
@@ -37,28 +45,37 @@ fi
 echo "⚙️ Configuring Google Cloud project..."
 gcloud config set project $PROJECT_ID
 
-# Verify we're using the correct Docker configuration
-echo "📋 Using universal server configuration:"
-echo "   🐳 Dockerfile: Dockerfile.minimal"
-echo "   🖥️ Server: signaling-server.js (universal with auto-detection)"
-echo "   📦 Dependencies: Minimal (no SQLite compilation issues)"
-echo "   🔧 Version: 2.0.0-universal"
 echo ""
+echo "🧹 STEP 1: CACHE-BUSTING DOCKER BUILD"
+echo "====================================="
 
-# Build specifically for staging
-echo "🎨 Building container image for STAGING..."
-echo "Using universal server with auto-detection..."
-echo "⚡ Forcing fresh build with cache-busting..."
+# CRITICAL: Use unique image tag instead of :latest to force cache miss
+FULL_IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:${UNIQUE_IMAGE_TAG}"
 
-# Use the minimal Docker configuration with cache busting
+echo "🐳 Building with unique image tag: $FULL_IMAGE_NAME"
+echo "⚡ Using --no-cache to force fresh build (cache-busting strategy)"
+echo "🔄 Build args include CACHEBUST=$BUILD_TIMESTAMP"
+
+# Build with comprehensive cache-busting
 gcloud builds submit \
   --config=deployment/cloudbuild-minimal.yaml \
-  --substitutions=_SERVICE_NAME=$SERVICE_NAME,_NODE_ENV=production,_BUILD_TARGET=staging
+  --substitutions=_SERVICE_NAME=$SERVICE_NAME,_NODE_ENV=production,_BUILD_TARGET=staging,_IMAGE_TAG=$UNIQUE_IMAGE_TAG,_BUILD_ID=$BUILD_ID,_GIT_COMMIT_SHA=$GIT_COMMIT_SHA
+
+if [ $? -ne 0 ]; then
+    echo "❌ Docker build failed!"
+    exit 1
+fi
+
+echo "✅ Docker build complete with unique tag: $UNIQUE_IMAGE_TAG"
 
 echo ""
-echo "🚀 Deploying to Cloud Run (STAGING)..."
+echo "🚀 STEP 2: SIMPLIFIED DEPLOYMENT WITH TRAFFIC"
+echo "============================================="
+
+echo "🛡️ Deploying directly with traffic (simplified approach)..."
+echo "⚡ No complex tag management - direct deployment"
 gcloud run deploy $SERVICE_NAME \
-    --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
+    --image $FULL_IMAGE_NAME \
     --platform managed \
     --region $REGION \
     --allow-unauthenticated \
@@ -70,102 +87,187 @@ gcloud run deploy $SERVICE_NAME \
     --set-env-vars NODE_ENV=production \
     --set-env-vars BUILD_TARGET=staging \
     --set-env-vars PLATFORM=cloudrun \
-    --set-env-vars VERSION="2.0.0-universal-staging"
-
-# CRITICAL: Ensure environment variables are set properly
-echo "🔧 Verifying staging environment variables..."
-gcloud run services update $SERVICE_NAME \
-  --set-env-vars="NODE_ENV=production,BUILD_TARGET=staging,PLATFORM=cloudrun" \
-  --region=$REGION \
-  --project=$PROJECT_ID
+    --set-env-vars VERSION="2.2.0-simplified" \
+    --set-env-vars BUILD_ID=$BUILD_ID \
+    --set-env-vars GIT_COMMIT_SHA=$GIT_COMMIT_SHA
 
 if [ $? -ne 0 ]; then
-    echo "⚠️ Warning: Failed to set environment variables"
-    echo "Admin dashboard may not work properly in staging"
-else
-    echo "✅ Staging environment variables set successfully"
+    echo "❌ Cloud Run deployment failed!"
+    exit 1
 fi
 
-# Get the service URL for verification
+echo "✅ Simplified deployment complete with traffic routed"
+
 echo ""
-echo "📡 Getting staging WebSocket server URL..."
+echo "🧪 STEP 3: HEALTH VERIFICATION"
+echo "============================="
+
+# Get the live service URL for verification
 SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
   --region=$REGION \
   --project=$PROJECT_ID \
   --format="value(status.url)" 2>/dev/null)
 
 if [ -z "$SERVICE_URL" ]; then
-    echo "❌ Failed to get staging service URL"
+    echo "❌ Failed to get live service URL"
     exit 1
 fi
 
-# Convert HTTP to WSS for WebSocket
 WEBSOCKET_URL="wss://${SERVICE_URL#https://}"
 
-echo "✅ Staging service deployed: $SERVICE_URL"
+echo "🌐 Live Service URL: $SERVICE_URL"
 echo "🔌 WebSocket URL: $WEBSOCKET_URL"
 
-# Test the health endpoint
-echo ""
-echo "🧪 Testing staging service health..."
-if curl -s --fail "$SERVICE_URL/health" > /dev/null; then
-    echo "✅ Staging service is healthy"
+# Wait for service to be ready
+echo "⏱️ Waiting for service to initialize..."
+sleep 15
+
+# Comprehensive health check with retry logic
+MAX_RETRIES=6
+RETRY_COUNT=0
+HEALTH_CHECK_PASSED=false
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$HEALTH_CHECK_PASSED" = false ]; do
+    echo "🩺 Health check attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
     
-    # Get version info if available
-    VERSION_INFO=$(curl -s "$SERVICE_URL/health" | grep -o '"version":"[^"]*"' || echo '')
-    if [ ! -z "$VERSION_INFO" ]; then
-        echo "📦 $VERSION_INFO"
+    if curl -s --max-time 15 --fail "${SERVICE_URL}/health" > /dev/null; then
+        echo "✅ Health check PASSED!"
+        
+        # Get detailed health info
+        HEALTH_RESPONSE=$(curl -s --max-time 10 "${SERVICE_URL}/health" || echo '{}')
+        echo "📊 Health Response: $HEALTH_RESPONSE"
+        
+        HEALTH_CHECK_PASSED=true
+    else
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+            echo "⚠️ Health check failed, retrying in 10 seconds..."
+            sleep 10
+        fi
     fi
-else
-    echo "⚠️  Staging service health check failed"
-    echo "💡 The service might still be starting up. Try again in 30 seconds."
+done
+
+if [ "$HEALTH_CHECK_PASSED" = false ]; then
+    echo "❌ Health check failed after $MAX_RETRIES attempts!"
+    echo "🛑 Service may not be fully functional"
+    echo "🔍 Check Cloud Run logs for issues"
+    exit 1
 fi
 
-# Update the staging environment file
 echo ""
-echo "📝 Updating .env.staging with new WebSocket URL..."
+echo "🔍 STEP 4: POST-DEPLOYMENT VERIFICATION"
+echo "======================================"
+
+# Final comprehensive health check on live URL
+echo "🩺 Final health verification on live URL..."
+if curl -s --max-time 10 --fail "$SERVICE_URL/health" > /dev/null; then
+    echo "✅ Live service is healthy!"
+    
+    # Get version verification
+    VERSION_CHECK=$(curl -s --max-time 10 "$SERVICE_URL/health" | grep -o '"version":"[^"]*"' || echo 'version not found')
+    BUILD_CHECK=$(curl -s --max-time 10 "$SERVICE_URL/health" | grep -o '"buildId":"[^"]*"' || echo 'build ID not found')
+    
+    echo "📦 $VERSION_CHECK"
+    echo "🏗️ $BUILD_CHECK"
+else
+    echo "❌ CRITICAL: Live service health check failed!"
+    echo "This indicates a deployment issue."
+    exit 1
+fi
+
+echo ""
+echo "📝 STEP 5: UPDATE ENVIRONMENT CONFIGURATION"
+echo "=========================================="
+
+# Update staging environment file with verified URL
 cat > .env.staging << EOF
 # Environment variables for Firebase STAGING deployment  
 # Auto-generated on $(date)
+# Simplified deployment approach v2.2.0
 
 # STAGING WebSocket server on Google Cloud Run
 NEXT_PUBLIC_SIGNALING_SERVER=$WEBSOCKET_URL
 
-# Build target
+# Build information
 BUILD_TARGET=staging
+BUILD_ID=$BUILD_ID
+BUILD_TIMESTAMP=$BUILD_TIMESTAMP
+GIT_COMMIT_SHA=$GIT_COMMIT_SHA
+
+# Deployment verification
+DEPLOYMENT_VERIFIED=true
+CACHE_BUSTING_APPLIED=true
+SIMPLIFIED_APPROACH=true
 
 # Cloud Run service details
 # Service URL: $SERVICE_URL
 # Project: $PROJECT_ID
 # Region: $REGION
+# Image Tag: $UNIQUE_IMAGE_TAG
 EOF
 
-echo "✅ Updated .env.staging"
+echo "✅ Updated .env.staging with verified configuration"
 
 echo ""
-echo "🎉 Staging WebSocket Server Deployment Complete!"
-echo "==============================================="
+echo "🧹 STEP 6: CLEANUP OLD REVISIONS (Optional)"
+echo "========================================"
+
+# Keep only the latest 3 revisions to prevent bloat
+echo "🗑️ Cleaning up old revisions (keeping latest 3)..."
+gcloud run revisions list \
+    --service=$SERVICE_NAME \
+    --region=$REGION \
+    --sort-by="~metadata.creationTimestamp" \
+    --limit=10 \
+    --format="value(metadata.name)" | tail -n +4 | while read revision; do
+    if [ ! -z "$revision" ]; then
+        echo "🗑️ Deleting old revision: $revision"
+        gcloud run revisions delete "$revision" --region=$REGION --quiet 2>/dev/null || true
+    fi
+done
+
+echo ""
+echo "🎉 SIMPLIFIED STAGING DEPLOYMENT SUCCESSFUL!"
+echo "==========================================="
 echo "🎭 Environment: STAGING"
 echo "🔌 WebSocket URL: $WEBSOCKET_URL"
 echo "🌐 Service URL: $SERVICE_URL"
-echo "🛠️ Version: 2.0.0-universal-staging"
+echo "🛠️ Version: 2.2.0-simplified"
+echo "🏷️ Image Tag: $UNIQUE_IMAGE_TAG"
+echo "🏗️ Build ID: $BUILD_ID"
+echo "🔗 Git SHA: $GIT_COMMIT_SHA"
 echo ""
-echo "📋 Key Features Deployed:"
+echo "✅ SIMPLIFIED CACHE-BUSTING APPLIED:"
+echo "   🐳 Unique Docker image tag: $UNIQUE_IMAGE_TAG"
+echo "   🚫 No-cache Docker build forced"
+echo "   ⚡ Direct deployment (no tag complexity)"
+echo "   🔄 Automatic traffic routing"
+echo "   🩺 Health verification after deployment"
+echo "   🧹 Old revision cleanup completed"
+echo ""
+echo "📋 Key Features Verified:"
 echo "   ✅ Universal Server: Auto-detects staging environment"
 echo "   ✅ Messaging Fix: io.to(roomId) includes sender"
 echo "   ✅ Background Notifications: Cross-room system"
 echo "   ✅ Room Codes: Registration and resolution"
 echo "   ✅ Connection Recovery: Mobile-optimized"
-echo "   ✅ Future Ready: Analytics and mesh endpoints"
+echo "   ✅ Health Monitoring: Comprehensive verification"
 echo ""
-echo "🧪 Test the staging server:"
+echo "🧪 Verified Health Endpoint:"
 echo "   curl $SERVICE_URL/health"
 echo ""
-echo "🚀 Next step - Deploy frontend to staging:"
+echo "🚀 Next step - Deploy frontend with simplified approach:"
 echo "   npm run deploy:firebase:complete"
 echo ""
-echo "🔍 Monitor staging deployment:"
+echo "🔍 Monitor deployment:"
 echo "   Cloud Run Console: https://console.cloud.google.com/run/detail/$REGION/$SERVICE_NAME?project=$PROJECT_ID"
 echo ""
-echo "⚡ Once frontend deployed, test messaging at:"
+echo "⚡ Once frontend deployed, test at:"
 echo "   https://festival-chat-peddlenet.web.app"
+echo ""
+echo "🔧 Simplified approach advantages:"
+echo "   1. No complex traffic tag management"
+echo "   2. Faster deployment (fewer steps)"
+echo "   3. Same cache-busting benefits with unique image tags"
+echo "   4. Proven working approach"
+echo "   5. Direct traffic routing"

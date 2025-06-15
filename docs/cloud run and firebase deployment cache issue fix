@@ -1,0 +1,395 @@
+# Comprehensive Solutions for Cloud Run and Firebase Deployment Cache Issues
+
+## Executive Summary
+
+This report provides comprehensive solutions for preventing deployment cache issues and version mismatches in your Cloud Run + Firebase staging environments. The research reveals that these issues stem from three primary causes: **container image caching by digest**, **traffic routing complexities**, and **Docker build layer caching**. The report outlines proven strategies including unique image tagging, explicit traffic management, cache invalidation techniques, and automated verification systems that guarantee fresh deployments.
+
+## Key Root Causes of Deployment Issues
+
+### Container image caching in Cloud Run
+
+Cloud Run resolves image tags to specific SHA256 digests during deployment and **caches these images indefinitely** while a revision is serving. When CI/CD pipelines push new images with the same tag (like `:latest`), Cloud Run continues using the cached digest from the previous deployment. This is the most common cause of deployments appearing successful while running old code.
+
+### Traffic allocation and revision management
+
+New deployments may create revisions but fail to route traffic automatically. Services with custom traffic splits remain in manual mode until explicitly reset, causing new revisions to exist without receiving any traffic. This creates the illusion of successful deployment while users continue accessing the old version.
+
+### Firebase and Cloud Run synchronization
+
+Firebase Hosting and Cloud Run operate on **separate deployment lifecycles** with no atomic deployment mechanism between them. This can lead to API/frontend version mismatches during deployment windows, especially when using preview channels that only support static content updates.
+
+## Immediate Solutions for Fresh Deployments
+
+### Force traffic to latest revision
+
+The most critical step is ensuring traffic routes to new deployments:
+
+```bash
+# Primary solution for stuck traffic
+gcloud run services update-traffic SERVICE_NAME --to-latest --region=REGION
+
+# Deploy with verification pattern
+gcloud run deploy SERVICE_NAME \
+  --image gcr.io/PROJECT/IMAGE:$COMMIT_SHA \
+  --region REGION \
+  --no-traffic
+
+# Test the deployment, then route traffic
+gcloud run services update-traffic SERVICE_NAME --to-latest --region=REGION
+```
+
+### Implement unique image tagging
+
+Replace `:latest` tags with unique identifiers to force Cloud Run to pull new images:
+
+```bash
+# Build with unique tags
+docker build -t gcr.io/PROJECT/SERVICE:$(git rev-parse HEAD) .
+docker build -t gcr.io/PROJECT/SERVICE:$(date +%Y%m%d-%H%M%S) .
+
+# Deploy with specific image reference
+gcloud run deploy SERVICE --image gcr.io/PROJECT/SERVICE:$COMMIT_SHA
+```
+
+### Docker build cache invalidation
+
+Force fresh builds by disabling Docker layer caching:
+
+```yaml
+# cloudbuild.yaml
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '--no-cache', '--pull', '-t', 'gcr.io/$PROJECT_ID/app:$SHORT_SHA', '.']
+```
+
+## Firebase and Cloud Run Integration Best Practices
+
+### Configuration structure
+
+Optimize your `firebase.json` for reliable Cloud Run integration:
+
+```json
+{
+  "hosting": {
+    "public": "dist",
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "run": {
+          "serviceId": "backend-service",
+          "region": "us-central1",
+          "pinTag": true
+        }
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
+```
+
+### Sequential deployment pattern
+
+Deploy services in the correct order to prevent synchronization issues:
+
+1. Deploy Cloud Run service first with `--no-traffic`
+2. Wait for service readiness verification
+3. Update Firebase hosting configuration
+4. Deploy Firebase hosting
+5. Route traffic to new Cloud Run revision
+
+### Regional considerations
+
+Firebase Hosting rewrites have **limited regional support**. Deploy Cloud Run services in supported regions like `us-central1`, `us-west1`, `europe-west1`, or `asia-east1` for optimal compatibility.
+
+## Comprehensive CI/CD Pipeline Solution
+
+### GitHub Actions workflow with verification
+
+```yaml
+name: Deploy with Verification
+on:
+  push:
+    branches: [main, develop]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build with cache busting
+        run: |
+          docker build \
+            --no-cache \
+            --pull \
+            --build-arg CACHEBUST=$(date +%s) \
+            --build-arg GIT_COMMIT=${{ github.sha }} \
+            -t gcr.io/${{ secrets.PROJECT_ID }}/service:${{ github.sha }} .
+      
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy service-staging \
+            --image gcr.io/${{ secrets.PROJECT_ID }}/service:${{ github.sha }} \
+            --region us-central1 \
+            --no-traffic \
+            --tag staging-${{ github.sha }}
+      
+      - name: Health check verification
+        run: |
+          ./scripts/verify-deployment.sh https://staging-${{ github.sha }}---service-staging.run.app
+      
+      - name: Route traffic after verification
+        run: |
+          gcloud run services update-traffic service-staging \
+            --to-latest \
+            --region us-central1
+```
+
+### Deployment verification script
+
+Create robust health checks that verify version information:
+
+```javascript
+// health-check.js
+app.get('/health', async (req, res) => {
+  const healthData = {
+    status: 'healthy',
+    version: process.env.APP_VERSION,
+    gitCommit: process.env.GIT_COMMIT_SHA,
+    buildId: process.env.BUILD_ID,
+    timestamp: Date.now(),
+    uptime: process.uptime()
+  };
+  
+  // Verify critical dependencies
+  try {
+    await checkDatabase();
+    await checkWebSocketServer();
+    res.status(200).json(healthData);
+  } catch (error) {
+    res.status(503).json({ ...healthData, status: 'unhealthy', error: error.message });
+  }
+});
+```
+
+## Version Tracking and Monitoring Strategy
+
+### Embed version information in containers
+
+```dockerfile
+FROM node:18-alpine
+
+ARG GIT_COMMIT_SHA
+ARG BUILD_ID
+ARG BUILD_TIMESTAMP
+
+ENV GIT_COMMIT_SHA=${GIT_COMMIT_SHA}
+ENV BUILD_ID=${BUILD_ID}
+ENV BUILD_TIMESTAMP=${BUILD_TIMESTAMP}
+
+LABEL git_commit=${GIT_COMMIT_SHA}
+LABEL build_id=${BUILD_ID}
+
+COPY . .
+RUN npm ci --production
+
+CMD ["node", "server.js"]
+```
+
+### Implement comprehensive monitoring
+
+Set up alerts for version mismatches and deployment failures:
+
+```yaml
+# monitoring-config.yaml
+alertPolicy:
+  displayName: "Version Mismatch Alert"
+  conditions:
+  - displayName: "Multiple versions running"
+    conditionThreshold:
+      filter: 'resource.type="cloud_run_revision"'
+      comparison: COMPARISON_GREATER_THAN
+      thresholdValue: 1
+      duration: "300s"
+```
+
+## Dockerfile Optimization for Cache Control
+
+### Strategic layer ordering
+
+Optimize your Dockerfile to minimize cache invalidation:
+
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+
+# Dependencies first (less frequent changes)
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Application code last (frequent changes)
+COPY . .
+
+# Force rebuild when needed
+ARG CACHEBUST
+RUN echo "Cache bust: $CACHEBUST"
+
+CMD ["node", "server.js"]
+```
+
+### Build context optimization
+
+Create a comprehensive `.dockerignore`:
+
+```gitignore
+node_modules/
+.git/
+.env*
+*.log
+dist/
+coverage/
+.firebase/
+*.md
+```
+
+## Automated Rollback and Recovery
+
+### Implement gradual rollout with monitoring
+
+```bash
+#!/bin/bash
+# gradual-rollout.sh
+
+deploy_with_canary() {
+  NEW_REVISION=$1
+  
+  # 10% canary deployment
+  gcloud run services update-traffic $SERVICE \
+    --to-revisions $NEW_REVISION=10 \
+    --region $REGION
+  
+  # Monitor error rates
+  sleep 300
+  
+  if check_health_metrics; then
+    # Increase to 50%
+    gcloud run services update-traffic $SERVICE \
+      --to-revisions $NEW_REVISION=50 \
+      --region $REGION
+  else
+    # Rollback
+    gcloud run services update-traffic $SERVICE \
+      --to-revisions $PREVIOUS_REVISION=100 \
+      --region $REGION
+  fi
+}
+```
+
+## Container Registry Management
+
+### Clean up old images regularly
+
+Prevent registry bloat and confusion:
+
+```bash
+# Clean images older than 30 days
+gcloud container images list-tags gcr.io/PROJECT/IMAGE \
+  --filter="timestamp.datetime < $(date -d '30 days ago' --iso-8601)" \
+  --format="get(digest)" | \
+  xargs -I {} gcloud container images delete gcr.io/PROJECT/IMAGE@{} --quiet
+```
+
+### Use Artifact Registry for better control
+
+Migrate from Container Registry to Artifact Registry for improved caching control and remote repository support for base images.
+
+## Environment-Specific Best Practices
+
+### Staging environment configuration
+
+```yaml
+# staging-deployment.yaml
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '--no-cache'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/service:staging-$BUILD_ID'
+      - '.'
+    env:
+      - 'DOCKER_BUILDKIT=1'
+  
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'service-staging'
+      - '--image=gcr.io/$PROJECT_ID/service:staging-$BUILD_ID'
+      - '--region=us-central1'
+      - '--no-traffic'
+      - '--set-env-vars=ENVIRONMENT=staging,BUILD_ID=$BUILD_ID'
+```
+
+## WebSocket-Specific Considerations
+
+### Health checks for WebSocket servers
+
+```javascript
+// websocket-health.js
+app.get('/websocket-health', async (req, res) => {
+  const wsHealth = {
+    serverRunning: wss.readyState === WebSocket.OPEN,
+    activeConnections: wss.clients.size,
+    version: process.env.APP_VERSION,
+    lastActivity: lastMessageTime
+  };
+  
+  // Test WebSocket connectivity
+  try {
+    const testWs = new WebSocket(`ws://localhost:${process.env.PORT}`);
+    await new Promise((resolve, reject) => {
+      testWs.on('open', resolve);
+      testWs.on('error', reject);
+    });
+    testWs.close();
+    wsHealth.connectionTest = 'success';
+  } catch (error) {
+    wsHealth.connectionTest = 'failed';
+  }
+  
+  res.status(wsHealth.serverRunning ? 200 : 503).json(wsHealth);
+});
+```
+
+## Comprehensive Deployment Checklist
+
+### Pre-deployment verification
+- Clear Docker build cache with `--no-cache` flag
+- Use unique image tags (commit SHA or timestamp)
+- Verify all environment variables are set
+- Check container registry for the new image
+- Ensure health check endpoints include version info
+
+### Deployment execution
+- Deploy Cloud Run service with `--no-traffic` flag
+- Wait for service readiness (health checks passing)
+- Deploy Firebase hosting updates
+- Verify service health and version via endpoints
+- Route traffic to new revision explicitly
+
+### Post-deployment monitoring
+- Monitor error rates and latency
+- Verify version consistency across all instances
+- Check WebSocket connection health
+- Set up alerts for version mismatches
+- Document deployment version and timestamp
+
+## Critical Success Factors
+
+The key to preventing deployment cache issues lies in **explicit control** over every aspect of the deployment process. Never rely on default behaviors or assumptions about cache invalidation. Always use unique image identifiers, explicitly manage traffic routing, and implement comprehensive verification at every stage.
+
+By implementing these strategies—particularly unique image tagging, explicit traffic management with `--to-latest`, and automated health verification—you can ensure that your Cloud Run deployments reliably reflect your latest code changes. The combination of proper CI/CD configuration, version tracking, and monitoring creates a robust deployment system that eliminates the cache-related issues you've been experiencing.

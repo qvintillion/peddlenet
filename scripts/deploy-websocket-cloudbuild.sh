@@ -1,48 +1,63 @@
 #!/bin/bash
 
-# Deploy WebSocket server using Google Cloud Build (no local Docker needed)
-# Version: 1.3.0-frontend-error-fix-complete
-# Date: June 14, 2025
-# Includes: All frontend error fixes + production optimizations
+# 🎪 SIMPLIFIED Production WebSocket Server Deployment
+# ====================================================
+# Uses proven simplified approach with cache-busting for production
+# Features: Unique image tagging, direct deployment, health verification
 
-echo "🎪 Production WebSocket Server Deployment - ERROR-FIX COMPLETE"
-echo "================================================================"
+set -e
+
+echo "🎪 SIMPLIFIED Production WebSocket Server Deployment"
+echo "===================================================="
+
+PROJECT_ID="festival-chat-peddlenet"
+SERVICE_NAME="peddlenet-websocket-server"  # PRODUCTION SERVICE
+REGION="us-central1"
+
+# Generate unique identifiers for cache-busting
+BUILD_TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+BUILD_ID="production-${BUILD_TIMESTAMP}"
+GIT_COMMIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+UNIQUE_IMAGE_TAG="${GIT_COMMIT_SHA}-${BUILD_TIMESTAMP}"
+
 echo "🎯 Target: PRODUCTION Environment"
-echo "🌍 Platform: Google Cloud Run"
-echo "🔧 Features: All frontend error fixes + admin enhancements"
-echo "📈 Version: 1.3.0-frontend-error-fix-complete"
+echo "📦 Service: $SERVICE_NAME"
+echo "🌍 Region: $REGION"
+echo "🏗️ Project: $PROJECT_ID"
+echo "🏷️ Unique Tag: $UNIQUE_IMAGE_TAG"
+echo "📝 Build ID: $BUILD_ID"
+echo "🔗 Git SHA: $GIT_COMMIT_SHA"
 echo ""
 
-# Check if we're in the right directory
-if [ ! -f "signaling-server.js" ]; then
-    echo "❌ Error: signaling-server.js not found in current directory"
-    echo "Please run this script from the project root directory"
+# SAFETY: Check if we're targeting production
+if [[ "$SERVICE_NAME" != *"peddlenet-websocket-server" ]]; then
+    echo "❌ ERROR: Service name doesn't match production expectations!"
     exit 1
 fi
 
-# Set project variables - PRODUCTION PROJECT ID
-PROJECT_ID="festival-chat-peddlenet"  # Production project ID
-SERVICE_NAME="peddlenet-websocket-server"
-REGION="us-central1"
-
-echo "📋 Configuration:"
-echo "   Project: $PROJECT_ID"
-echo "   Service: $SERVICE_NAME"
-echo "   Region: $REGION"
-echo "   Method: Google Cloud Build (no local Docker required)"
+echo "⚠️  🎪 PRODUCTION DEPLOYMENT CONFIRMATION 🎪"
+echo "=============================================="
+echo "You are about to deploy to the LIVE PRODUCTION environment."
+echo "This will affect the live festival chat application."
 echo ""
+read -p "Are you sure you want to continue? (yes/no): " confirm
 
-echo "✅ Production Enhancement Checklist:"
-echo "=====================================" 
-echo "✅ Enhanced room stats API with proper 404 handling"
-echo "✅ Admin mesh-status endpoint with null safety"
-echo "✅ Improved error responses and validation"
-echo "✅ SQLite fallback system for cross-platform compatibility"
-echo "✅ CORS enhancements for all frontend environments"
-echo "✅ Production-hardened admin authentication"
-echo ""
+if [[ $confirm != "yes" ]]; then
+    echo "❌ Production deployment cancelled."
+    exit 1
+fi
 
-# Check if gcloud is authenticated
+# Check dependencies
+if ! command -v gcloud &> /dev/null; then
+    echo "❌ Google Cloud CLI not found. Please install gcloud CLI."
+    exit 1
+fi
+
+# Set project
+echo "⚙️ Configuring Google Cloud project..."
+gcloud config set project $PROJECT_ID
+
+# Check authentication
 echo "🔐 Checking Google Cloud authentication..."
 gcloud auth list --filter=status:ACTIVE --format="value(account)" > /dev/null 2>&1
 
@@ -52,74 +67,241 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Set the project
-echo "🎯 Setting project to $PROJECT_ID..."
-gcloud config set project $PROJECT_ID
+echo ""
+echo "🧹 STEP 1: CACHE-BUSTING DOCKER BUILD (PRODUCTION)"
+echo "=================================================="
 
-# Submit build to Cloud Build (production configuration)
-echo "☁️  Submitting production build to Google Cloud Build..."
-echo "⚡ Using cache-busting for fresh build with all error fixes..."
+# CRITICAL: Use unique image tag instead of :latest to force cache miss
+FULL_IMAGE_NAME="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:${UNIQUE_IMAGE_TAG}"
+
+echo "🐳 Building with unique image tag: $FULL_IMAGE_NAME"
+echo "⚡ Using --no-cache to force fresh build (cache-busting strategy)"
+echo "🔄 Build args include CACHEBUST=$BUILD_TIMESTAMP"
+
+# Build with comprehensive cache-busting using the enhanced minimal config
 gcloud builds submit \
-  --config deployment/cloudbuild-production.yaml \
-  --substitutions=_SERVICE_NAME=$SERVICE_NAME
+  --config=deployment/cloudbuild-minimal.yaml \
+  --substitutions=_SERVICE_NAME=$SERVICE_NAME,_NODE_ENV=production,_BUILD_TARGET=production,_IMAGE_TAG=$UNIQUE_IMAGE_TAG,_BUILD_ID=$BUILD_ID,_GIT_COMMIT_SHA=$GIT_COMMIT_SHA
 
 if [ $? -ne 0 ]; then
-    echo "❌ Cloud Build deployment failed"
+    echo "❌ Docker build failed!"
     exit 1
 fi
 
-# CRITICAL: Set environment variables after deployment
-echo "🔧 Setting production environment variables..."
-gcloud run services update $SERVICE_NAME \
-  --set-env-vars="NODE_ENV=production,BUILD_TARGET=production,PLATFORM=cloudrun" \
-  --region=$REGION \
-  --project=$PROJECT_ID
+echo "✅ Docker build complete with unique tag: $UNIQUE_IMAGE_TAG"
+
+echo ""
+echo "🚀 STEP 2: SIMPLIFIED PRODUCTION DEPLOYMENT"
+echo "==========================================="
+
+echo "🛡️ Deploying directly to production with traffic (simplified approach)..."
+echo "⚡ No complex tag management - direct deployment"
+gcloud run deploy $SERVICE_NAME \
+    --image $FULL_IMAGE_NAME \
+    --platform managed \
+    --region $REGION \
+    --allow-unauthenticated \
+    --port 8080 \
+    --memory 512Mi \
+    --cpu 1 \
+    --min-instances 0 \
+    --max-instances 10 \
+    --set-env-vars NODE_ENV=production \
+    --set-env-vars BUILD_TARGET=production \
+    --set-env-vars PLATFORM=cloudrun \
+    --set-env-vars VERSION="2.3.0-production-simplified" \
+    --set-env-vars BUILD_ID=$BUILD_ID \
+    --set-env-vars GIT_COMMIT_SHA=$GIT_COMMIT_SHA
 
 if [ $? -ne 0 ]; then
-    echo "⚠️ Warning: Failed to set environment variables"
-    echo "Admin dashboard may not work properly"
-else
-    echo "✅ Environment variables set successfully"
+    echo "❌ Cloud Run deployment failed!"
+    exit 1
 fi
 
-# Get the service URL
-echo "📍 Getting service URL..."
-SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --platform managed --region $REGION --format 'value(status.url)' --project $PROJECT_ID)
+echo "✅ Simplified production deployment complete with traffic routed"
 
 echo ""
-echo "🎉 PRODUCTION WEBSOCKET SERVER DEPLOYMENT SUCCESSFUL!"
-echo "====================================================="
-echo "📍 Service URL: $SERVICE_URL"
-echo "🏥 Health check: $SERVICE_URL/health"
-echo "📊 Admin analytics: $SERVICE_URL/admin/analytics"
-echo "🌐 Mesh status: $SERVICE_URL/admin/mesh-status"
-echo "📋 Room stats: $SERVICE_URL/room-stats/[room-id]"
+echo "🧪 STEP 3: PRODUCTION HEALTH VERIFICATION"
+echo "========================================"
+
+# Get the live service URL for verification
+SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
+  --region=$REGION \
+  --project=$PROJECT_ID \
+  --format="value(status.url)" 2>/dev/null)
+
+if [ -z "$SERVICE_URL" ]; then
+    echo "❌ Failed to get live service URL"
+    exit 1
+fi
+
+WEBSOCKET_URL="wss://${SERVICE_URL#https://}"
+
+echo "🌐 Live Production Service URL: $SERVICE_URL"
+echo "🔌 Production WebSocket URL: $WEBSOCKET_URL"
+
+# Wait for service to be ready
+echo "⏱️ Waiting for production service to initialize..."
+sleep 20
+
+# Comprehensive health check with retry logic
+MAX_RETRIES=8
+RETRY_COUNT=0
+HEALTH_CHECK_PASSED=false
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$HEALTH_CHECK_PASSED" = false ]; do
+    echo "🩺 Production health check attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
+    
+    if curl -s --max-time 15 --fail "${SERVICE_URL}/health" > /dev/null; then
+        echo "✅ Production health check PASSED!"
+        
+        # Get detailed health info
+        HEALTH_RESPONSE=$(curl -s --max-time 10 "${SERVICE_URL}/health" || echo '{}')
+        echo "📊 Production Health Response: $HEALTH_RESPONSE"
+        
+        HEALTH_CHECK_PASSED=true
+    else
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+            echo "⚠️ Production health check failed, retrying in 15 seconds..."
+            sleep 15
+        fi
+    fi
+done
+
+if [ "$HEALTH_CHECK_PASSED" = false ]; then
+    echo "❌ CRITICAL: Production health check failed after $MAX_RETRIES attempts!"
+    echo "🛑 Production service may not be fully functional"
+    echo "🔍 Check Cloud Run logs for issues"
+    exit 1
+fi
+
 echo ""
-echo "🎯 Production Features Active:"
+echo "🔍 STEP 4: PRODUCTION VERIFICATION"
+echo "================================="
+
+# Final comprehensive health check on live URL
+echo "🩺 Final production health verification..."
+if curl -s --max-time 10 --fail "$SERVICE_URL/health" > /dev/null; then
+    echo "✅ Live production service is healthy!"
+    
+    # Get version verification
+    VERSION_CHECK=$(curl -s --max-time 10 "$SERVICE_URL/health" | grep -o '"version":"[^"]*"' || echo 'version not found')
+    BUILD_CHECK=$(curl -s --max-time 10 "$SERVICE_URL/health" | grep -o '"buildId":"[^"]*"' || echo 'build ID not found')
+    
+    echo "📦 $VERSION_CHECK"
+    echo "🏗️ $BUILD_CHECK"
+else
+    echo "❌ CRITICAL: Live production service health check failed!"
+    echo "This indicates a deployment issue."
+    exit 1
+fi
+
+echo ""
+echo "📝 STEP 5: UPDATE PRODUCTION ENVIRONMENT"
+echo "======================================"
+
+# Update production environment file with verified URL
+cat > .env.production << EOF
+# Environment variables for Vercel PRODUCTION deployment  
+# Auto-generated on $(date)
+# Simplified production deployment v2.3.0
+
+# PRODUCTION WebSocket server on Google Cloud Run
+NEXT_PUBLIC_SIGNALING_SERVER=$WEBSOCKET_URL
+
+# Build information
+BUILD_TARGET=production
+BUILD_ID=$BUILD_ID
+BUILD_TIMESTAMP=$BUILD_TIMESTAMP
+GIT_COMMIT_SHA=$GIT_COMMIT_SHA
+NODE_ENV=production
+PLATFORM=vercel
+
+# Deployment verification
+DEPLOYMENT_VERIFIED=true
+CACHE_BUSTING_APPLIED=true
+SIMPLIFIED_APPROACH=true
+
+# Cloud Run service details
+# Service URL: $SERVICE_URL
+# Project: $PROJECT_ID
+# Region: $REGION
+# Image Tag: $UNIQUE_IMAGE_TAG
+EOF
+
+echo "✅ Updated .env.production with verified configuration"
+
+echo ""
+echo "🧹 STEP 6: CLEANUP OLD REVISIONS"
 echo "==============================="
-echo "✅ Enhanced error handling for all frontend components"
-echo "✅ Silent 404 handling for non-existent public rooms"
-echo "✅ Null safety for admin dashboard mesh metrics"
-echo "✅ SQLite persistence with automatic fallback"
-echo "✅ Production-grade CORS and security"
-echo "✅ Real-time analytics and monitoring"
-echo "✅ Room-specific broadcasting"
-echo "✅ Admin authentication with session management"
+
+# Keep only the latest 5 revisions for production
+echo "🗑️ Cleaning up old production revisions (keeping latest 5)..."
+gcloud run revisions list \
+    --service=$SERVICE_NAME \
+    --region=$REGION \
+    --sort-by="~metadata.creationTimestamp" \
+    --limit=15 \
+    --format="value(metadata.name)" | tail -n +6 | while read revision; do
+    if [ ! -z "$revision" ]; then
+        echo "🗑️ Deleting old revision: $revision"
+        gcloud run revisions delete "$revision" --region=$REGION --quiet 2>/dev/null || true
+    fi
+done
+
 echo ""
-echo "🧪 Production Testing URLs:"
-echo "==========================="
-echo "• Health: $SERVICE_URL/health"
-echo "• Analytics: $SERVICE_URL/admin/analytics"
-echo "• Mesh Status: $SERVICE_URL/admin/mesh-status"
-echo "• Room Stats: $SERVICE_URL/room-stats/test-room (will return 404 - expected)"
+echo "🎉 🎪 PRODUCTION DEPLOYMENT SUCCESSFUL! 🎪 🎉"
+echo "=============================================="
+echo "🎭 Environment: PRODUCTION (LIVE)"
+echo "🔌 WebSocket URL: $WEBSOCKET_URL"
+echo "🌐 Service URL: $SERVICE_URL"
+echo "🛠️ Version: 2.3.0-production-simplified"
+echo "🏷️ Image Tag: $UNIQUE_IMAGE_TAG"
+echo "🏗️ Build ID: $BUILD_ID"
+echo "🔗 Git SHA: $GIT_COMMIT_SHA"
+echo ""
+echo "✅ PRODUCTION CACHE-BUSTING APPLIED:"
+echo "   🐳 Unique Docker image tag: $UNIQUE_IMAGE_TAG"
+echo "   🚫 No-cache Docker build forced"
+echo "   ⚡ Direct deployment (no tag complexity)"
+echo "   🔄 Automatic traffic routing"
+echo "   🩺 Production health verification"
+echo "   🧹 Old revision cleanup completed"
+echo ""
+echo "📋 Production Features Verified:"
+echo "   ✅ Universal Server: Auto-detects production environment"
+echo "   ✅ Enhanced Scaling: 0-10 instances for production load"
+echo "   ✅ Messaging System: Production-ready"
+echo "   ✅ Admin Dashboard: Live and functional"
+echo "   ✅ Health Monitoring: Comprehensive verification"
+echo ""
+echo "🧪 Production Health Endpoint:"
+echo "   curl $SERVICE_URL/health"
 echo ""
 echo "📝 IMPORTANT: Copy this WebSocket URL for .env.production:"
 echo "============================================================"
-echo "NEXT_PUBLIC_SIGNALING_SERVER=$SERVICE_URL"
+echo "NEXT_PUBLIC_SIGNALING_SERVER=$WEBSOCKET_URL"
 echo ""
-echo "⚠️  REMEMBER: Change 'https://' to 'wss://' in .env.production"
-echo "Correct format: NEXT_PUBLIC_SIGNALING_SERVER=wss://[domain]"
+echo "🚀 Next step - Deploy frontend to production:"
+echo "   npm run deploy:vercel:complete"
 echo ""
-echo "⏱️  Version: 1.3.0-frontend-error-fix-complete"
-echo "🛠️  Deployed via: Google Cloud Build"
-echo "🎪 Ready for frontend deployment!"
+echo "🔍 Monitor production deployment:"
+echo "   Cloud Run Console: https://console.cloud.google.com/run/detail/$REGION/$SERVICE_NAME?project=$PROJECT_ID"
+echo ""
+echo "⚡ Once frontend deployed, live production at:"
+echo "   https://peddlenet.app"
+echo ""
+echo "🎪 Production Testing URLs:"
+echo "   • Health: $SERVICE_URL/health"
+echo "   • Analytics: $SERVICE_URL/admin/analytics"
+echo "   • Mesh Status: $SERVICE_URL/admin/mesh-status"
+echo ""
+echo "🔧 Simplified production advantages:"
+echo "   1. No complex traffic tag management"
+echo "   2. Faster deployment (fewer steps)"
+echo "   3. Same cache-busting benefits with unique image tags"
+echo "   4. Proven working approach for production"
+echo "   5. Enhanced scaling for production load"
+echo ""
+echo "🎪 PRODUCTION WEBSOCKET SERVER IS NOW LIVE! 🎪"

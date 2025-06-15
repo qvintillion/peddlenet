@@ -399,7 +399,7 @@ function cleanupStaleP2PConnections() {
 app.get('/', (req, res) => {
   res.json({
     service: 'PeddleNet Signaling Server',
-    version: '1.2.0-mesh-panel-fix',
+    version: '1.1.0-admin-enhanced',
     status: 'running',
     description: 'Enhanced admin dashboard with unique user counting and super admin features',
     features: [
@@ -453,7 +453,7 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok',
     service: 'PeddleNet Signaling Server',
-    version: '1.2.0-mesh-panel-fix',
+    version: '1.1.0-admin-enhanced',
     timestamp: Date.now()
   });
 });
@@ -514,30 +514,19 @@ app.get('/admin/mesh-status', requireAdminAuth, (req, res) => {
       }
     }
     
-    // 🔧 CRITICAL FIX: Calculate REAL-TIME P2P connection count from actual reported status
+    // 🔧 FIXED: Calculate enhanced mesh metrics with null safety and real P2P connection count
     const actualActiveP2PConnections = Array.from(p2pConnections.values())
-      .filter(conn => conn.status === 'connected' && conn.peers && conn.peers.size > 0).length;
-    
-    // 🔧 CRITICAL FIX: Count users who are actually P2P active right now
-    const currentP2PUsers = meshConnections.filter(c => c.isP2PActive).length;
-    
-    console.log(`🔧 DEBUG: P2P Connection Analysis:`);
-    console.log(`   - p2pConnections.size: ${p2pConnections.size}`);
-    console.log(`   - connections with 'connected' status: ${Array.from(p2pConnections.values()).filter(c => c.status === 'connected').length}`);
-    console.log(`   - connections with peers: ${Array.from(p2pConnections.values()).filter(c => c.peers && c.peers.size > 0).length}`);
-    console.log(`   - actualActiveP2PConnections: ${actualActiveP2PConnections}`);
-    console.log(`   - currentP2PUsers: ${currentP2PUsers}`);
-    console.log(`   - meshConnections.length: ${meshConnections.length}`);
+      .filter(conn => conn.status === 'connected').length;
     
     const enhancedMeshMetrics = {
       ...meshMetrics,
       meshUpgradeRate: meshMetrics.totalP2PAttempts > 0 
         ? Math.round((meshMetrics.successfulP2PConnections / meshMetrics.totalP2PAttempts) * 100)
         : 0,
-      p2pMessageCount: currentP2PUsers * 10, // Simulate based on actual P2P users
-      fallbackCount: (meshConnections.length - currentP2PUsers) * 5, // Simulate
+      p2pMessageCount: meshConnections.filter(c => c.isP2PActive).length * 10, // Simulate
+      fallbackCount: meshConnections.filter(c => !c.isP2PActive).length * 5, // Simulate
       averageConnectionTime: Math.round(meshMetrics.averageConnectionTime || 0),
-      currentP2PUsers: currentP2PUsers, // 🔧 FIX: Use real-time count
+      currentP2PUsers: meshConnections.filter(c => c.isP2PActive).length,
       totalActiveUsers: meshConnections.length,
       roomsWithMesh: Object.values(roomTopology).filter(room => 
         room.some(conn => conn.isP2PActive)
@@ -546,7 +535,7 @@ app.get('/admin/mesh-status', requireAdminAuth, (req, res) => {
       totalP2PAttempts: meshMetrics.totalP2PAttempts || 0,
       successfulP2PConnections: meshMetrics.successfulP2PConnections || 0,
       failedP2PConnections: meshMetrics.failedP2PConnections || 0,
-      activeP2PConnections: actualActiveP2PConnections // 🔧 FIX: Use real-time actual count
+      activeP2PConnections: actualActiveP2PConnections // 🔧 FIX: Use actual count instead of potentially stale metric
     };
     
     // 🔧 UPDATE: Sync the global metric with actual count
@@ -724,7 +713,7 @@ app.get('/admin/analytics', requireAdminAuth, (req, res) => {
       server: {
         uptime: process.uptime(),
         uptimeFormatted: formatUptime(process.uptime()),
-        version: '1.2.0-mesh-panel-fix',
+        version: '1.1.0-admin-enhanced',
         environment: getEnvironment(),
         platform: platform,
         buildTarget: buildTarget,
@@ -1719,73 +1708,6 @@ io.on('connection', (socket) => {
     }
   });
   
-  // 🆕 P2P MESSAGE PERSISTENCE: Handle P2P messages that need server storage
-  socket.on('p2p-message-store', ({ roomId, message }) => {
-    try {
-      console.log(`📦 P2P message storage request from ${socket.id} in room ${roomId}`);
-      
-      if (!rooms.has(roomId)) {
-        console.log(`❌ P2P message store - room not found: ${roomId}`);
-        return;
-      }
-      
-      const room = rooms.get(roomId);
-      const peerData = room.get(socket.id);
-      
-      if (!peerData) {
-        console.log(`❌ P2P message store - user not in room: ${socket.id}`);
-        return;
-      }
-      
-      // Validate the message has required fields
-      if (!message || !message.id || !message.content) {
-        console.log(`❌ P2P message store - invalid message format:`, message);
-        return;
-      }
-      
-      const enhancedMessage = {
-        id: message.id,
-        content: message.content,
-        sender: message.sender || peerData.displayName,
-        senderId: message.senderId || peerData.peerId,
-        timestamp: message.timestamp || Date.now(),
-        type: message.type || 'chat',
-        roomId,
-        fromSocket: socket.id,
-        source: 'p2p' // Mark as P2P message for tracking
-      };
-      
-      // Store the P2P message for persistence
-      storeMessage(roomId, enhancedMessage);
-      
-      // Send confirmation back to P2P sender
-      socket.emit('p2p-message-stored', {
-        messageId: enhancedMessage.id,
-        timestamp: Date.now(),
-        stored: true
-      });
-      
-      // Log activity
-      addActivityLog('p2p-message-stored', {
-        peerId: peerData.peerId,
-        displayName: peerData.displayName,
-        roomId,
-        messageId: enhancedMessage.id,
-        content: enhancedMessage.content.substring(0, 50) + (enhancedMessage.content.length > 50 ? '...' : ''),
-        messageLength: enhancedMessage.content.length
-      }, '📦');
-      
-      console.log(`📦 P2P message stored from ${peerData.displayName} in room ${roomId}: ${enhancedMessage.content.substring(0, 50)}${enhancedMessage.content.length > 50 ? '...' : ''}`);
-      
-    } catch (error) {
-      console.error('❌ Error in p2p-message-store:', error);
-      socket.emit('p2p-message-store-error', { 
-        error: 'Failed to store P2P message',
-        messageId: message?.id
-      });
-    }
-  });
-  
   // Health check ping/pong
   socket.on('health-ping', (data) => {
     socket.emit('health-pong', { timestamp: Date.now(), received: data.timestamp });
@@ -2188,84 +2110,39 @@ io.on('connection', (socket) => {
     }
   });
   
-  // 🚀 ENHANCED: P2P status reporting for dashboard analytics with PROPER PEER MAPPING
+  // 🚀 NEW: P2P status reporting for dashboard analytics
   socket.on('p2p-status-update', ({ roomId, activeConnections, connectedPeers, timestamp }) => {
     try {
       console.log(`📊 P2P status update from ${socket.id}: ${activeConnections} active connections in room ${roomId}`);
-      console.log(`📊 Connected peers reported:`, connectedPeers);
       
       // Update P2P connection tracking for this socket
       if (!p2pConnections.has(socket.id)) {
         p2pConnections.set(socket.id, {
           peers: new Set(),
-          status: 'disconnected',
+          status: 'connected',
           roomId,
           lastUpdate: timestamp
         });
       }
       
       const connection = p2pConnections.get(socket.id);
-      
-      // 🔧 CRITICAL FIX: Properly map peer display names to socket IDs
-      const peerSocketIds = new Set();
-      if (connectedPeers && Array.isArray(connectedPeers) && rooms.has(roomId)) {
-        const roomPeers = rooms.get(roomId);
-        
-        // Convert peer display names to socket IDs - FIXED: Better mapping logic
-        for (const peerDisplayName of connectedPeers) {
-          let found = false;
-          for (const [socketId, peerData] of roomPeers.entries()) {
-            // 🔧 CRITICAL FIX: Exact match AND case-insensitive match for robustness
-            if (socketId !== socket.id && 
-                (peerData.displayName === peerDisplayName || 
-                 peerData.displayName.trim().toLowerCase() === peerDisplayName.trim().toLowerCase())) {
-              peerSocketIds.add(socketId);
-              console.log(`🔗 Mapped peer "${peerDisplayName}" to socket ${socketId.substring(0, 8)}...`);
-              found = true;
-              break;
-            }
-          }
-          
-          if (!found) {
-            console.warn(`⚠️ Could not map peer "${peerDisplayName}" to any socket in room ${roomId}`);
-            console.warn(`⚠️ Available peers in room:`, Array.from(roomPeers.values()).map(p => `"${p.displayName}" (${p.socketId.substring(0, 8)}...)`))
-          }
-        }
-      }
-      
-      // 🔧 CRITICAL FIX: Only mark as connected if there are actual active connections AND valid peer mappings
-      const hasValidConnections = activeConnections > 0 && peerSocketIds.size > 0;
-      connection.status = hasValidConnections ? 'connected' : 'disconnected';
-      connection.peers = peerSocketIds; // Use mapped socket IDs, not display names
+      connection.status = activeConnections > 0 ? 'connected' : 'failed';
+      connection.peers = new Set(connectedPeers);
       connection.lastUpdate = timestamp;
-      connection.roomId = roomId;
       
-      // 🔧 CRITICAL FIX: Recalculate active P2P connections more accurately
-      const actualActiveConnections = Array.from(p2pConnections.values())
-        .filter(conn => conn.status === 'connected' && conn.peers.size > 0).length;
+      // Update global mesh metrics
+      meshMetrics.activeP2PConnections = Array.from(p2pConnections.values())
+        .filter(conn => conn.status === 'connected').length;
       
-      // 🔧 SAFETY: Ensure mesh metrics never go negative
-      meshMetrics.activeP2PConnections = Math.max(0, actualActiveConnections);
-      
-      console.log(`🌐 P2P Connection State Update:`);
-      console.log(`   - Socket ${socket.id.substring(0, 8)}... status: ${connection.status}`);
-      console.log(`   - Socket ${socket.id.substring(0, 8)}... mapped peers: ${connection.peers.size}`);
-      console.log(`   - Socket ${socket.id.substring(0, 8)}... peer socket IDs:`, Array.from(connection.peers).map(id => id.substring(0, 8) + '...'));
-      console.log(`   - Total P2P connections tracked: ${p2pConnections.size}`);
-      console.log(`   - Active P2P connections: ${actualActiveConnections}`);
-      console.log(`   - Global mesh metric updated to: ${meshMetrics.activeP2PConnections}`);
-      console.log(`   - Connection validation: activeConnections=${activeConnections}, mappedPeers=${peerSocketIds.size}, hasValidConnections=${hasValidConnections}`);
+      console.log(`🌐 Updated mesh metrics: ${meshMetrics.activeP2PConnections} active P2P connections globally`);
       
       // Log activity for admin dashboard
       addActivityLog('p2p-status-update', {
-        socketId: socket.id.substring(0, 8) + '...',
+        socketId: socket.id,
         roomId,
         activeConnections,
-        connectedPeers: connectedPeers ? connectedPeers.length : 0,
-        mappedPeers: connection.peers.size,
-        globalP2PConnections: meshMetrics.activeP2PConnections,
-        connectionStatus: connection.status,
-        hasValidConnections
+        connectedPeers: connectedPeers.length,
+        globalP2PConnections: meshMetrics.activeP2PConnections
       }, '📊');
       
     } catch (error) {

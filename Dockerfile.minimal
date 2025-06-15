@@ -3,21 +3,49 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# CACHE BUSTER: Add timestamp to force fresh build
+# ENHANCED CACHE BUSTING: Multiple build arguments to force layer rebuilds
 ARG BUILD_DATE
-RUN echo "Build date: ${BUILD_DATE}" > /tmp/build_date
+ARG CACHEBUST
+ARG GIT_COMMIT_SHA
+ARG BUILD_TIMESTAMP
+ARG NODE_ENV
+ARG BUILD_TARGET
+
+# Set environment variables from build args
+ENV GIT_COMMIT_SHA=${GIT_COMMIT_SHA}
+ENV BUILD_TIMESTAMP=${BUILD_TIMESTAMP}
+ENV NODE_ENV=${NODE_ENV}
+ENV BUILD_TARGET=${BUILD_TARGET}
+
+# CACHE BUSTER: Add build info to force fresh layers
+RUN echo "Build date: ${BUILD_DATE}" > /tmp/build_date && \
+    echo "Cache bust: ${CACHEBUST}" > /tmp/cache_bust && \
+    echo "Git commit: ${GIT_COMMIT_SHA}" > /tmp/git_commit && \
+    echo "Build timestamp: ${BUILD_TIMESTAMP}" > /tmp/build_timestamp && \
+    echo "Node env: ${NODE_ENV}" > /tmp/node_env && \
+    echo "Build target: ${BUILD_TARGET}" > /tmp/build_target
+
+# Container labels for version tracking
+LABEL git_commit=${GIT_COMMIT_SHA}
+LABEL build_timestamp=${BUILD_TIMESTAMP}
+LABEL cache_bust=${CACHEBUST}
 
 # Copy package.json from root (has all dependencies)
 COPY package.json package-lock.json ./
 
-# Install only production dependencies 
-RUN npm ci --only=production && npm cache clean --force
+# Install only production dependencies with cache clearing
+RUN npm ci --only=production && \
+    npm cache clean --force && \
+    rm -rf /tmp/.npm
 
 # Copy the universal server (works for all environments with auto-detection)
 COPY signaling-server.js ./server.js
 
+# CACHE BUSTER: Touch the server file with build info
+RUN echo "// Build: ${BUILD_TIMESTAMP}, Commit: ${GIT_COMMIT_SHA}" >> server.js.buildinfo
+
 # Expose port (Cloud Run uses PORT environment variable, defaults to 8080)
 EXPOSE 8080
 
-# Start server
+# Start server with build info in environment
 CMD ["node", "server.js"]

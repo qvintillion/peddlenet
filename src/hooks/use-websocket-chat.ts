@@ -907,6 +907,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     connectToPeer: async () => true,
     getConnectedPeers: () => connectedPeers,
     isSignalingConnected: isConnected,
+    socket: socketRef.current, // Expose the socket instance for WebRTC
     // Enhanced debugging and resilience features
     getConnectionDiagnostics,
     circuitBreakerState: EnhancedConnectionResilience.getState(),

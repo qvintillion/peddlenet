@@ -302,19 +302,11 @@ export function useHybridChat(roomId: string, displayName?: string) {
     };
   }, [wsChat.status, customWebRTC.connectionStatus, customWebRTC.connections.size]);
   
-  // Enhanced message sending with intelligent routing + MOBILE FIX
+  // Enhanced message sending with intelligent routing
   const sendMessage = useCallback(async (messageData: Omit<Message, 'id' | 'timestamp'>): Promise<string> => {
     const messageId = generateCompatibleUUID();
-    
-    // 🔧 MOBILE FIX: Ensure sender info is always properly set
-    const enhancedMessageData = {
-      ...messageData,
-      sender: displayName || messageData.sender,
-      senderId: displayName || messageData.senderId || messageData.sender
-    };
-    
     const fullMessage: Message = {
-      ...enhancedMessageData,
+      ...messageData,
       id: messageId,
       timestamp: Date.now(),
       synced: false,
@@ -329,26 +321,18 @@ export function useHybridChat(roomId: string, displayName?: string) {
       routingDecisions: prev.routingDecisions + 1
     }));
     
-    console.log(`🌐 Hybrid send via ${route}${shouldTryBoth ? ' + backup' : ''}: ${enhancedMessageData.content} (sender: ${enhancedMessageData.sender})`);
+    console.log(`🌐 Hybrid send via ${route}${shouldTryBoth ? ' + backup' : ''}: ${messageData.content}`);
     
     // Primary route
     try {
       if (route === 'websocket') {
-        wsChat.sendMessage(enhancedMessageData);
+        wsChat.sendMessage(messageData);
         circuitBreaker.current.recordWebSocketSuccess();
         setHybridStats(prev => ({ ...prev, webSocketMessages: prev.webSocketMessages + 1 }));
       } else {
-        // 🔧 P2P MOBILE FIX: For P2P route, ensure immediate sender feedback
-        console.log(`📤 P2P PRIMARY: Sending via P2P route:`, fullMessage.content);
-        const p2pSuccess = await customWebRTC.sendMessage(fullMessage);
-        
-        if (p2pSuccess) {
-          circuitBreaker.current.recordP2PSuccess();
-          setHybridStats(prev => ({ ...prev, p2pMessages: prev.p2pMessages + 1 }));
-          console.log(`✅ P2P PRIMARY: Message sent successfully`);
-        } else {
-          throw new Error('P2P send failed');
-        }
+        await customWebRTC.sendMessage(fullMessage);
+        circuitBreaker.current.recordP2PSuccess();
+        setHybridStats(prev => ({ ...prev, p2pMessages: prev.p2pMessages + 1 }));
       }
     } catch (error) {
       console.error(`❌ Primary route (${route}) failed:`, error);
@@ -366,7 +350,7 @@ export function useHybridChat(roomId: string, displayName?: string) {
           console.log(`🔄 Trying backup route: ${backupRoute}`);
           
           if (backupRoute === 'websocket') {
-            wsChat.sendMessage(enhancedMessageData);
+            wsChat.sendMessage(messageData);
             setHybridStats(prev => ({ ...prev, webSocketMessages: prev.webSocketMessages + 1 }));
           } else {
             await customWebRTC.sendMessage(fullMessage);
@@ -379,9 +363,9 @@ export function useHybridChat(roomId: string, displayName?: string) {
     }
     
     return messageId;
-  }, [selectOptimalRoute, meshEnabled, wsChat, customWebRTC, displayName]);
+  }, [selectOptimalRoute, meshEnabled, wsChat, customWebRTC]);
   
-  // Message handling with FIXED deduplication for mobile + P2P NOTIFICATION INTEGRATION
+  // Message handling with deduplication
   const handleMessage = useCallback((message: Message, source: 'websocket' | 'p2p') => {
     // Safety check for null/undefined messages
     if (!message || !message.id) {
@@ -389,72 +373,31 @@ export function useHybridChat(roomId: string, displayName?: string) {
       return;
     }
     
-    // 🔧 MOBILE FIX: Check if this is our own message first
-    const isOwnMessage = message.sender === displayName || message.senderId === displayName;
-    
-    // 🔧 P2P NOTIFICATION FIX: Always notify external handlers FIRST (before deduplication)
-    // This ensures notifications work for both WebSocket and P2P messages
-    if (!isOwnMessage) {
-      console.log(`🔔 NOTIFICATION: Triggering handlers for ${source} message from ${message.sender}`);
-      messageHandlersRef.current.forEach(handler => {
-        try {
-          handler(message);
-        } catch (e) {
-          console.error('Message handler error:', e);
-        }
-      });
+    // Check for duplicates
+    if (messageDeduplicator.current.isDuplicate(message)) {
+      console.log(`🔄 Filtered duplicate message from ${source}:`, message.id);
+      setHybridStats(prev => ({ ...prev, duplicatesFiltered: prev.duplicatesFiltered + 1 }));
+      return;
     }
     
-    // 🔧 MOBILE FIX: For own messages, be more lenient with deduplication
-    // Only check for exact duplicates that already exist in current state
-    let isDuplicate = false;
-    if (isOwnMessage) {
-      // For own messages, only filter if exact same ID already exists in messages
-      setMessages(prev => {
-        const alreadyExists = prev.some(m => m.id === message.id);
-        if (alreadyExists) {
-          isDuplicate = true;
-          console.log(`🔄 Own message already exists, skipping duplicate:`, message.id);
-          return prev; // Don't modify if duplicate
-        }
-        
-        // Add own message immediately - no further duplicate checking needed
-        const updated = [...prev, { ...message, synced: true }]
-          .sort((a, b) => a.timestamp - b.timestamp);
-        console.log(`📱 MOBILE FIX: Added own message directly:`, message.content);
-        return updated;
-      });
-      
-      if (!isDuplicate) {
-        // Notify external handlers for own messages too (but skip notifications)
-        messageHandlersRef.current.forEach(handler => {
-          try {
-            handler(message);
-          } catch (e) {
-            console.error('Message handler error:', e);
-          }
-        });
-      }
-    } else {
-      // For other users' messages, use normal deduplication
-      if (messageDeduplicator.current.isDuplicate(message)) {
-        console.log(`🔄 Filtered duplicate message from ${source}:`, message.id);
-        setHybridStats(prev => ({ ...prev, duplicatesFiltered: prev.duplicatesFiltered + 1 }));
-        return;
-      }
-      
-      // Add message to state
-      setMessages(prev => {
-        const updated = [...prev, { ...message, synced: true }]
-          .sort((a, b) => a.timestamp - b.timestamp);
-        return updated;
-      });
-      
-      // Note: External handlers already triggered above for notifications
-    }
+    // Add message to state
+    setMessages(prev => {
+      const updated = [...prev, { ...message, synced: true }]
+        .sort((a, b) => a.timestamp - b.timestamp);
+      return updated;
+    });
     
-    console.log(`📩 Hybrid message received via ${source} (${isOwnMessage ? 'OWN' : 'OTHER'}):`, message.content);
-  }, [displayName]);
+    // Notify external handlers
+    messageHandlersRef.current.forEach(handler => {
+      try {
+        handler(message);
+      } catch (e) {
+        console.error('Message handler error:', e);
+      }
+    });
+    
+    console.log(`📩 Hybrid message received via ${source}:`, message.content);
+  }, []);
   
   // Set up message handlers for both connections
   useEffect(() => {
@@ -467,25 +410,14 @@ export function useHybridChat(roomId: string, displayName?: string) {
     };
   }, [wsChat.onMessage, handleMessage]);
   
-  // Set up custom WebRTC message handler - CRITICAL FIX
+  // Set up custom WebRTC message handler
   useEffect(() => {
-    console.log('🔧 [MESSAGE HANDLER] Setting up P2P message handler');
-    console.log('🔧 [MESSAGE HANDLER] customWebRTC.setOnMessage available:', !!customWebRTC.setOnMessage);
-    
     if (customWebRTC.setOnMessage) {
-      const messageHandler = (message: Message) => {
-        console.log('📨 [P2P MESSAGE HANDLER] Received P2P message:', message.content);
+      customWebRTC.setOnMessage((message) => {
         if (message && message.id) {
           handleMessage(message, 'p2p');
-        } else {
-          console.warn('⚠️ [P2P MESSAGE HANDLER] Invalid message received:', message);
         }
-      };
-      
-      customWebRTC.setOnMessage(messageHandler);
-      console.log('✅ [MESSAGE HANDLER] P2P message handler successfully set');
-    } else {
-      console.warn('⚠️ [MESSAGE HANDLER] customWebRTC.setOnMessage not available yet');
+      });
     }
   }, [customWebRTC.setOnMessage, handleMessage]);
   
@@ -635,247 +567,4 @@ export function useHybridChat(roomId: string, displayName?: string) {
     return true;
   }, []);
   
-  // ENHANCED: Conservative automatic P2P upgrade with better reconnection logic
-  useEffect(() => {
-    const wsConnected = wsChat.status.isConnected;
-    const connectedPeersCount = wsChat.getConnectedPeers().length;
-    const stable = isP2PStable();
-    const p2pCurrentlyConnected = customWebRTC.connectionStatus === 'connected';
-    
-    console.log('🔍 [AUTO-UPGRADE CHECK] Conditions:', {
-      wsConnected,
-      meshEnabled,
-      hasTimer: !!autoUpgradeTimerRef.current,
-      isP2PStable: stable,
-      connectedPeers: connectedPeersCount,
-      p2pConnected: p2pCurrentlyConnected
-    });
-    
-    // 🔧 FIX: Only auto-upgrade if:
-    // 1. WebSocket is connected AND
-    // 2. Either P2P isn't enabled OR P2P is enabled but not connected AND  
-    // 3. We haven't tried recently AND
-    // 4. P2P has been stable
-    const shouldSetupTimer = wsConnected && 
-                           (!meshEnabled || (meshEnabled && !p2pCurrentlyConnected)) &&
-                           !autoUpgradeTimerRef.current && 
-                           stable;
-    
-    if (shouldSetupTimer) {
-      console.log('🔄 [AUTO-UPGRADE] WebSocket connected, setting up P2P upgrade timer');
-      
-      // Conservative approach: wait longer and only upgrade when beneficial
-      autoUpgradeTimerRef.current = setTimeout(() => {
-        console.log('⏰ [AUTO-UPGRADE] Timer triggered - checking if P2P upgrade is beneficial');
-        
-        // Re-check connected peers at timer execution
-        const currentConnectedPeers = wsChat.getConnectedPeers();
-        const wsStatus = wsChat.status;
-        const p2pPeers = customWebRTC.availablePeers.length;
-        const currentP2PStatus = customWebRTC.connectionStatus;
-        
-        console.log('🔍 [AUTO-UPGRADE] Detailed peer info:');
-        console.log('  - wsChat.getConnectedPeers():', currentConnectedPeers);
-        console.log('  - wsChat.status.connectedPeers:', wsStatus.connectedPeers);
-        console.log('  - wsChat.status:', wsStatus);
-        console.log('  - customWebRTC.availablePeers:', customWebRTC.availablePeers.length);
-        console.log('  - P2P signaling active:', p2pPeers > 0);
-        console.log('  - P2P current status:', currentP2PStatus);
-        
-        // Use either the peer list, status count, OR P2P peer detection
-        const peerCount = Math.max(currentConnectedPeers.length, wsStatus.connectedPeers, p2pPeers);
-        console.log('  - Effective peer count:', peerCount);
-        
-        // 🔧 FIX: Also attempt upgrade if P2P was enabled but disconnected
-        const shouldUpgrade = (peerCount >= 1 && isP2PStable()) || 
-                             (meshEnabled && currentP2PStatus !== 'connected' && peerCount >= 1);
-        
-        if (shouldUpgrade) {
-          console.log('🎯 [AUTO-UPGRADE] Attempting P2P upgrade (peers detected or reconnection needed)');
-          attemptP2PUpgrade();
-        } else if (!isP2PStable()) {
-          console.log('🚫 [AUTO-UPGRADE] P2P unstable, skipping upgrade attempt');
-        } else {
-          console.log('🚫 [AUTO-UPGRADE] No other users for P2P upgrade, staying WebSocket-only');
-          console.log('  - Peer count too low:', peerCount);
-        }
-        
-        autoUpgradeTimerRef.current = null;
-      }, 10000); // Reduced to 10 seconds for faster testing
-      
-      return () => {
-        if (autoUpgradeTimerRef.current) {
-          console.log('🛑 [AUTO-UPGRADE] Clearing upgrade timer due to dependency change');
-          clearTimeout(autoUpgradeTimerRef.current);
-          autoUpgradeTimerRef.current = null;
-        }
-      };
-    } else {
-      console.log('🚫 [AUTO-UPGRADE] Conditions not met for timer setup:', {
-        wsConnected,
-        meshEnabled,
-        p2pConnected: p2pCurrentlyConnected,
-        hasTimer: !!autoUpgradeTimerRef.current,
-        stable
-      });
-    }
-  }, [wsChat.status.isConnected, meshEnabled, customWebRTC.connectionStatus, customWebRTC.availablePeers.length]); // 🔧 FIX: Add P2P status to dependencies
-  
-  // INSTANT P2P UPGRADE: Trigger when WebRTC signaling detected
-  useEffect(() => {
-    // Listen for WebRTC signaling activity on the socket
-    if (!wsChat.socket) return;
-    
-    const handleWebRTCOffer = (data: any) => {
-      console.log('🚀 [INSTANT P2P] WebRTC offer detected from:', data.from);
-      
-      // If we're not already in mesh mode and this is from another user
-      if (!meshEnabled && data.from && wsChat.status.isConnected) {
-        console.log('🎯 [INSTANT P2P] Auto-upgrading due to WebRTC signaling activity');
-        setMeshEnabled(true);
-        
-        // Small delay to let mesh setup, then attempt upgrade
-        setTimeout(() => {
-          attemptP2PUpgrade();
-        }, 1000);
-      }
-    };
-    
-    const handleWebRTCAnswer = (data: any) => {
-      console.log('🚀 [INSTANT P2P] WebRTC answer detected from:', data.from);
-      
-      if (!meshEnabled && data.from && wsChat.status.isConnected) {
-        console.log('🎯 [INSTANT P2P] Auto-upgrading due to WebRTC answer activity');
-        setMeshEnabled(true);
-        
-        setTimeout(() => {
-          attemptP2PUpgrade();
-        }, 1000);
-      }
-    };
-    
-    // Listen for WebRTC signaling events
-    wsChat.socket.on('webrtc-offer', handleWebRTCOffer);
-    wsChat.socket.on('webrtc-answer', handleWebRTCAnswer);
-    
-    return () => {
-      wsChat.socket?.off('webrtc-offer', handleWebRTCOffer);
-      wsChat.socket?.off('webrtc-answer', handleWebRTCAnswer);
-    };
-  }, [wsChat.socket, meshEnabled, wsChat.status.isConnected, attemptP2PUpgrade]);
-  
-  // Conservative auto-upgrade now enabled with stability checks
-  
-  // Connection quality monitoring
-  useEffect(() => {
-    const monitoringInterval = setInterval(() => {
-      setConnectionQuality({
-        webSocket: {
-          latency: wsChat.connectionQuality === 'excellent' ? 50 : 
-                   wsChat.connectionQuality === 'good' ? 150 : 300,
-          reliability: wsChat.status.isConnected ? 100 : 0,
-          available: wsChat.status.isConnected
-        },
-        p2p: {
-          latency: customWebRTC.connectionStatus === 'connected' ? 25 : 0, // P2P typically lower latency
-          reliability: customWebRTC.connectionStatus === 'connected' ? 90 : 0, // Slightly less reliable than server
-          available: customWebRTC.connectionStatus === 'connected'
-        }
-      });
-    }, 5000);
-    
-    return () => clearInterval(monitoringInterval);
-  }, [wsChat.status.isConnected, wsChat.connectionQuality, customWebRTC.connectionStatus]);
-  
-  // External message handler registration
-  const onMessage = useCallback((handler: (message: Message) => void) => {
-    messageHandlersRef.current.add(handler);
-    return () => {
-      messageHandlersRef.current.delete(handler);
-    };
-  }, []);
-  
-  // Force reconnect for both connections
-  const forceReconnect = useCallback(async () => {
-    console.log('🔄 Hybrid force reconnect - resetting both connections');
-    
-    // Reset circuit breaker
-    circuitBreaker.current.reset();
-    
-    // Clear message deduplicator
-    messageDeduplicator.current.clear();
-    
-    // Reset mesh state
-    setMeshEnabled(false);
-    setMessages([]);
-    
-    // Force reconnect WebSocket and refresh P2P peers
-    const wsResult = await wsChat.forceReconnect();
-    customWebRTC.refreshPeers();
-    
-    console.log('🔄 Reconnect results:', { 
-      websocket: wsResult ? 'fulfilled' : 'rejected',
-      customWebRTC: 'refreshed'
-    });
-    
-    return wsResult;
-  }, [wsChat.forceReconnect, customWebRTC]);
-  
-  return {
-    // Core properties
-    peerId: wsChat.peerId || displayName,
-    status: hybridStatus,
-    messages,
-    
-    // Hybrid functionality
-    sendMessage,
-    onMessage,
-    forceReconnect,
-    
-    // Mesh networking
-    meshEnabled,
-    setMeshEnabled,
-    attemptP2PUpgrade,
-    
-    // Route management
-    preferredRoute,
-    setPreferredRoute,
-    currentRoute: selectOptimalRoute(),
-    
-    // Connection info
-    connectionQuality,
-    hybridStats,
-    
-    // Individual connection access
-    webSocket: {
-      status: wsChat.status,
-      connected: wsChat.status.isConnected,
-      quality: wsChat.connectionQuality,
-      peers: wsChat.getConnectedPeers()
-    },
-    p2p: {
-      status: { isConnected: customWebRTC.connectionStatus === 'connected' },
-      connected: customWebRTC.connectionStatus === 'connected',
-      peers: customWebRTC.availablePeers.map(p => p.peerId),
-      connections: customWebRTC.connections.size,
-      debugInfo: customWebRTC.debugInfo
-    },
-    
-    // Custom WebRTC access
-    customWebRTC,
-    
-    // Debugging
-    getCircuitBreakerState: () => circuitBreaker.current.getState(),
-    getConnectionDiagnostics: () => ({
-      detector: {
-        connectionType: connectionDetector.current.detectConnectionType(),
-        shouldPreferP2P: connectionDetector.current.shouldPreferP2P(),
-        isMobile: connectionDetector.current.isMobileDevice()
-      },
-      websocket: wsChat.getConnectionDiagnostics?.(),
-      customWebRTC: customWebRTC.debugInfo,
-      circuitBreaker: circuitBreaker.current.getState(),
-      stats: hybridStats
-    })
-  };
-}
+  // ENABLED: Conservative automatic P2P upgrade with
