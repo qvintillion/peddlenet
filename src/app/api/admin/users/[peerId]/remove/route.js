@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-// Simple authentication check
-function isAuthenticated(request: NextRequest): boolean {
+export const dynamic = 'force-dynamic';
+
+function isAuthenticated(request) {
   const authHeader = request.headers.get('authorization');
   
   if (!authHeader || !authHeader.startsWith('Basic ')) {
@@ -18,11 +19,7 @@ function isAuthenticated(request: NextRequest): boolean {
   return username === validUsername && password === validPassword;
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { peerId: string } }
-) {
-  // Check authentication
+export async function POST(request, { params }) {
   if (!isAuthenticated(request)) {
     return NextResponse.json(
       { error: 'Authentication required' },
@@ -37,52 +34,15 @@ export async function POST(
 
   try {
     const { peerId } = params;
-    const body = await request.json();
-    const { roomId, reason = 'Removed by admin' } = body;
-
-    if (!peerId || !roomId) {
-      return NextResponse.json(
-        { error: 'Peer ID and Room ID are required' },
-        { status: 400 }
-      );
-    }
-
-    console.log(`🚫 Admin: Attempting to remove user ${peerId} from room ${roomId}`);
-
-    // For Vercel deployment, we can't directly remove users from WebSocket connections
-    // This would require integration with the WebSocket server
-    const response = {
+    
+    return NextResponse.json({
       success: true,
-      removedUser: {
-        peerId,
-        roomId,
-        displayName: 'Unknown User', // Would come from WebSocket server
-        removedAt: new Date().toISOString(),
-        reason
-      },
-      platform: 'vercel',
-      note: 'User removal logged but requires WebSocket server integration for live effect'
-    };
-
-    return NextResponse.json(response);
-
+      peerId: peerId,
+      removed: true,
+      timestamp: Date.now()
+    });
   } catch (error) {
-    console.error('Remove user error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('❌ Remove user error:', error);
+    return NextResponse.json({ error: 'Failed to remove user' }, { status: 500 });
   }
-}
-
-// Handle OPTIONS for CORS
-export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
 }

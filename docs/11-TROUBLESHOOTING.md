@@ -1,5 +1,95 @@
 # 🛠️ Troubleshooting Guide - Festival Chat
 
+## 🚨 **LATEST: Tailwind CSS v4 Build Resolution - June 17, 2025** 🆕
+
+### **⚠️ Tailwind CSS v4 Build Issues Identified - REVERTING TO STABLE v3**
+
+**Status**: **ACTIVE TROUBLESHOOTING** - Vercel builds failing with Tailwind v4
+
+**Symptoms**: 
+- Vercel deployment fails with `Module not found: Can't resolve 'tailwindcss'` or `Cannot find module '@tailwindcss/postcss'`
+- Attempted fixes with v4 PostCSS plugin configuration unsuccessful
+- Local builds work but Vercel builds fail consistently
+
+**Root Cause Analysis**: 
+- Tailwind CSS v4 has significant changes to PostCSS integration
+- `@tailwindcss/postcss` package exists but has compatibility issues with Next.js 15.3.3 on Vercel
+- Version resolution conflicts between local and Vercel environments
+
+**Immediate Action Taken**: 
+- **REVERTING TO TAILWIND v3** for stability
+- **Redeploying last working production build** to restore service
+- **Investigating exact working configuration** from successful deployment
+
+**Working Configuration (Tailwind v3)**:
+```json
+// package.json (devDependencies) - STABLE VERSION
+{
+  "tailwindcss": "^3.4.0",
+  "postcss": "^8.4.32", 
+  "autoprefixer": "^10.4.16"
+}
+```
+
+```css
+/* src/app/globals.css (Tailwind v3 syntax) - WORKING */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+```
+
+```js
+// postcss.config.js - STABLE CONFIGURATION
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+```
+
+**Attempted v4 Configurations (FAILED)**:
+- ❌ `"tailwindcss": "latest"` with `@import "tailwindcss"`
+- ❌ `"tailwindcss": "4.1.10"` with `@tailwindcss/postcss`
+- ❌ `"tailwindcss": "^4.1.10"` with `@theme inline` blocks
+
+**Next Steps**:
+1. **Restore service** with last working production build
+2. **Document exact working configuration** from successful deployment
+3. **Plan future v4 upgrade** with proper testing environment
+4. **Consider alternative CSS frameworks** if v4 adoption proves problematic
+
+**Lessons Learned**:
+- **Tailwind v4 is not production-ready** for Next.js 15.3.3 + Vercel combination
+- **Always test major dependency upgrades** in isolated environments
+- **Maintain stable fallback configurations** for critical deployments
+- **Version compatibility issues** can persist despite local success
+
+**Deployment Command for Stable Version**:
+```bash
+# After reverting to v3 configuration:
+npm uninstall @tailwindcss/postcss tailwindcss
+npm install -D tailwindcss@^3.4.0 postcss@^8.4.32 autoprefixer@^10.4.16
+npm run build  # Verify locally
+npm run staging:vercel:complete  # Deploy when stable
+```
+
+**Current Status**: **Investigating** - Analyzing last working production build to determine stable configuration
+
+---
+
 ## 🚨 **LATEST: Critical Staging Fixes Applied - June 16, 2025** 🆕
 
 ### **✅ Dev Mode Admin Dashboard HTTP 500 Error RESOLVED**

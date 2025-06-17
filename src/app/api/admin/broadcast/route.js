@@ -1,21 +1,15 @@
-// API proxy to WebSocket server broadcast endpoint
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-// Required for static export builds
 export const dynamic = 'force-dynamic';
 
-// Get the WebSocket server URL
 function getWebSocketServerUrl() {
-  // In development, use local server
   if (process.env.NODE_ENV === 'development') {
     return 'http://localhost:3001';
   }
-  
-  // In production, use the Cloud Run server
   return process.env.WEBSOCKET_SERVER_URL || 'https://peddlenet-websocket-server-hfttiarlja-uc.a.run.app';
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request) {
   try {
     const body = await request.json();
     const { message } = body;
@@ -32,7 +26,7 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message })
     });
 
     if (!response.ok) {

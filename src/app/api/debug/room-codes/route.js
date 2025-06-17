@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RoomCodeStorage } from '../../../../lib/room-code-storage';
 
-// Required for static export builds
+// Required for export builds
 export const dynamic = 'force-dynamic';
 
 
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   try {
     const stats = RoomCodeStorage.getStats();
     const allMappings = RoomCodeStorage.getAll();

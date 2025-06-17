@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Required for static export builds
+// Required for export builds
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   return NextResponse.json({
     adminDashboard: 'Festival Chat Admin Dashboard',
     version: '1.0.0-vercel',
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 }
 
 // Handle OPTIONS for CORS
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(request) {
   return new NextResponse(null, {
     status: 200,
     headers: {

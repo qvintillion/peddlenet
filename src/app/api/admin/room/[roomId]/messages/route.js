@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-// Simple authentication check
-function isAuthenticated(request: NextRequest): boolean {
+export const dynamic = 'force-dynamic';
+
+function isAuthenticated(request) {
   const authHeader = request.headers.get('authorization');
   
   if (!authHeader || !authHeader.startsWith('Basic ')) {
@@ -18,15 +19,9 @@ function isAuthenticated(request: NextRequest): boolean {
   return username === validUsername && password === validPassword;
 }
 
-// In-memory message storage (shared with room code registration)
-// In a real implementation, this would be a database
-const roomMessages = new Map<string, any[]>();
+const roomMessages = new Map();
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { roomId: string } }
-) {
-  // Check authentication
+export async function DELETE(request, { params }) {
   if (!isAuthenticated(request)) {
     return NextResponse.json(
       { error: 'Authentication required' },
@@ -41,51 +36,19 @@ export async function DELETE(
 
   try {
     const { roomId } = params;
-
-    if (!roomId) {
-      return NextResponse.json(
-        { error: 'Room ID is required' },
-        { status: 400 }
-      );
+    
+    if (roomMessages.has(roomId)) {
+      roomMessages.delete(roomId);
     }
-
-    // Clear messages from in-memory storage
-    const messagesDeleted = roomMessages.get(roomId)?.length || 0;
-    roomMessages.delete(roomId);
-
-    console.log(`🗑️ Vercel: Cleared ${messagesDeleted} messages for room ${roomId}`);
-
-    // For Vercel deployment, we can't directly notify connected users
-    // The WebSocket server would handle that functionality
-    const response = {
+    
+    return NextResponse.json({
       success: true,
-      roomId,
-      messagesDeleted,
-      usersNotified: 0, // Would require WebSocket server integration
-      timestamp: Date.now(),
-      platform: 'vercel',
-      note: 'Messages cleared from Vercel storage. Live users would need WebSocket server integration for notifications.'
-    };
-
-    return NextResponse.json(response);
-
+      roomId: roomId,
+      messagesCleared: true,
+      timestamp: Date.now()
+    });
   } catch (error) {
-    console.error('Clear room messages error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('❌ Clear room messages error:', error);
+    return NextResponse.json({ error: 'Failed to clear messages' }, { status: 500 });
   }
-}
-
-// Handle OPTIONS for CORS
-export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
 }

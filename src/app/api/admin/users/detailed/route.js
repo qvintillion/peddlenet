@@ -1,7 +1,7 @@
 // API proxy to WebSocket server users detailed endpoint
 import { NextRequest, NextResponse } from 'next/server';
 
-// Required for static export builds
+// Required for export builds
 export const dynamic = 'force-dynamic';
 
 

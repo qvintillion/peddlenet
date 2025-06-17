@@ -1,7 +1,7 @@
 // API proxy to WebSocket server room delete endpoint
 import { NextRequest, NextResponse } from 'next/server';
 
-// Required for static export builds
+// Required for export builds
 export const dynamic = 'force-dynamic';
 
 
@@ -16,7 +16,7 @@ function getWebSocketServerUrl() {
   return process.env.WEBSOCKET_SERVER_URL || 'https://peddlenet-websocket-server-hfttiarlja-uc.a.run.app';
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request) {
   try {
     const body = await request.json();
     const { roomId, roomCode } = body;

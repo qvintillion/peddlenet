@@ -1,5 +1,77 @@
 # 🚀 Festival Chat - Deployment Guide
 
+## 🚨 **LATEST: Tailwind CSS v4 Issues - June 17, 2025** 🆕
+
+### **⚠️ ALERT: Reverting to Tailwind v3 for Stability**
+
+**Current Status**: **ACTIVE ISSUE** - Tailwind v4 causing Vercel build failures
+
+**Problem**: Multiple attempts to configure Tailwind v4 with Next.js 15.3.3 on Vercel have failed with module resolution errors.
+
+**Immediate Solution**: **Revert to stable Tailwind v3 configuration**
+
+**STABLE Configuration (Tailwind v3)**:
+```json
+// package.json (devDependencies) - USE THIS
+{
+  "tailwindcss": "^3.4.0",
+  "postcss": "^8.4.32",
+  "autoprefixer": "^10.4.16"
+}
+```
+
+```css
+/* src/app/globals.css (Tailwind v3 syntax) - WORKING */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+```
+
+```js
+// postcss.config.js - WORKING CONFIGURATION
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+```
+
+**Deployment Commands**:
+```bash
+# Emergency revert to working configuration:
+npm uninstall @tailwindcss/postcss tailwindcss
+npm install -D tailwindcss@^3.4.0 postcss@^8.4.32 autoprefixer@^10.4.16
+
+# Verify locally:
+npm run build
+
+# Deploy when stable:
+npm run staging:vercel:complete
+```
+
+**DO NOT USE (v4 - BROKEN)**:
+- ❌ `"tailwindcss": "latest"` or `"tailwindcss": "4.x.x"`
+- ❌ `@import "tailwindcss"` syntax
+- ❌ `@tailwindcss/postcss` package
+- ❌ `@theme inline` blocks
+
+**Status**: **Investigating last working production build** to confirm exact stable configuration
+
+---
+
 ## 🚨 **LATEST: Critical Staging Fixes Applied - June 16, 2025** 🆕
 
 ### **✅ WebRTC Hook Syntax Error RESOLVED**

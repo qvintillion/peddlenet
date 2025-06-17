@@ -1,73 +1,30 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-// Simplified room code storage for Firebase Functions compatibility
-const roomCodeMappings = new Map<string, string>();
-
-// Required for Firebase Functions compatibility
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs'; // Explicitly set runtime
 
-export async function POST(request: NextRequest) {
+const roomCodeMappings = new Map();
+
+export async function POST(request) {
   try {
-    console.log('📋 Room code registration attempt');
+    const { roomId, code } = await request.json();
     
-    const body = await request.json();
-    const { roomId, roomCode } = body;
-
-    if (!roomId || !roomCode) {
-      console.error('❌ Missing required fields:', { roomId: !!roomId, roomCode: !!roomCode });
+    if (!roomId || !code) {
       return NextResponse.json(
-        { error: 'roomId and roomCode are required' },
+        { error: 'Room ID and code are required' },
         { status: 400 }
       );
     }
-
-    const normalizedCode = roomCode.toLowerCase();
-
-    // Simple in-memory storage (for Firebase Functions)
-    const existingRoomId = roomCodeMappings.get(normalizedCode);
-    if (existingRoomId && existingRoomId !== roomId) {
-      console.warn(`⚠️ Room code conflict: ${normalizedCode} already maps to ${existingRoomId}, requested for ${roomId}`);
-      return NextResponse.json(
-        { error: 'Room code already taken by another room' },
-        { status: 409 }
-      );
-    }
-
-    // Register the mapping
-    roomCodeMappings.set(normalizedCode, roomId);
     
-    console.log(`✅ Room code registered: ${normalizedCode} -> ${roomId}`);
-    console.log(`📋 Total room codes stored: ${roomCodeMappings.size}`);
-
+    roomCodeMappings.set(code, roomId);
+    
     return NextResponse.json({
       success: true,
-      roomId,
-      roomCode: normalizedCode,
-      totalCodes: roomCodeMappings.size,
+      roomId: roomId,
+      code: code,
       timestamp: Date.now()
     });
-
   } catch (error) {
-    console.error('❌ Room code registration error:', error);
-    return NextResponse.json(
-      { 
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: Date.now()
-      },
-      { status: 500 }
-    );
+    console.error('❌ Register room code error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
-
-export async function OPTIONS(request: NextRequest) {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
 }

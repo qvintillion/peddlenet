@@ -1,7 +1,7 @@
 // API proxy to WebSocket server activity endpoint
 import { NextRequest, NextResponse } from 'next/server';
 
-// Required for static export builds
+// Required for export builds
 export const dynamic = 'force-dynamic';
 
 // Get the WebSocket server URL
@@ -15,7 +15,7 @@ function getWebSocketServerUrl() {
   return process.env.WEBSOCKET_SERVER_URL || 'https://peddlenet-websocket-server-hfttiarlja-uc.a.run.app';
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = searchParams.get('limit') || '50';
