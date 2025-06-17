@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ActivityFeed } from '@/components/admin/ActivityFeed';
-import { AdminControls } from '@/components/admin/AdminControls';
-import { DetailedUserView } from '@/components/admin/DetailedUserView';
-import { DetailedRoomView } from '@/components/admin/DetailedRoomView';
-import { MeshNetworkStatus } from '@/components/admin/MeshNetworkStatus';
+import { ActivityFeed } from '@/components/admin/ActivityFeed.tsx';
+import { AdminControls } from '@/components/admin/AdminControls.tsx';
+import { DetailedUserView } from '@/components/admin/DetailedUserView.tsx';
+import { DetailedRoomView } from '@/components/admin/DetailedRoomView.tsx';
+import { MeshNetworkStatus } from '@/components/admin/MeshNetworkStatus.tsx';
 
 // Force dynamic rendering (no static generation)
 export const dynamic = 'force-dynamic';
@@ -322,7 +322,14 @@ function LoginForm({ onLogin, error, isLoading }: {
     if (!isClient) return false;
     
     const hostname = window.location.hostname;
-    return hostname.includes('peddlenet.app') || hostname.includes('.vercel.app');
+    
+    // 🚨 CRITICAL FIX: Always treat Vercel/Firebase as production regardless of NODE_ENV
+    return hostname.includes('peddlenet.app') || 
+           hostname.includes('.vercel.app') || 
+           hostname.includes('.web.app') || 
+           hostname.includes('.firebaseapp.com') || 
+           process.env.NEXT_PUBLIC_FORCE_PRODUCTION_AUTH === 'true' ||
+           (!hostname.includes('localhost') && !hostname.includes('127.0.0.1') && !hostname.includes('192.168.'));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -344,6 +351,8 @@ function LoginForm({ onLogin, error, isLoading }: {
             <div className="mt-4 text-xs text-gray-500 bg-gray-900/50 p-2 rounded border">
               <div>ENV: {debugInfo.hostname} | {debugInfo.isLocal ? 'LOCAL' : 'REMOTE'}</div>
               <div>WS: {process.env.NEXT_PUBLIC_SIGNALING_SERVER || 'undefined'}</div>
+              <div>Frontend Detected: {typeof window !== 'undefined' && window.ServerUtils ? window.ServerUtils.detectEnvironment() : 'unknown'}</div>
+              <div>Server Reports: {isConnected ? dashboardData.realTimeStats.environment : 'disconnected'}</div>
             </div>
           )}
         </div>
@@ -432,6 +441,79 @@ export default function AdminAnalyticsPage() {
   // 🔧 HYDRATION FIX: Client-side state tracking
   const [isClient, setIsClient] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
+
+  // 🔥 CRITICAL: Add global admin P2P testing function
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Add the missing enableAdminP2PTesting function
+      window.enableAdminP2PTesting = () => {
+        console.log('🔥 [GLOBAL] Enabling admin P2P testing from dashboard...');
+        
+        // Try to enable P2P through HybridChatDebug first
+        if (window.HybridChatDebug) {
+          const result = window.HybridChatDebug.enableP2PForAdminDashboard();
+          console.log('🔥 [GLOBAL] HybridChatDebug result:', result);
+          return result;
+        }
+        
+        // Fallback: Set global flag for P2P system
+        (window as any).ADMIN_P2P_ENABLED = true;
+        console.log('🔥 [GLOBAL] Global admin P2P flag set');
+        
+        return 'Admin P2P testing enabled - if you have an active chat session, P2P should initialize';
+      };
+      
+      // Add function to check P2P status
+      window.checkAdminP2PStatus = () => {
+        console.log('🔍 [GLOBAL] Checking admin P2P status...');
+        
+        if (window.HybridChatDebug) {
+          return window.HybridChatDebug.getP2PStatus();
+        }
+        
+        return {
+          hybridChatAvailable: false,
+          globalFlag: (window as any).ADMIN_P2P_ENABLED || false,
+          message: 'HybridChatDebug not available - you need to join a chat room first'
+        };
+      };
+      
+      // Add function to test mesh endpoint directly
+      window.testMeshEndpoint = async () => {
+        console.log('🌐 [GLOBAL] Testing mesh endpoint directly...');
+        
+        try {
+          const response = await fetch('/api/admin/mesh-status', {
+            headers: {
+              'Authorization': `Basic ${btoa('th3p3ddl3r:letsmakeatrade')}`
+            }
+          });
+          
+          const data = await response.json();
+          console.log('🌐 [GLOBAL] Mesh endpoint response:', data);
+          
+          return {
+            success: response.ok,
+            status: response.status,
+            data,
+            hasMetrics: !!data.metrics,
+            hasConnections: !!data.connections && data.connections.length > 0
+          };
+        } catch (error) {
+          console.error('🌐 [GLOBAL] Mesh endpoint test failed:', error);
+          return {
+            success: false,
+            error: error.message
+          };
+        }
+      };
+      
+      console.log('🔥 [GLOBAL] Admin P2P testing functions available:');
+      console.log('  - window.enableAdminP2PTesting()');
+      console.log('  - window.checkAdminP2PStatus()');
+      console.log('  - window.testMeshEndpoint()');
+    }
+  }, [isClient]);
 
   // 🔧 HYDRATION FIX: Set client-side flag after hydration
   useEffect(() => {
@@ -606,40 +688,102 @@ export default function AdminAnalyticsPage() {
     const hostname = window.location.hostname;
     const isLocal = hostname === 'localhost' || hostname.startsWith('192.168.') || hostname.startsWith('10.');
     
-    // 🔧 ENHANCED DEBUG: More comprehensive environment detection
-    const wsServer = (typeof window !== 'undefined' && (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_SIGNALING_SERVER) 
-      || process.env.NEXT_PUBLIC_SIGNALING_SERVER
-      || 'wss://peddlenet-websocket-server-staging-hfttiarlja-uc.a.run.app'; // fallback
-    
     console.log('[DEBUG] Environment detection:', {
       hostname,
       isLocal,
-      wsServer,
-      processEnv: process.env.NEXT_PUBLIC_SIGNALING_SERVER,
-      windowEnv: typeof window !== 'undefined' ? (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_SIGNALING_SERVER : 'unavailable',
       nodeEnv: process.env.NODE_ENV,
-      userAgent: navigator.userAgent,
-      origin: window.location.origin,
-      href: window.location.href
+      origin: window.location.origin
     });
     
-    // For staging/production, always use the WebSocket server directly
-    if (!isLocal && wsServer) {
-      // Convert WSS to HTTPS for API calls
-      const apiServerUrl = wsServer.replace('wss://', 'https://');
+        // 🔧 CRITICAL FIX: ALWAYS skip API routes if not on localhost
+        // This fixes the staging server routing issue
+        const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.');
+        
+        if (!isLocalhost) {
+          // 🌐 FORCE WEBSOCKET SERVER: Skip API routes entirely on deployed environments
+          console.log('[DEBUG] 🌐 DEPLOYED ENVIRONMENT: Forcing WebSocket server usage');
+          console.log('[DEBUG] Hostname:', hostname);
+        } else {
+          // 🏠 LOCALHOST: Try API routes first
+          const apiUrl = `/api/admin${endpoint}`;
+          console.log('[DEBUG] 🏠 LOCALHOST: Trying API routes first:', apiUrl);
+          
+          try {
+            const response = await fetch(apiUrl, {
+              ...options,
+              headers,
+              signal: AbortSignal.timeout(5000)
+            });
+            
+            console.log('[DEBUG] API routes response status:', response.status);
+            console.log('[DEBUG] API routes response ok:', response.ok);
+            
+            if (response.ok) {
+              console.log('[DEBUG] ✅ API routes success!');
+              console.log('[DEBUG] === API CALL SUCCESS ===\n');
+              return response;
+            } else {
+              const errorText = await response.text();
+              console.error('[DEBUG] API routes error text:', errorText);
+              // Don't throw here, fall through to WebSocket server attempt
+              console.log('[DEBUG] API routes failed, trying WebSocket server as fallback...');
+            }
+          } catch (error) {
+            console.error('[DEBUG] API routes failed:', error);
+            console.log('[DEBUG] Trying WebSocket server as fallback...');
+          }
+          
+          // Fallback to WebSocket server if API routes fail
+          const localWsUrl = `${serverUrl}/admin${endpoint}`;
+          console.log('[DEBUG] Trying local WebSocket server fallback:', localWsUrl);
+          
+          try {
+            const response = await fetch(localWsUrl, {
+              ...options,
+              headers,
+              signal: AbortSignal.timeout(5000)
+            });
+            
+            console.log('[DEBUG] Local WS response status:', response.status);
+            
+            if (response.ok) {
+              console.log('[DEBUG] ✅ Local WebSocket server success!');
+              console.log('[DEBUG] === API CALL SUCCESS ===\n');
+              return response;
+            } else {
+              const errorText = await response.text();
+              console.error('[DEBUG] WebSocket server error:', errorText);
+              throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+            }
+          } catch (error) {
+            console.error('[DEBUG] WebSocket server also failed:', error);
+            throw error;
+          }
+        }
+    
+    // 🌐 PRODUCTION MODE: Use WebSocket server directly
+    const envServer = process.env.NEXT_PUBLIC_SIGNALING_SERVER;
+    
+    // 🚨 CRITICAL FIX: Force staging server for Vercel deployments
+    let finalServerUrl = envServer;
+    if (!isLocalhost && !finalServerUrl) {
+      finalServerUrl = 'wss://peddlenet-websocket-server-staging-hfttiarlja-uc.a.run.app';
+      console.log('[DEBUG] 🚨 FALLBACK: Using hardcoded staging server');
+    }
+    
+    if (finalServerUrl) {
+      const apiServerUrl = finalServerUrl.replace('wss://', 'https://');
       const fullUrl = `${apiServerUrl}/admin${endpoint}`;
-      console.log('[DEBUG] Using WebSocket server for admin API:', fullUrl);
+      console.log('[DEBUG] 🌐 WEBSOCKET SERVER: Using:', fullUrl);
       
       try {
-        console.log('[DEBUG] Making fetch request...');
         const response = await fetch(fullUrl, {
           ...options,
-          headers
+          headers,
+          signal: AbortSignal.timeout(5000)
         });
         
         console.log('[DEBUG] Response status:', response.status);
-        console.log('[DEBUG] Response headers:', Object.fromEntries(response.headers.entries()));
-        console.log('[DEBUG] Response ok:', response.ok);
         
         if (!response.ok) {
           const errorText = await response.text();
@@ -651,66 +795,6 @@ export default function AdminAnalyticsPage() {
         return response;
       } catch (error) {
         console.error('[DEBUG] WebSocket server API call failed:', error);
-        console.error('[DEBUG] Error details:', {
-          name: error.name,
-          message: error.message,
-          stack: error.stack
-        });
-        throw error;
-      }
-    }
-    
-    // For local development, try both approaches
-    if (isLocal) {
-      console.log('[DEBUG] Local development detected, trying multiple endpoints...');
-      
-      try {
-        const localUrl = `${serverUrl}/admin${endpoint}`;
-        console.log('[DEBUG] Trying local WebSocket server:', localUrl);
-        const response = await fetch(localUrl, {
-          ...options,
-          headers
-        });
-        
-        console.log('[DEBUG] Local WS response status:', response.status);
-        console.log('[DEBUG] Local WS response ok:', response.ok);
-        
-        if (response.ok) {
-          console.log('[DEBUG] Local WebSocket server success!');
-          console.log('[DEBUG] === API CALL SUCCESS ===\n');
-          return response;
-        }
-        
-        console.log('[DEBUG] Local WebSocket server failed, trying API routes...');
-      } catch (error) {
-        console.log('[DEBUG] Local WebSocket server unavailable:', error.message);
-        console.log('[DEBUG] Trying API routes...');
-      }
-      
-      // Try API routes as fallback for local
-      const apiUrl = `/api/admin${endpoint}`;
-      console.log('[DEBUG] Trying API routes:', apiUrl);
-      
-      try {
-        const response = await fetch(apiUrl, {
-          ...options,
-          headers
-        });
-        
-        console.log('[DEBUG] API routes response status:', response.status);
-        console.log('[DEBUG] API routes response ok:', response.ok);
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('[DEBUG] API routes error text:', errorText);
-          throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-        }
-        
-        console.log('[DEBUG] API routes success!');
-        console.log('[DEBUG] === API CALL SUCCESS ===\n');
-        return response;
-      } catch (error) {
-        console.error('[DEBUG] API routes failed:', error);
         throw error;
       }
     }
@@ -727,6 +811,15 @@ export default function AdminAnalyticsPage() {
       const response = await makeAPICall('/users/detailed');
       const data = await response.json();
       console.log('👥 Fetched detailed users:', data);
+      
+      // 🔍 DEBUG: Check data freshness
+      const activeUsersCount = data.activeUsers?.length || 0;
+      const dashboardActiveUsers = dashboardData.realTimeStats.activeUsers;
+      
+      if (activeUsersCount !== dashboardActiveUsers) {
+        console.warn(`⚠️ Data mismatch detected! Dashboard shows ${dashboardActiveUsers} users, but detailed fetch shows ${activeUsersCount} users. Data may be stale.`);
+      }
+      
       return data;
     } catch (error) {
       console.error('❌ Failed to fetch detailed users:', error);
@@ -739,6 +832,15 @@ export default function AdminAnalyticsPage() {
       const response = await makeAPICall('/rooms/detailed');
       const data = await response.json();
       console.log('🏠 Fetched detailed rooms:', data);
+      
+      // 🔍 DEBUG: Check data freshness
+      const activeRoomsCount = data.activeRooms?.filter(r => r.isCurrentlyActive).length || 0;
+      const dashboardActiveRooms = dashboardData.realTimeStats.activeRooms;
+      
+      if (activeRoomsCount !== dashboardActiveRooms) {
+        console.warn(`⚠️ Data mismatch detected! Dashboard shows ${dashboardActiveRooms} rooms, but detailed fetch shows ${activeRoomsCount} active rooms. Data may be stale.`);
+      }
+      
       return data;
     } catch (error) {
       console.error('❌ Failed to fetch detailed rooms:', error);
@@ -819,27 +921,66 @@ export default function AdminAnalyticsPage() {
         const hostname = window.location.hostname;
         const isLocal = hostname === 'localhost' || hostname.startsWith('192.168.') || hostname.startsWith('10.');
         
-        const wsServer = (typeof window !== 'undefined' && (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_SIGNALING_SERVER) 
-          || process.env.NEXT_PUBLIC_SIGNALING_SERVER
-          || 'wss://peddlenet-websocket-server-staging-hfttiarlja-uc.a.run.app';
-        
         console.log('[DIRECT API DEBUG] Environment:', {
           hostname,
           isLocal,
-          wsServer,
-          processEnv: process.env.NEXT_PUBLIC_SIGNALING_SERVER
+          nodeEnv: process.env.NODE_ENV
         });
         
-        // For staging/production, always use the WebSocket server directly
-        if (!isLocal && wsServer) {
-          const apiServerUrl = wsServer.replace('wss://', 'https://');
+        // 🏠 DEVELOPMENT MODE: Try API routes first (where our mock data is)
+        // BUT NOT if we're on Vercel/Firebase (even in development builds)
+        const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.');
+        
+        if (!isLocalhost) {
+          console.log('[DEBUG] 🌐 DEPLOYED: Skipping API routes, using WebSocket server directly');
+        } else {
+          const apiUrl = `/api/admin${endpoint}`;
+          console.log('[DIRECT API DEBUG] 🏠 DEVELOPMENT: Trying API routes first:', apiUrl);
+          
+          try {
+            const response = await fetch(apiUrl, {
+              ...options,
+              headers,
+              signal: AbortSignal.timeout(5000)
+            });
+            
+            console.log('[DIRECT API DEBUG] API routes response status:', response.status);
+            
+            if (response.ok) {
+              console.log('[DIRECT API DEBUG] ✅ API routes success!');
+              console.log('[DIRECT API DEBUG] === API CALL SUCCESS ===\n');
+              return response;
+            } else {
+              const errorText = await response.text();
+              console.error('[DIRECT API DEBUG] API routes error:', errorText);
+              console.log('[DIRECT API DEBUG] Trying WebSocket server as fallback...');
+            }
+          } catch (error) {
+            console.error('[DIRECT API DEBUG] API routes failed:', error);
+            console.log('[DIRECT API DEBUG] Trying WebSocket server as fallback...');
+          }
+        }
+        
+        // 🌐 PRODUCTION MODE or FALLBACK: Use WebSocket server
+        const envServer = process.env.NEXT_PUBLIC_SIGNALING_SERVER;
+        
+        // 🚨 CRITICAL FIX: Force staging server for Vercel deployments
+        let finalServerUrl = envServer;
+        if (!hostname.includes('localhost') && !finalServerUrl) {
+          finalServerUrl = 'wss://peddlenet-websocket-server-staging-hfttiarlja-uc.a.run.app';
+          console.log('[DIRECT API DEBUG] 🚨 FALLBACK: Using hardcoded staging server');
+        }
+        
+        if (finalServerUrl) {
+          const apiServerUrl = finalServerUrl.replace('wss://', 'https://');
           const fullUrl = `${apiServerUrl}/admin${endpoint}`;
           console.log('[DIRECT API DEBUG] Using WebSocket server:', fullUrl);
           
           try {
             const response = await fetch(fullUrl, {
               ...options,
-              headers
+              headers,
+              signal: AbortSignal.timeout(5000)
             });
             
             console.log('[DIRECT API DEBUG] Response status:', response.status);
@@ -855,33 +996,6 @@ export default function AdminAnalyticsPage() {
             return response;
           } catch (error) {
             console.error('[DIRECT API DEBUG] WebSocket server API call failed:', error);
-            throw error;
-          }
-        }
-        
-        // For local development, try API routes
-        if (isLocal) {
-          const apiUrl = `/api/admin${endpoint}`;
-          console.log('[DIRECT API DEBUG] Trying API routes:', apiUrl);
-          
-          try {
-            const response = await fetch(apiUrl, {
-              ...options,
-              headers
-            });
-            
-            console.log('[DIRECT API DEBUG] API routes response status:', response.status);
-            
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error('[DIRECT API DEBUG] API routes error:', errorText);
-              throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
-            }
-            
-            console.log('[DIRECT API DEBUG] API routes success!');
-            return response;
-          } catch (error) {
-            console.error('[DIRECT API DEBUG] API routes failed:', error);
             throw error;
           }
         }
@@ -1249,6 +1363,30 @@ export default function AdminAnalyticsPage() {
             </div>
           </div>
         )}
+        
+        {/* Data Freshness Warning */}
+        {!isConnected && (
+          <div className="mb-6 bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <span className="text-yellow-400 text-xl mr-2">🔄</span>
+                <div>
+                  <div className="text-yellow-200 font-medium">Displaying Cached Data</div>
+                  <div className="text-yellow-300 text-sm">Some information may be outdated. User/room actions might fail if data is stale.</div>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  fetchDashboardData();
+                  fetchActivityData();
+                }}
+                className="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+              >
+                Refresh Now
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 🌐 MESH NETWORK STATUS - Prominent placement above main metrics */}
         <MeshNetworkStatus isLoading={isLoading} />
@@ -1392,8 +1530,19 @@ export default function AdminAnalyticsPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-300">Environment:</span>
-                <span className="font-bold text-blue-400">{dashboardData.realTimeStats.environment}</span>
+                <span className={`font-bold ${
+                  dashboardData.realTimeStats.environment === 'staging' ? 'text-yellow-400' :
+                  dashboardData.realTimeStats.environment === 'production' ? 'text-red-400' :
+                  dashboardData.realTimeStats.environment === 'development' ? 'text-green-400' :
+                  'text-blue-400'
+                }`}>{dashboardData.realTimeStats.environment}</span>
               </div>
+              {isClient && typeof window !== 'undefined' && window.ServerUtils && (
+                <div className="flex justify-between">
+                  <span className="text-gray-300">Frontend Detected:</span>
+                  <span className="font-bold text-purple-400">{window.ServerUtils.detectEnvironment()}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1434,9 +1583,16 @@ export default function AdminAnalyticsPage() {
           <div className="mt-1">
             PeddleNet Admin Dashboard v1.1.0-admin-enhanced • 
             Build: {process.env.NODE_ENV} • 
+            Target: {process.env.BUILD_TARGET || 'undefined'} • 
             Server: {process.env.NEXT_PUBLIC_SIGNALING_SERVER?.split('//')[1]?.split('.')[0] || 'unknown'} • 
             {isConnected ? ' Real-time updates active' : ' Using cached data'} • 
             Admin: {credentials.username} ({dashboardData.admin?.adminLevel || 'basic'})
+          </div>
+          {/* 🔧 DEBUG: Show actual environment variables */}
+          <div className="mt-1 text-xs text-gray-500">
+            Debug: WS={process.env.NEXT_PUBLIC_SIGNALING_SERVER || 'undefined'} | 
+            Force={process.env.NEXT_PUBLIC_FORCE_PRODUCTION_AUTH || 'undefined'} | 
+            Target={process.env.BUILD_TARGET || 'undefined'}
           </div>
         </div>
       </div>
