@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { Message, ConnectionStatus } from '../lib/types';
 import { generateCompatibleUUID } from '../utils/peer-utils';
 import { NetworkUtils } from '../utils/network-utils';
 import { MessagePersistence } from '../utils/message-persistence';
@@ -73,7 +72,7 @@ const createEnhancedConnectionResilience = () => {
       }
     },
     
-    getExponentialBackoffDelay(attempt?: number, isColdStart?: boolean): number {
+    getExponentialBackoffDelay(attempt: number, isColdStart: boolean): number {
       if (isColdStart) {
         const jitter = Math.random() * 500;
         const delay = COLD_START_BACKOFF + jitter;
@@ -288,7 +287,7 @@ const createHealthMonitor = () => {
   };
 };
 
-export function useWebSocketChat(roomId: string, displayName?: string) {
+export function useWebSocketChat(roomId: string, displayName: string) {
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [connectedPeers, setConnectedPeers] = useState<string[]>([]);

@@ -6,11 +6,6 @@ import Link from 'next/link';
 import { usePushNotifications } from '../hooks/use-push-notifications';
 import { useBackgroundNotifications } from '../hooks/use-background-notifications';
 
-interface ChatRoomSettingsProps {
-  roomId: string;
-  className?: string;
-  onClose?: () => void;
-}
 
 export function ChatRoomSettings({ roomId, className = '', onClose }: ChatRoomSettingsProps) {
   const router = useRouter();

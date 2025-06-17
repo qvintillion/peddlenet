@@ -43,7 +43,7 @@ if (typeof window !== 'undefined') {
   }
 }
 
-export function usePushNotifications(roomId?: string): UsePushNotificationsReturn {
+export function usePushNotifications(roomId: string): UsePushNotificationsReturn {
   const [permission, setPermission] = useState<NotificationPermission>(() => {
     // SSR-safe initialization
     if (typeof window === 'undefined' || !('Notification' in window)) {

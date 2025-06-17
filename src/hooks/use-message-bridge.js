@@ -1,43 +1,11 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { Message } from '../lib/types';
 import { generateCompatibleUUID } from '../utils/peer-utils';
 
-interface BridgeNode {
-  peerId: string;
-  displayName: string;
-  connectionQuality: 'excellent' | 'good' | 'poor' | 'none';
-  lastSeen: number;
-  routes: BridgeRoute[];
-  canBridge: boolean;
-}
 
-interface BridgeRoute {
-  targetPeerId: string;
-  hops: number;
-  quality: number; // 0-100
-  latency: number;
-  reliability: number; // 0-100
-  lastUpdate: number;
-}
 
-interface QueuedBridgeMessage extends Message {
-  bridgeAttempts: number;
-  maxBridgeAttempts: number;
-  originalSender: string;
-  bridgePath: string[];
-  priority: 'high' | 'normal' | 'low';
-  retryAfter: number;
-}
 
-interface NetworkCondition {
-  quality: 'excellent' | 'good' | 'poor' | 'critical';
-  latency: number;
-  packetLoss: number;
-  bandwidth: number;
-  stability: number; // 0-100
-}
 
 /**
  * 🌉 MESSAGE BRIDGING SYSTEM FOR POOR NETWORK CONDITIONS

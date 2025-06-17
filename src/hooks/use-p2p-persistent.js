@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Message, ConnectionStatus } from '../lib/types';
 import { generateCompatibleUUID } from '../utils/peer-utils';
 import { 
   connectionRetry, 
@@ -14,13 +13,13 @@ import {
 declare global {
   interface Window {
     Peer: any;
-    globalPeer?: any; // Store peer globally to survive React cleanup
+    globalPeer: any; // Store peer globally to survive React cleanup
   }
 }
 
 type DataConnection = any;
 
-export function useP2PPersistent(roomId: string, displayName?: string) {
+export function useP2PPersistent(roomId: string, displayName: string) {
   const [peerId, setPeerId] = useState<string | null>(null);
   const [connections, setConnections] = useState<Map<string, DataConnection>>(new Map());
   const [isRetrying, setIsRetrying] = useState(false);

@@ -2,23 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { Message } from '../lib/types';
 import { ServerUtils } from '../utils/server-utils';
 import { useMessageNotifications } from './use-push-notifications';
 
 // Global background notification state
-interface NotificationSubscription {
-  roomId: string;
-  displayName: string;
-  subscribed: boolean;
-  lastSeen: number;
-}
 
-interface BackgroundNotificationState {
-  isConnected: boolean;
-  subscriptions: Map<string, NotificationSubscription>;
-  currentRoom: string | null;
-}
 
 // Singleton background connection manager
 class BackgroundNotificationManager {

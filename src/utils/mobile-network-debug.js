@@ -3,9 +3,9 @@ export const MobileNetworkDebug = {
   // Test if we can reach the server
   async testServerReachability(baseUrl: string): Promise<{
     reachable: boolean;
-    port?: number;
-    error?: string;
-    latency?: number;
+    port: number;
+    error: string;
+    latency: number;
   }> {
     const ports = [3001, 3002, 3003, 3004, 3005];
     
@@ -60,8 +60,8 @@ export const MobileNetworkDebug = {
   // Test WebSocket connectivity
   async testWebSocketConnection(url: string): Promise<{
     success: boolean;
-    error?: string;
-    transport?: string;
+    error: string;
+    transport: string;
   }> {
     return new Promise((resolve) => {
       const socket = new WebSocket(url.replace(/^http/, 'ws'));
@@ -94,7 +94,7 @@ export const MobileNetworkDebug = {
   },
 
   // Comprehensive mobile connectivity test
-  async runFullDiagnostics(targetIP?: string): Promise<any> {
+  async runFullDiagnostics(targetIP: string): Promise<any> {
     console.log('🔍 Running mobile network diagnostics...');
     
     const results = {

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { RoomCodeManager, RoomCodeDiagnostics } from '../utils/room-codes';
 import { ServerUtils } from '../utils/server-utils';
 
-export function RoomCodeDiagnosticPanel({ p2pHook }: { p2pHook?: any }) {
+export function RoomCodeDiagnosticPanel({ p2pHook }: { p2pHook: any }) {
   const getEnvironment = () => {
     // More reliable environment detection
     const isDev = process.env.NODE_ENV === 'development' || 

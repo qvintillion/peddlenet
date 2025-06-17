@@ -1,31 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Message, ConnectionStatus } from '../lib/types';
 import { useWebSocketChat } from './use-websocket-chat';
 import { useNativeWebRTC } from './use-native-webrtc';
 import { generateCompatibleUUID } from '../utils/peer-utils';
 
-interface HybridChatOptions {
-  preferWebRTC?: boolean;
-  webrtcTimeout?: number;
-  fallbackDelay?: number;
-  maxRetries?: number;
-}
 
-interface HybridStatus extends ConnectionStatus {
-  webrtcStatus: 'connecting' | 'connected' | 'failed' | 'disabled';
-  webSocketStatus: 'connecting' | 'connected' | 'disconnected';
-  currentRoute: 'webrtc' | 'websocket' | 'both';
-  webrtcPeers: number;
-  messagesSentViaWebRTC: number;
-  messagesSentViaWebSocket: number;
-  webrtcStabilityScore: number;
-}
 
 export function useHybridChatWebRTC(
   roomId: string, 
-  displayName?: string,
+  displayName: string,
   options: HybridChatOptions = {}
 ) {
   const {

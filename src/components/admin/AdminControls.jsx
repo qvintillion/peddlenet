@@ -1,12 +1,5 @@
 import { useState } from 'react';
 
-interface AdminControlsProps {
-  onBroadcast: (message: string) => Promise<void>;
-  onRoomBroadcast?: (message: string, roomCodes: string[]) => Promise<void>;
-  onClearRoom: (roomCode: string) => Promise<void>;
-  onWipeDatabase: () => Promise<void>;
-  adminLevel: 'basic'; // 🔧 SIMPLIFIED: Single admin level
-}
 
 export function AdminControls({ 
   onBroadcast, 

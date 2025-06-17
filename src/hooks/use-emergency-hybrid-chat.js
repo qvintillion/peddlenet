@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { Message, ConnectionStatus } from '../lib/types';
 import { generateCompatibleUUID } from '../utils/peer-utils';
 
 // EMERGENCY SIMPLIFIED WebSocket-only Chat Hook
 // This bypasses all complex hybrid logic and WebRTC to focus only on basic chat functionality
-export function useEmergencyHybridChat(roomId: string, displayName?: string) {
+export function useEmergencyHybridChat(roomId: string, displayName: string) {
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [connectedPeers, setConnectedPeers] = useState<string[]>([]);

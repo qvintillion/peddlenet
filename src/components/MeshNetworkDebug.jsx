@@ -2,36 +2,6 @@
 
 import { useState } from 'react';
 
-interface MeshNetworkDebugProps {
-  className?: string;
-  meshEnabled: boolean;
-  setMeshEnabled: (enabled: boolean) => void;
-  attemptP2PUpgrade: () => Promise<boolean>;
-  hybridStats: {
-    webSocketMessages: number;
-    webrtcMessages: number; // Changed from p2pMessages
-    duplicatesFiltered: number;
-    routingDecisions: number;
-  };
-  connectionQuality: {
-    webSocket: { latency: number; reliability: number; available: boolean };
-    webrtc: { latency: number; reliability: number; available: boolean }; // Changed from p2p
-  };
-  webSocket: {
-    connected: boolean;
-    peers: string[];
-    status: any;
-  };
-  webrtc: { // Changed from p2p
-    connected: boolean;
-    peers: string[];
-    status: any;
-  };
-  currentRoute: 'websocket' | 'webrtc'; // Changed from p2p
-  preferredRoute: 'websocket' | 'webrtc' | 'auto'; // Changed from p2p
-  setPreferredRoute: (route: 'websocket' | 'webrtc' | 'auto') => void;
-  getConnectionDiagnostics: () => any;
-}
 
 export function MeshNetworkDebug({ 
   className, 

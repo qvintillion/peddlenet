@@ -5,16 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useBackgroundNotifications } from '../hooks/use-background-notifications';
 import { RoomCodeManager } from '../utils/room-codes';
 
-interface FavoriteRoom {
-  roomId: string;
-  code: string;
-  timestamp: number;
-  isSubscribed?: boolean;
-}
 
-interface FavoritesProps {
-  className?: string;
-}
 
 export function JoinedRooms({ className = '' }: FavoritesProps) {
   const router = useRouter();

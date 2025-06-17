@@ -4,9 +4,6 @@ import { useState, useEffect } from 'react';
 import { MessagePersistence } from '../utils/message-persistence';
 import { ServerUtils } from '../utils/server-utils';
 
-interface ConnectionTestProps {
-  className?: string;
-}
 
 export function ConnectionTest({ className }: ConnectionTestProps) {
   const [testResults, setTestResults] = useState<{
@@ -81,7 +78,7 @@ export function ConnectionTest({ className }: ConnectionTestProps) {
       });
       
       // Promise-based connection test
-      const connectionResult = await new Promise<{ success: boolean; error?: string }>((resolve) => {
+      const connectionResult = await new Promise<{ success: boolean; error: string }>((resolve) => {
         const timeout = setTimeout(() => {
           socket.disconnect();
           resolve({ success: false, error: 'Connection timeout (10s)' });

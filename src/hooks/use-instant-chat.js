@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { Message, ConnectionStatus } from '../lib/types';
 import { generateCompatibleUUID } from '../utils/peer-utils';
 import { useConnectionPerformance } from './use-connection-performance';
 
 // 🔥 INSTANT CONNECTION OPTIMIZED CHAT HOOK
 // Designed for sub-500ms connection times
-export function useInstantChat(roomId: string, displayName?: string) {
+export function useInstantChat(roomId: string, displayName: string) {
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [connectedPeers, setConnectedPeers] = useState<string[]>([]);

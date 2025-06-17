@@ -3,9 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { usePushNotifications } from '../hooks/use-push-notifications';
 
-interface CompactGlobalNotificationBannerProps {
-  className?: string;
-}
 
 export function CompactGlobalNotificationBanner({ className = '' }: CompactGlobalNotificationBannerProps) {
   const [showDropdown, setShowDropdown] = useState(false);

@@ -2,31 +2,12 @@
 
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { Message } from '../lib/types';
 import { generateCompatibleUUID } from '../utils/peer-utils';
 
 // Socket.IO P2P Integration for Phase 1 Mesh Networking
 // This provides automatic P2P upgrade for WebSocket connections
 
-interface P2PManager {
-  isEnabled: boolean;
-  isConnected: boolean;
-  peerCount: number;
-  upgrade: () => void;
-  downgrade: () => void;
-  sendMessage: (message: Message) => boolean;
-  onMessage: (handler: (message: Message) => void) => () => void;
-  getStats: () => P2PStats;
-}
 
-interface P2PStats {
-  isP2PActive: boolean;
-  connectedPeers: number;
-  connectionQuality: 'excellent' | 'good' | 'poor' | 'none';
-  messagesViaMesh: number;
-  fallbackToWebSocket: number;
-  lastUpgradeAttempt: number;
-}
 
 // Mock implementation for when socket.io-p2p is not available
 class MockP2PManager implements P2PManager {
@@ -391,7 +372,7 @@ export const P2PUtils = {
   },
   
   // Detect optimal conditions for P2P upgrade
-  shouldAttemptUpgrade(peerCount: number, connectionType?: string): boolean {
+  shouldAttemptUpgrade(peerCount: number, connectionType: string): boolean {
     // Small groups work better for P2P
     if (peerCount > 5) return false;
     

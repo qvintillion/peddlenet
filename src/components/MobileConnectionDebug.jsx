@@ -3,10 +3,6 @@
 import { useState, useEffect } from 'react';
 import { MobileNetworkDebug } from '../utils/mobile-network-debug';
 
-interface MobileConnectionDebugProps {
-  serverUrl?: string;
-  className?: string;
-}
 
 export function MobileConnectionDebug({ serverUrl, className = '' }: MobileConnectionDebugProps) {
   const [diagnostics, setDiagnostics] = useState<any>(null);

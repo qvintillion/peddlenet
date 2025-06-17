@@ -4,9 +4,6 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePublicRoomStats } from '../hooks/use-public-room-stats';
 
-interface PublicRoomsProps {
-  className?: string;
-}
 
 export function PublicRooms({ className = '' }: PublicRoomsProps) {
   const router = useRouter();

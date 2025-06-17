@@ -33,7 +33,7 @@ export function disableTabVisibilityTracking() {
   
   // Override addEventListener to prevent visibility tracking
   const originalAddEventListener = document.addEventListener;
-  document.addEventListener = function(type: string, listener: any, options?: any) {
+  document.addEventListener = function(type: string, listener: any, options: any) {
     if (events.includes(type) && isBackgroundConnectionEnabled) {
       console.log('🚫 Blocked tab visibility event listener:', type);
       return;

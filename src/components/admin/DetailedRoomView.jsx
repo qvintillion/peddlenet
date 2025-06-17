@@ -1,26 +1,6 @@
 import { useState, useEffect } from 'react';
 
-interface DetailedRoomViewProps {
-  isOpen: boolean;
-  onClose: () => void;
-  fetchDetailedRooms: () => Promise<any>;
-  deleteRoom: (roomId: string, roomCode: string) => Promise<void>;
-}
 
-interface Room {
-  roomId: string;
-  roomCode: string;
-  activeUsers: number;
-  userList: Array<{
-    peerId: string;
-    displayName: string;
-    joinedAt: number;
-  }>;
-  created: number;
-  lastActivity: number;
-  totalMessages: number;
-  uniqueUsers: number;
-}
 
 type SortField = 'roomCode' | 'activeUsers' | 'totalMessages' | 'created' | 'lastActivity';
 type SortDirection = 'asc' | 'desc';

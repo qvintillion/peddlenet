@@ -6,18 +6,7 @@ import { createPortal } from 'react-dom';
 import { RoomCodeManager } from '../utils/room-codes';
 import { useUnreadMessages } from '../hooks/use-unread-messages';
 
-interface ChatRoomSwitcherProps {
-  currentRoomId: string;
-  className?: string;
-}
 
-interface SwitcherRoom {
-  roomId: string;
-  code: string;
-  timestamp: number;
-  isFavorite: boolean;
-  isRecent: boolean;
-}
 
 export function ChatRoomSwitcher({ currentRoomId, className = '' }: ChatRoomSwitcherProps) {
   const router = useRouter();

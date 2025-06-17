@@ -2,35 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { Message, ConnectionStatus } from '../lib/types';
 import { generateCompatibleUUID, generateShortId } from '../utils/peer-utils';
 
-interface WebRTCConnection {
-  peerId: string;
-  peerConnection: RTCPeerConnection;
-  dataChannel: RTCDataChannel | null;
-  connectionState: RTCPeerConnectionState;
-  lastSeen: number;
-}
 
-interface QueuedMessage extends Message {
-  retryCount?: number;
-  queuedAt: number;
-}
 
-interface WebRTCDebugInfo {
-  connections: Map<string, WebRTCConnection>;
-  signaling: {
-    connected: boolean;
-    socketId: string | null;
-  };
-  stats: {
-    totalAttempts: number;
-    successfulConnections: number;
-    failedConnections: number;
-    activeConnections: number;
-  };
-}
 
 // CRITICAL: Global instance tracking to prevent multiple concurrent hooks - PRODUCTION FIX v5
 let globalWebRTCInstances;
@@ -67,7 +42,7 @@ try {
 const INIT_RATE_LIMIT = 3; // Max 3 attempts per 10 seconds
 const RATE_LIMIT_WINDOW = 10000;
 
-export function useNativeWebRTC(roomId: string, displayName?: string, disabled: boolean = false) {
+export function useNativeWebRTC(roomId: string, displayName: string, disabled: boolean = false) {
   // CRITICAL DEBUG: Track hook instances to prevent multiple concurrent instances
   const hookInstanceId = useRef(`hook-${Math.random().toString(36).substr(2, 9)}`);
   

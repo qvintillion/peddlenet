@@ -3,11 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { usePushNotifications, useMessageNotifications } from '../hooks/use-push-notifications';
 
-interface NotificationTestProps {
-  roomId: string;
-  displayName: string;
-  className?: string;
-}
 
 export function NotificationTest({ roomId, displayName, className = '' }: NotificationTestProps) {
   const [isVisible, setIsVisible] = useState(true);

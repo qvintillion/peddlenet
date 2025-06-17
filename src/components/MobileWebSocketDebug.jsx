@@ -2,9 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 
-interface MobileWebSocketDebugProps {
-  className?: string;
-}
 
 export function MobileWebSocketDebug({ className = '' }: MobileWebSocketDebugProps) {
   const [debugInfo, setDebugInfo] = useState<any>({});

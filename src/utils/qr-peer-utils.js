@@ -179,7 +179,7 @@ export const QRPeerUtils = {
   },
   
   // Clean up old host peer data
-  cleanupOldHostData(roomId?: string) {
+  cleanupOldHostData(roomId: string) {
     if (typeof window === 'undefined') return;
     
     const tenMinutesAgo = Date.now() - 10 * 60 * 1000;

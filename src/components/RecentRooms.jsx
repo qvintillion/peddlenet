@@ -4,9 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RoomCodeManager } from '../utils/room-codes';
 
-interface RecentRoomsProps {
-  className?: string;
-}
 
 export function RecentRooms({ className = '' }: RecentRoomsProps) {
   const router = useRouter();

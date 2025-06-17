@@ -3,11 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useHybridChat } from '../hooks/use-hybrid-chat';
 
-interface MeshTestProps {
-  roomId?: string;
-  displayName?: string;
-  onTestResult?: (result: any) => void;
-}
 
 export function MeshNetworkTest({ 
   roomId = 'mesh-test-room', 

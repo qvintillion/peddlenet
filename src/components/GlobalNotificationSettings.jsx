@@ -3,9 +3,6 @@
 import React from 'react';
 import { usePushNotifications } from '../hooks/use-push-notifications';
 
-interface GlobalNotificationSettingsProps {
-  className?: string;
-}
 
 export function GlobalNotificationSettings({ className = '' }: GlobalNotificationSettingsProps) {
   const {

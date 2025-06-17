@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { Message, ConnectionStatus } from '../lib/types';
 import { generateCompatibleUUID } from '../utils/peer-utils';
 import { useWebSocketChat } from './use-websocket-chat';
 import { useDevFriendlyWebRTC } from './use-dev-friendly-webrtc';
@@ -189,7 +188,7 @@ const createConnectionDetector = () => {
   };
 };
 
-export function useHybridChat(roomId: string, displayName?: string) {
+export function useHybridChat(roomId: string, displayName: string) {
   // Initialize WebSocket chat first (provides the socket for WebRTC signaling)
   const wsChat = useWebSocketChat(roomId, displayName);
   

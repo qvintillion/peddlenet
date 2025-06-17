@@ -3,11 +3,6 @@
 import { useState, useEffect } from 'react';
 import { ServerUtils } from '../utils/server-utils';
 
-interface RoomStats {
-  roomId: string;
-  activeUsers: number;
-  lastUpdated: number;
-}
 
 const CACHE_DURATION = 30000; // 30 seconds
 const UPDATE_INTERVAL = 15000; // Update every 15 seconds

@@ -240,7 +240,7 @@ export const P2PDebugUtils = {
   },
 
   // Log performance event
-  logPerformanceEvent(profile: any, event: string, data?: any) {
+  logPerformanceEvent(profile: any, event: string, data: any) {
     const timestamp = Date.now() - profile.startTime;
     
     if (this.isDebugEnabled()) {

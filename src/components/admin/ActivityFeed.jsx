@@ -1,29 +1,9 @@
 import { useState } from 'react';
 
 // Real server activity structure
-interface ServerActivity {
-  id: number;
-  type: string; // 'user-joined', 'user-left', 'message-sent', 'room-created', 'room-deleted', 'admin-action'
-  data: any;
-  timestamp: number;
-  icon: string;
-}
 
 // Frontend display structure
-interface Activity {
-  id: string;
-  type: 'user_join' | 'user_leave' | 'message' | 'room_create' | 'room_delete' | 'broadcast';
-  timestamp: number;
-  description: string;
-  details?: string;
-  roomCode?: string;
-  username?: string;
-}
 
-interface ActivityFeedProps {
-  activities: ServerActivity[]; // Accept real server activities
-  onClearActivity: () => void;
-}
 
 export function ActivityFeed({ activities, onClearActivity }: ActivityFeedProps) {
   // Convert server activity to display activity

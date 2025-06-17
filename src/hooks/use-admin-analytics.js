@@ -315,7 +315,7 @@ export function useAdminAnalytics() {
   }, [getAdminApiUrl, getAuthHeaders]);
 
   // Remove user from room
-  const handleRemoveUser = useCallback(async (peerId: string, roomId: string, reason?: string) => {
+  const handleRemoveUser = useCallback(async (peerId: string, roomId: string, reason: string) => {
     try {
       const adminUrl = getAdminApiUrl();
       console.log('🗑️ Removing user via:', `${adminUrl}/users/${peerId}/remove`);

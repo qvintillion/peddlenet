@@ -373,7 +373,7 @@ export class RoomCodeManager {
     code: string; 
     roomId: string; 
     timestamp: number;
-    displayName?: string;
+    displayName: string;
   }> {
     try {
       const recent = localStorage.getItem('peddlenet_recent_rooms');
@@ -471,11 +471,11 @@ export class RoomCodeDiagnostics {
    */
   static async testRoomCodeSystem(testCode: string = 'test-debug-42'): Promise<{
     success: boolean;
-    steps: Array<{ step: string; success: boolean; data?: any; error?: string }>;
+    steps: Array<{ step: string; success: boolean; data: any; error: string }>;
   }> {
     const results = {
       success: false,
-      steps: [] as Array<{ step: string; success: boolean; data?: any; error?: string }>
+      steps: [] as Array<{ step: string; success: boolean; data: any; error: string }>
     };
     
     // Step 1: Generate a room code
@@ -545,13 +545,13 @@ export class RoomCodeDiagnostics {
   static async testServerConnectivity(): Promise<{
     serverReachable: boolean;
     apiUrl: string;
-    health?: any;
-    roomCodeEndpoints?: {
+    health: any;
+    roomCodeEndpoints: {
       register: boolean;
       resolve: boolean;
     };
-    debugInfo?: any;
-    error?: string;
+    debugInfo: any;
+    error: string;
   }> {
     try {
       // Use the room code API URL (Next.js API routes)
@@ -664,7 +664,7 @@ export class RoomDiscovery {
   /**
    * Find nearby rooms that user might want to rejoin
    */
-  static findNearbyRooms(excludeRoomId?: string): Array<{
+  static findNearbyRooms(excludeRoomId: string): Array<{
     roomId: string;
     displayName: string;
     peerId: string;

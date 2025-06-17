@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Message, ConnectionStatus } from '../lib/types';
 import { generateCompatibleUUID } from '../utils/peer-utils';
 
 // Development environment detection
@@ -111,7 +110,7 @@ const createMockP2P = (roomId: string, displayName: string) => {
 };
 
 // Enhanced development-friendly WebRTC hook
-export function useDevFriendlyWebRTC(roomId: string, displayName?: string, disabled: boolean = false) {
+export function useDevFriendlyWebRTC(roomId: string, displayName: string, disabled: boolean = false) {
   const [isDevMode] = useState(isDevelopment);
   const effectiveDisplayName = displayName || 'DevUser';
   

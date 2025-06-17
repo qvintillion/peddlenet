@@ -3,11 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useBackgroundNotifications } from '../hooks/use-background-notifications';
 
-interface FavoriteButtonProps {
-  roomId: string;
-  displayName: string;
-  className?: string;
-}
 
 export function FavoriteButton({ roomId, displayName, className = '' }: FavoriteButtonProps) {
   const [isFavorite, setIsFavorite] = useState(false);

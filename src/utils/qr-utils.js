@@ -5,7 +5,7 @@ import QRCode from 'qrcode';
  * Returns a base64 image string usable in <img src="...">.
  */
 export async function generateQRCodeFromUrl(url: string): Promise<string> {
-  if (!/^https?:\/\//.test(url)) {
+  if (!/^https:\/\//.test(url)) {
     throw new Error('generateQRCodeFromUrl: Input must be a valid URL (starting with http or https).');
   }
 

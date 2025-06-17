@@ -1,21 +1,6 @@
 import { useState, useEffect } from 'react';
 
-interface DetailedUserViewProps {
-  isOpen: boolean;
-  onClose: () => void;
-  fetchDetailedUsers: () => Promise<any>;
-  removeUser: (peerId: string, roomId: string, reason?: string) => Promise<any>;
-}
 
-interface User {
-  socketId: string;
-  peerId: string;
-  displayName: string;
-  roomId: string;
-  joinedAt: number;
-  duration: number;
-  isActive: boolean;
-}
 
 type SortField = 'displayName' | 'roomId' | 'joinedAt' | 'duration';
 type SortDirection = 'asc' | 'desc';

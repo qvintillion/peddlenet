@@ -2,31 +2,8 @@
 
 import { useState, useEffect } from 'react';
 
-interface MeshConnection {
-  peerId: string;
-  displayName: string;
-  socketId: string;
-  roomId: string;
-  p2pPeers: string[];
-  connectionQuality: 'excellent' | 'good' | 'poor' | 'none';
-  lastSeen: number;
-  isP2PActive: boolean;
-}
 
-interface MeshMetrics {
-  totalP2PAttempts: number;
-  successfulP2PConnections: number;
-  failedP2PConnections: number;
-  activeP2PConnections: number;
-  averageConnectionTime: number;
-  meshUpgradeRate: number;
-  p2pMessageCount: number;
-  fallbackCount: number;
-}
 
-interface MeshNetworkStatusProps {
-  isLoading?: boolean;
-}
 
 export function MeshNetworkStatus({ isLoading = false }: MeshNetworkStatusProps) {
   const [meshData, setMeshData] = useState<{

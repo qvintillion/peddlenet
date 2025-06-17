@@ -15,14 +15,14 @@ export interface ConnectionHealth {
   lastSuccessfulConnection: number;
   consecutiveFailures: number;
   infrastructureStatus: 'healthy' | 'degraded' | 'outage';
-  lastErrorType?: string;
+  lastErrorType: string;
 }
 
 export interface ConnectionMetrics {
   timestamp: number;
-  connectionTime?: number;
+  connectionTime: number;
   success: boolean;
-  errorType?: string;
+  errorType: string;
   attemptNumber: number;
 }
 
@@ -37,8 +37,8 @@ export const connectionRetry = async <T>(
     maxDelay: 10000,
     backoffMultiplier: 2
   },
-  onAttempt?: (attempt: number, error?: any) => void
-): Promise<{ success: boolean; result?: T; metrics: ConnectionMetrics[] }> => {
+  onAttempt: (attempt: number, error: any) => void
+): Promise<{ success: boolean; result: T; metrics: ConnectionMetrics[] }> => {
   const metrics: ConnectionMetrics[] = [];
   
   for (let attempt = 1; attempt <= config.maxAttempts; attempt++) {
@@ -240,7 +240,7 @@ export class ConnectionHealthMonitor {
 export class SessionPersistence {
   private static readonly STORAGE_KEY = 'peddlenet_session';
   
-  static saveSession(roomId: string, displayName: string, peerId?: string): void {
+  static saveSession(roomId: string, displayName: string, peerId: string): void {
     const session = {
       roomId,
       displayName,
@@ -256,7 +256,7 @@ export class SessionPersistence {
     }
   }
 
-  static getSession(): { roomId: string; displayName: string; peerId?: string } | null {
+  static getSession(): { roomId: string; displayName: string; peerId: string } | null {
     try {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       if (!stored) return null;

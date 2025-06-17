@@ -217,7 +217,7 @@ export const ServerUtils = {
     return 'development';
   },
   
-  async testHttpHealth(): Promise<{ success: boolean; data?: any; error?: string }> {
+  async testHttpHealth(): Promise<{ success: boolean; data: any; error: string }> {
     try {
       const serverUrl = this.getHttpServerUrl();
       console.log('🏥 Testing HTTP health:', serverUrl);

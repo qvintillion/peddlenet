@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Message, ConnectionStatus } from '../lib/types';
 import { generateCompatibleUUID, generateShortId } from '../utils/peer-utils';
 
 declare global {
@@ -12,21 +11,9 @@ declare global {
 
 type DataConnection = any;
 
-interface PeerConfig {
-  host?: string;
-  port?: number;
-  path?: string;
-  key?: string;
-  secure?: boolean;
-  config?: RTCConfiguration;
-}
 
-interface QueuedMessage extends Message {
-  retryCount?: number;
-  queuedAt: number;
-}
 
-export function useP2POptimized(roomId: string, displayName?: string) {
+export function useP2POptimized(roomId: string, displayName: string) {
   const [peer, setPeer] = useState<any | null>(null);
   const [peerId, setPeerId] = useState<string | null>(null);
   const [connections, setConnections] = useState<Map<string, DataConnection>>(new Map());

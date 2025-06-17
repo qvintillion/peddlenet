@@ -9,64 +9,10 @@ import { useState, useEffect } from 'react';
 // Force dynamic rendering (no static generation)
 export const dynamic = 'force-dynamic';
 
-interface RealTimeStats {
-  activeUsers: number;
-  totalUsers: number;
-  activeRooms: number;
-  totalRooms: number;
-  peakUsers: number;
-  peakRooms: number;
-  messagesPerMinute: number;
-  totalMessages: number;
-  storageUsed: number;
-  userTrend: string;
-  roomTrend: string;
-  environment: string;
-}
 
-interface ServerHealth {
-  status: string;
-  uptime: string;
-  memoryUsed: number;
-  memoryTotal: number;
-  cpuUsage: string;
-  coldStarts: number;
-}
 
-interface NetworkStatus {
-  quality: number;
-  avgLatency: number;
-  deliveryRate: number;
-}
 
-interface Activity {
-  id: number;
-  type: string;
-  data: any;
-  timestamp: number;
-  icon: string;
-}
 
-interface DashboardData {
-  realTimeStats: RealTimeStats;
-  serverHealth: ServerHealth;
-  networkStatus: NetworkStatus;
-  messageFlow: {
-    messagesPerMinute: number;
-    trend: string;
-    history: Array<{ minute: number; count: number }>;
-  };
-  dbStats: {
-    totalMessages: number;
-    totalRooms: number;
-    totalSessions: number;
-    recentActivity: number;
-    dbSize: string;
-    oldestMessage: number;
-  };
-  timestamp: number;
-  databaseReady: boolean;
-}
 
 // 🔧 HYDRATION FIX: Static default data structure without Date.now()
 const defaultDashboardData: DashboardData = {
@@ -119,23 +65,8 @@ const ADMIN_SESSION_KEY = 'peddlenet_admin_session';
 const ADMIN_ACTIVITY_KEY = 'peddlenet_admin_activity';
 
 // Session interface
-interface AdminSession {
-  username: string;
-  password: string;
-  loginTime: number;
-  expiresAt: number;
-}
 
 // Clickable metric card component
-interface MetricCardProps {
-  title: string;
-  value: string;
-  subvalue?: string;
-  icon: string;
-  color: 'green' | 'yellow' | 'red' | 'gray' | 'blue' | 'purple';
-  onClick?: () => void;
-  isClickable?: boolean;
-}
 
 function MetricCard({ title, value, subvalue, icon, color, onClick, isClickable }: MetricCardProps) {
   const colorClasses = {
@@ -731,7 +662,7 @@ export default function AdminAnalyticsPage() {
     }
   };
 
-  const removeUser = async (peerId: string, roomId: string, reason?: string) => {
+  const removeUser = async (peerId: string, roomId: string, reason: string) => {
     try {
       const response = await makeAPICall('/users/remove', {
         method: 'POST',

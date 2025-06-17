@@ -1,15 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Message } from '../lib/types';
 
 // Interface for tracking unread messages per room
-interface UnreadMessageCount {
-  roomId: string;
-  count: number;
-  lastMessageTimestamp: number;
-  lastSeenTimestamp: number;
-}
 
 // Singleton class to manage unread message counts
 class UnreadMessageManager {

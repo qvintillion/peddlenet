@@ -3,25 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
-interface BridgingStatusProps {
-  hybridChat: any; // From useHybridChat hook
-}
 
-interface NetworkCondition {
-  quality: 'excellent' | 'good' | 'poor' | 'critical';
-  latency: number;
-  packetLoss: number;
-  bandwidth: number;
-  stability: number;
-}
 
-interface BridgeStats {
-  messagesBridged: number;
-  bridgeSuccessRate: number;
-  averageHops: number;
-  reliableNodes: number;
-  criticalMessages: number;
-}
 
 /**
  * 🌉 MESSAGE BRIDGING STATUS PANEL

@@ -5,13 +5,6 @@ import QRCode from 'qrcode';
 import { NetworkUtils } from '../utils/network-utils';
 import { MobileNetworkDebug } from '../utils/mobile-network-debug';
 
-interface QRModalProps {
-  roomId: string;
-  peerId?: string | null;
-  displayName?: string;
-  isOpen: boolean;
-  onClose: () => void;
-}
 
 export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModalProps) {
   const [qrCodeUrl, setQrCodeUrl] = useState('');
@@ -84,7 +77,7 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
     }
   };
 
-  const generateInviteQR = async (useIP?: string) => {
+  const generateInviteQR = async (useIP: string) => {
     setIsGenerating(true);
     
     let baseUrl;

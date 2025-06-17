@@ -3,7 +3,7 @@ export interface QRData {
   displayName: string;
   timestamp: number;
   version: string;
-  coordinates?: {
+  coordinates: {
     lat: number;
     lng: number;
   };
@@ -33,7 +33,7 @@ export interface ConnectionStatus {
   signalStrength: 'none' | 'weak' | 'medium' | 'strong';
   
   // NEW: Optional room discovery status
-  roomDiscovery?: {
+  roomDiscovery: {
     isConnected: boolean;
     discoveredPeers: number;
     connectedPeers: number;

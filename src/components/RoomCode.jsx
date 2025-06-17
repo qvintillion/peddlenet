@@ -4,9 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RoomCodeManager, RoomCodeDiagnostics } from '../utils/room-codes';
 
-interface RoomCodeJoinProps {
-  className?: string;
-}
 
 export function RoomCodeJoin({ className = '' }: RoomCodeJoinProps) {
   const [roomCode, setRoomCode] = useState('');
@@ -185,10 +182,6 @@ export function RoomCodeJoin({ className = '' }: RoomCodeJoinProps) {
   );
 }
 
-interface RoomCodeDisplayProps {
-  roomId: string;
-  className?: string;
-}
 
 export function RoomCodeDisplay({ roomId, className = '' }: RoomCodeDisplayProps) {
   const [roomCode, setRoomCode] = useState<string | null>(null);

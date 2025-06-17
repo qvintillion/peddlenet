@@ -4,10 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import { usePushNotifications } from '../hooks/use-push-notifications';
 
-interface NotificationSettingsProps {
-  roomId?: string;
-  className?: string;
-}
 
 export function NotificationSettings({ roomId, className = '' }: NotificationSettingsProps) {
   const {

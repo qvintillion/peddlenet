@@ -3,7 +3,6 @@
  * Ensures messages survive page refreshes and notification clicks
  */
 
-import type { Message } from '@/lib/types';
 
 export interface PersistedRoom {
   roomId: string;

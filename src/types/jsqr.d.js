@@ -18,8 +18,8 @@ declare module 'jsqr' {
     imageData: Uint8ClampedArray,
     width: number,
     height: number,
-    options?: {
-      inversionAttempts?: 'dontInvert' | 'onlyInvert' | 'attemptBoth' | 'invertFirst';
+    options: {
+      inversionAttempts: 'dontInvert' | 'onlyInvert' | 'attemptBoth' | 'invertFirst';
     }
   ): QRCode | null;
 } 

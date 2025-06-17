@@ -3,10 +3,6 @@
 import { useState, useEffect } from 'react';
 import { ConnectionHealthMonitor, type ConnectionHealth } from '../utils/connection-resilience';
 
-interface NetworkStatusProps {
-  className?: string;
-  showDetails?: boolean;
-}
 
 export function NetworkStatus({ className = '', showDetails = false }: NetworkStatusProps) {
   const [health, setHealth] = useState<ConnectionHealth>(() => 
@@ -92,11 +88,6 @@ export function NetworkStatus({ className = '', showDetails = false }: NetworkSt
   );
 }
 
-interface ConnectionErrorProps {
-  onRetry: () => void;
-  isRetrying: boolean;
-  className?: string;
-}
 
 export function ConnectionError({ onRetry, isRetrying, className = '' }: ConnectionErrorProps) {
   const [health] = useState<ConnectionHealth>(() => 

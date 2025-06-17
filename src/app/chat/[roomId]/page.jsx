@@ -7,7 +7,6 @@ import { useConnectionPerformance } from '../../../hooks/use-connection-performa
 import { useMessageNotifications } from '../../../hooks/use-push-notifications';
 import { useRoomBackgroundNotifications } from '../../../hooks/use-background-notifications';
 import { useBackgroundNotifications } from '../../../hooks/use-background-notifications';
-import type { Message } from '../../../lib/types';
 import { QRModal } from '../../../components/QRModal';
 import { NetworkStatus } from '../../../components/NetworkStatus';
 import { RoomCodeDisplay } from '../../../components/RoomCode';

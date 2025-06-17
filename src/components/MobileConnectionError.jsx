@@ -1,14 +1,5 @@
 import React from 'react';
 
-interface MobileConnectionErrorProps {
-  error: {
-    type: string;
-    message: string;
-  };
-  isSignalingConnected: boolean;
-  onRetry: () => void;
-  onDiagnostics: () => void;
-}
 
 export function MobileConnectionError({ 
   error, 
@@ -124,10 +115,6 @@ export function MobileConnectionError({
   );
 }
 
-interface MobileSignalingStatusProps {
-  isConnected: boolean;
-  reconnectAttempts: number;
-}
 
 export function MobileSignalingStatus({ isConnected, reconnectAttempts }: MobileSignalingStatusProps) {
   if (isConnected) {
@@ -150,9 +137,6 @@ export function MobileSignalingStatus({ isConnected, reconnectAttempts }: Mobile
   );
 }
 
-interface MobileNetworkInfoProps {
-  className?: string;
-}
 
 export function MobileNetworkInfo({ className = '' }: MobileNetworkInfoProps) {
   const [networkInfo, setNetworkInfo] = React.useState<any>(null);
