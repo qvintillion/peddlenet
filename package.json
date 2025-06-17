@@ -35,12 +35,6 @@
     "env:staging": "chmod +x scripts/env-switch.sh && ./scripts/env-switch.sh staging",
     "env:production": "chmod +x scripts/env-switch.sh && ./scripts/env-switch.sh production"
   },
-  "resolutions": {
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "@types/react": "18.2.45",
-    "@types/react-dom": "18.2.18"
-  },
   "dependencies": {
     "@zxing/library": "^0.21.3",
     "clsx": "^2.1.1",
@@ -69,24 +63,13 @@
     "@playwright/test": "^1.52.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
-    "@types/cors": "^2.8.17",
-    "@types/lodash": "^4.17.17",
-    "@types/node": "^20",
-    "@types/qrcode": "^1.5.5",
-    "@types/react": "18.2.45",
-    "@types/react-dom": "18.2.18",
-    "@types/simple-peer": "^9.11.8",
-    "@typescript-eslint/eslint-plugin": "^8.33.0",
-    "@typescript-eslint/parser": "^8.33.0",
-    "autoprefixer": "^10.4.16",
     "concurrently": "^9.1.0",
     "eslint": "^9",
     "eslint-config-next": "15.3.2",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "firebase-tools": "^13.0.0",
-    "jest": "^29.7.0",
-    "typescript": "^5"
+    "jest": "^29.7.0"
   },
   "overrides": {
     "sourcemap-codec": "npm:@jridgewell/sourcemap-codec@^1.5.0",
