@@ -97,7 +97,7 @@ export default function HybridEmergencyChatRoomPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // Try to restore session first
-      import('@/utils/connection-resilience').then(({ SessionPersistence }) => {
+      import('../../../utils/connection-resilience').then(({ SessionPersistence }) => {
         const session = SessionPersistence.getSession();
         const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
         const sessionIsRecent = session && session.timestamp && session.timestamp > fiveMinutesAgo;
