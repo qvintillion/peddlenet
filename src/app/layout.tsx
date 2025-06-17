@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 // Disable tab visibility tracking for cross-room notifications
-import '@/utils/tab-visibility-override';
+import '../utils/tab-visibility-override';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
