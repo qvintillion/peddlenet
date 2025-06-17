@@ -55,12 +55,26 @@ export function DetailedUserView({ isOpen, onClose, fetchDetailedUsers, removeUs
       const result = await removeUser(peerId, roomId, 'Removed by admin via dashboard');
       if (result.success) {
         setUsers(users.filter(user => user.peerId !== peerId));
+        alert(`✅ User "${result.removedUser?.displayName || peerId}" removed successfully!`);
       } else {
         alert(`Failed to remove user: ${result.error}`);
       }
     } catch (error) {
       console.error('Failed to remove user:', error);
-      alert('Failed to remove user');
+      
+      // Enhanced error handling with helpful messages
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      if (errorMessage.includes('Room not found')) {
+        alert('❌ Cannot remove user: The room no longer exists.\n\nThis usually happens when:\n• The room was already deleted\n• All users left and the room was cleaned up\n• The server was restarted\n\nPlease refresh the dashboard to see current data.');
+      } else if (errorMessage.includes('User not found')) {
+        alert('❌ Cannot remove user: The user is no longer in this room.\n\nThe user may have already disconnected.\n\nPlease refresh the dashboard to see current data.');
+      } else {
+        alert(`❌ Failed to remove user: ${errorMessage}\n\nPlease check the server logs and try refreshing the dashboard.`);
+      }
+      
+      // Refresh the user list to show current state
+      await fetchUsers();
     }
   };
 

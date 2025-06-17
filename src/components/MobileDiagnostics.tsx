@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MobileConnectionDebug } from '@/utils/mobile-debug';
+import { MobileConnectionDebug } from '../utils/mobile-debug';
 
 interface MobileDiagnosticsProps {
   peerId?: string | null;

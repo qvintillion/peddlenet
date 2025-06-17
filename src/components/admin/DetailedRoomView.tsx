@@ -53,7 +53,18 @@ export function DetailedRoomView({ isOpen, onClose, fetchDetailedRooms, deleteRo
       
     } catch (error) {
       console.error('Failed to delete room:', error);
-      alert(`❌ Failed to delete room: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Enhanced error handling with helpful messages
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      if (errorMessage.includes('Room not found')) {
+        alert('❌ Cannot delete room: The room no longer exists.\n\nThis usually happens when:\n• The room was already deleted\n• All users left and the room was cleaned up\n• The server was restarted\n\nPlease refresh the dashboard to see current data.');
+      } else {
+        alert(`❌ Failed to delete room: ${errorMessage}\n\nPlease check the server logs and try refreshing the dashboard.`);
+      }
+      
+      // Refresh the room list to show current state
+      await fetchRooms();
     } finally {
       setDeletingRoomId(null);
     }

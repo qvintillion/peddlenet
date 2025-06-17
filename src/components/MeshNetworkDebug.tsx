@@ -9,27 +9,27 @@ interface MeshNetworkDebugProps {
   attemptP2PUpgrade: () => Promise<boolean>;
   hybridStats: {
     webSocketMessages: number;
-    p2pMessages: number;
+    webrtcMessages: number; // Changed from p2pMessages
     duplicatesFiltered: number;
     routingDecisions: number;
   };
   connectionQuality: {
     webSocket: { latency: number; reliability: number; available: boolean };
-    p2p: { latency: number; reliability: number; available: boolean };
+    webrtc: { latency: number; reliability: number; available: boolean }; // Changed from p2p
   };
   webSocket: {
     connected: boolean;
     peers: string[];
     status: any;
   };
-  p2p: {
+  webrtc: { // Changed from p2p
     connected: boolean;
     peers: string[];
     status: any;
   };
-  currentRoute: 'websocket' | 'p2p';
-  preferredRoute: 'websocket' | 'p2p' | 'auto';
-  setPreferredRoute: (route: 'websocket' | 'p2p' | 'auto') => void;
+  currentRoute: 'websocket' | 'webrtc'; // Changed from p2p
+  preferredRoute: 'websocket' | 'webrtc' | 'auto'; // Changed from p2p
+  setPreferredRoute: (route: 'websocket' | 'webrtc' | 'auto') => void;
   getConnectionDiagnostics: () => any;
 }
 
@@ -41,7 +41,7 @@ export function MeshNetworkDebug({
   hybridStats,
   connectionQuality,
   webSocket,
-  p2p,
+  webrtc, // Changed from p2p
   currentRoute,
   preferredRoute,
   setPreferredRoute,
@@ -109,14 +109,14 @@ export function MeshNetworkDebug({
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-gray-700 p-3 rounded border border-gray-600">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">{getConnectionIcon(webSocket.connected)}</span>
+              <span className="text-lg">{getConnectionIcon(webSocket?.connected || false)}</span>
               <span className="text-sm font-medium text-white">WebSocket</span>
             </div>
-            <div className={`text-xs ${getStatusColor(webSocket.connected)}`}>
-              {getConnectionStatus(webSocket.connected)}
+            <div className={`text-xs ${getStatusColor(webSocket?.connected || false)}`}>
+              {getConnectionStatus(webSocket?.connected || false)}
             </div>
             <div className="text-xs text-gray-300">
-              Peers: {webSocket.peers.length}
+              Peers: {webSocket?.peers?.length || 0}
             </div>
             <div className="text-xs text-gray-300">
               Latency: {connectionQuality.webSocket.latency}ms
@@ -125,17 +125,17 @@ export function MeshNetworkDebug({
 
           <div className="bg-gray-700 p-3 rounded border border-gray-600">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">{getConnectionIcon(p2p.connected)}</span>
-              <span className="text-sm font-medium text-white">P2P Mesh</span>
+              <span className="text-lg">{getConnectionIcon(webrtc?.connected || false)}</span>
+              <span className="text-sm font-medium text-white">WebRTC Mesh</span>
             </div>
-            <div className={`text-xs ${getStatusColor(p2p.connected)}`}>
-              {getConnectionStatus(p2p.connected)}
-            </div>
-            <div className="text-xs text-gray-300">
-              Peers: {p2p.peers.length}
+            <div className={`text-xs ${getStatusColor(webrtc?.connected || false)}`}>
+              {getConnectionStatus(webrtc?.connected || false)}
             </div>
             <div className="text-xs text-gray-300">
-              Latency: {connectionQuality.p2p.latency}ms
+              Peers: {webrtc?.peers?.length || 0}
+            </div>
+            <div className="text-xs text-gray-300">
+              Latency: {connectionQuality?.webrtc?.latency || 0}ms
             </div>
           </div>
         </div>
@@ -144,7 +144,7 @@ export function MeshNetworkDebug({
         <div className="mb-4 p-3 bg-gray-900 rounded border border-gray-700">
           <div className="text-xs text-gray-300 mb-1">Current Route:</div>
           <div className="text-sm font-mono text-white">
-            {currentRoute === 'websocket' ? '📡 WebSocket Server' : '🌐 P2P Mesh'}
+            {currentRoute === 'websocket' ? '📡 WebSocket Server' : '🌐 WebRTC Mesh'}
           </div>
           <div className="text-xs text-gray-400 mt-1">
             Preferred: {preferredRoute}
@@ -158,8 +158,8 @@ export function MeshNetworkDebug({
             <div className="text-lg font-bold text-blue-400">{hybridStats.webSocketMessages}</div>
           </div>
           <div className="bg-gray-700 p-2 rounded">
-            <div className="text-xs text-gray-300">P2P Messages</div>
-            <div className="text-lg font-bold text-green-400">{hybridStats.p2pMessages}</div>
+            <div className="text-xs text-gray-300">WebRTC Messages</div>
+            <div className="text-lg font-bold text-green-400">{hybridStats.webrtcMessages}</div>
           </div>
         </div>
 
@@ -190,7 +190,7 @@ export function MeshNetworkDebug({
                 </>
               ) : (
                 <>
-                  🚀 Manual P2P Upgrade
+                  🚀 Manual WebRTC Upgrade
                 </>
               )}
             </button>
@@ -221,7 +221,7 @@ export function MeshNetworkDebug({
             >
               <option value="auto">Auto</option>
               <option value="websocket">WebSocket Only</option>
-              <option value="p2p">P2P Only</option>
+              <option value="webrtc">WebRTC Only</option>
             </select>
           </div>
 

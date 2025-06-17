@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
-import { NetworkUtils } from '@/utils/network-utils';
-import { MobileNetworkDebug } from '@/utils/mobile-network-debug';
+import { NetworkUtils } from '../utils/network-utils';
+import { MobileNetworkDebug } from '../utils/mobile-network-debug';
 
 interface QRModalProps {
   roomId: string;
@@ -26,6 +26,16 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
   useEffect(() => {
     if (isOpen && roomId) {
       const currentHostname = window.location.hostname;
+      
+      // 🔧 CRITICAL FIX: If we're on Vercel/production domain, use it directly
+      if (currentHostname.includes('.vercel.app') || 
+          currentHostname.includes('peddlenet.app') || 
+          currentHostname.includes('.web.app') ||
+          currentHostname.includes('.firebaseapp.com')) {
+        console.log('✅ Using production domain for QR:', currentHostname);
+        generateInviteQR(currentHostname);
+        return;
+      }
       
       // Check if we have a pre-detected IP from dev script
       const detectedIP = process.env.NEXT_PUBLIC_DETECTED_IP;
@@ -79,11 +89,18 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
     
     let baseUrl;
     if (useIP) {
-      // Use provided IP with current protocol and port
-      const protocol = window.location.protocol;
-      const port = window.location.port;
-      baseUrl = `${protocol}//${useIP}${port ? `:${port}` : ''}`;
-      console.log('🌐 Using provided IP for QR:', baseUrl);
+      // 🔧 CRITICAL FIX: If useIP looks like a domain, use HTTPS
+      if (useIP.includes('.vercel.app') || useIP.includes('peddlenet.app') || 
+          useIP.includes('.web.app') || useIP.includes('.firebaseapp.com')) {
+        baseUrl = `https://${useIP}`;
+        console.log('🌎 Using HTTPS for production domain:', baseUrl);
+      } else {
+        // Use provided IP with current protocol and port
+        const protocol = window.location.protocol;
+        const port = window.location.port;
+        baseUrl = `${protocol}//${useIP}${port ? `:${port}` : ''}`;
+        console.log('🌐 Using provided IP for QR:', baseUrl);
+      }
     } else {
       // Use NetworkUtils method
       baseUrl = await NetworkUtils.getBaseURL();

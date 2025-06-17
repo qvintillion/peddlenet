@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { usePushNotifications, useMessageNotifications } from '@/hooks/use-push-notifications';
+import { usePushNotifications, useMessageNotifications } from '../hooks/use-push-notifications';
 
 interface NotificationTestProps {
   roomId: string;

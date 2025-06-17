@@ -44,6 +44,82 @@ export function MeshNetworkStatus({ isLoading = false }: MeshNetworkStatusProps)
     setIsClient(true);
   }, []);
 
+  // 🏠 DEVELOPMENT MODE DETECTION
+  const isDevelopment = () => {
+    if (!isClient) return false;
+    return window.location.hostname === 'localhost' || 
+           window.location.hostname === '127.0.0.1' ||
+           window.location.hostname.includes('192.168.');
+  };
+
+  // 🏠 MOCK P2P DATA FOR DEVELOPMENT
+  const generateMockMeshData = () => {
+    const mockConnections: MeshConnection[] = [
+      {
+        peerId: 'dev-alice-p2p',
+        displayName: 'Alice (Dev)',
+        socketId: 'socket-alice-123',
+        roomId: 'main-stage-chat',
+        p2pPeers: ['dev-bob-p2p', 'dev-charlie-p2p'],
+        connectionQuality: 'excellent',
+        lastSeen: Date.now() - 2000,
+        isP2PActive: true
+      },
+      {
+        peerId: 'dev-bob-p2p',
+        displayName: 'Bob (Dev)',
+        socketId: 'socket-bob-456',
+        roomId: 'main-stage-chat',
+        p2pPeers: ['dev-alice-p2p'],
+        connectionQuality: 'good',
+        lastSeen: Date.now() - 1000,
+        isP2PActive: true
+      },
+      {
+        peerId: 'dev-charlie-p2p',
+        displayName: 'Charlie (Dev)',
+        socketId: 'socket-charlie-789',
+        roomId: 'side-stage-chat',
+        p2pPeers: ['dev-alice-p2p'],
+        connectionQuality: 'excellent',
+        lastSeen: Date.now() - 500,
+        isP2PActive: true
+      },
+      {
+        peerId: 'dev-diana-ws',
+        displayName: 'Diana (Dev - WebSocket)',
+        socketId: 'socket-diana-101',
+        roomId: 'main-stage-chat',
+        p2pPeers: [],
+        connectionQuality: 'good',
+        lastSeen: Date.now() - 3000,
+        isP2PActive: false
+      }
+    ];
+
+    const mockMetrics: MeshMetrics = {
+      totalP2PAttempts: 8,
+      successfulP2PConnections: 6,
+      failedP2PConnections: 2,
+      activeP2PConnections: 3,
+      averageConnectionTime: 1200,
+      meshUpgradeRate: 75,
+      p2pMessageCount: 42,
+      fallbackCount: 18
+    };
+
+    const mockTopology = {
+      'main-stage-chat': mockConnections.filter(c => c.roomId === 'main-stage-chat'),
+      'side-stage-chat': mockConnections.filter(c => c.roomId === 'side-stage-chat')
+    };
+
+    return {
+      metrics: mockMetrics,
+      connections: mockConnections,
+      topology: mockTopology
+    };
+  };
+
   // Use Next.js API route which proxies to the correct WebSocket server
   const getApiUrl = () => {
     if (!isClient) return '';
@@ -56,6 +132,39 @@ export function MeshNetworkStatus({ isLoading = false }: MeshNetworkStatusProps)
   useEffect(() => {
     if (!isClient) return;
 
+    // 🏠 DEVELOPMENT MODE: Use mock data
+    if (isDevelopment()) {
+      console.log('🏠 [MeshStatus] Development mode detected - using mock P2P data');
+      console.log('🏠 [MeshStatus] This simulates mesh networking for admin dashboard testing');
+      console.log('🏠 [MeshStatus] Bypassing API call - using local mock data for instant load');
+      
+      const mockData = generateMockMeshData();
+      setMeshData(mockData);
+      setLastUpdate(Date.now());
+      setError(null);
+      
+      console.log('🏠 [MeshStatus] Mock data loaded successfully:', {
+        connections: mockData.connections.length,
+        activeP2P: mockData.connections.filter(c => c.isP2PActive).length,
+        rooms: Object.keys(mockData.topology).length,
+        metrics: mockData.metrics
+      });
+      
+      // Still update periodically in dev to simulate real-time changes
+      const interval = setInterval(() => {
+        const freshMockData = generateMockMeshData();
+        // Add some variation to simulate real-time changes
+        freshMockData.metrics.p2pMessageCount += Math.floor(Math.random() * 3);
+        freshMockData.metrics.fallbackCount += Math.floor(Math.random() * 2);
+        
+        setMeshData(freshMockData);
+        setLastUpdate(Date.now());
+      }, 5000);
+      
+      return () => clearInterval(interval);
+    }
+
+    // 🌐 PRODUCTION MODE: Fetch real data
     const fetchMeshData = async () => {
       try {
         setError(null);
@@ -75,7 +184,8 @@ export function MeshNetworkStatus({ isLoading = false }: MeshNetworkStatusProps)
           headers: {
             'Authorization': `Basic ${btoa('th3p3ddl3r:letsmakeatrade')}`,
             'Content-Type': 'application/json'
-          }
+          },
+          credentials: 'include'
         });
         
         console.log('🌐 [MeshStatus] Response:', response.status, response.statusText);
@@ -83,6 +193,16 @@ export function MeshNetworkStatus({ isLoading = false }: MeshNetworkStatusProps)
         if (response.ok) {
           const data = await response.json();
           console.log('🌐 [MeshStatus] Data received:', data);
+          
+          // 🔍 DEBUG: Log the exact structure
+          console.log('🔍 [MeshStatus] Data structure:', {
+            hasMetrics: !!data.metrics,
+            hasConnections: !!data.connections,
+            hasTopology: !!data.topology,
+            metrics: data.metrics,
+            connectionsLength: data.connections?.length || 0,
+            topologyKeys: Object.keys(data.topology || {})
+          });
           
           // Validate data structure before setting state
           if (data && typeof data === 'object') {
@@ -132,13 +252,15 @@ export function MeshNetworkStatus({ isLoading = false }: MeshNetworkStatusProps)
       }
     };
 
-    // Initial fetch
-    fetchMeshData();
+    // Initial fetch (only in production)
+    if (!isDevelopment()) {
+      fetchMeshData();
 
-    // Refresh every 5 seconds for real-time monitoring (reduced frequency to avoid spam)
-    const interval = setInterval(fetchMeshData, 5000);
+      // Refresh every 5 seconds for real-time monitoring (reduced frequency to avoid spam)
+      const interval = setInterval(fetchMeshData, 5000);
 
-    return () => clearInterval(interval);
+      return () => clearInterval(interval);
+    }
   }, [isClient]);
 
   // Loading state
@@ -157,77 +279,78 @@ export function MeshNetworkStatus({ isLoading = false }: MeshNetworkStatusProps)
     );
   }
 
-  // Error state - still show component but with error message
+  // Error state - show clear connection error
   if (error) {
     return (
-      <div className="bg-gradient-to-r from-purple-900/20 to-blue-900/20 rounded-xl border-2 border-purple-500/30 p-6 mb-6 backdrop-blur-sm">
+      <div className="bg-gradient-to-r from-red-900/20 to-orange-900/20 rounded-xl border-2 border-red-500/30 p-6 mb-6 backdrop-blur-sm">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
-            <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></div>
+            <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse"></div>
             <h2 className="text-2xl font-bold text-white flex items-center">
               🌐 Mesh Network Status
-              <span className="ml-2 text-sm font-normal text-gray-300">
-                (Phase 1 - Initializing...)
+              <span className="ml-2 text-sm font-normal text-red-300">
+                (Connection Failed)
               </span>
             </h2>
           </div>
         </div>
 
         {/* Error Message */}
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-4">
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-4">
           <div className="flex items-center">
-            <span className="text-yellow-400 text-xl mr-2">⚠️</span>
+            <span className="text-red-400 text-xl mr-2">❌</span>
             <div>
-              <div className="text-yellow-200 font-medium">Mesh Endpoint Issue</div>
-              <div className="text-yellow-300 text-sm mt-1">{error}</div>
-              <div className="text-yellow-400 text-xs mt-2">
-                The mesh networking system is trying to connect. Check the browser console for details.
+              <div className="text-red-200 font-medium">WebSocket Server Unreachable</div>
+              <div className="text-red-300 text-sm mt-1">{error}</div>
+              <div className="text-red-400 text-xs mt-2">
+                Cannot fetch real P2P data. Check WebSocket server connectivity.
               </div>
             </div>
           </div>
         </div>
 
-        {/* Placeholder Metrics */}
+        {/* Error Metrics - No Data Available */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-600/50">
-            <div className="text-2xl font-bold text-gray-400">--</div>
-            <div className="text-sm text-gray-300">P2P Active Users</div>
-            <div className="text-xs text-gray-500">Connecting...</div>
+          <div className="bg-red-800/30 rounded-lg p-4 border border-red-600/50">
+            <div className="text-2xl font-bold text-red-400">❌</div>
+            <div className="text-sm text-red-300">P2P Active Users</div>
+            <div className="text-xs text-red-500">No data</div>
           </div>
 
-          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-600/50">
-            <div className="text-2xl font-bold text-gray-400">--</div>
-            <div className="text-sm text-gray-300">Active P2P Links</div>
-            <div className="text-xs text-gray-500">Connecting...</div>
+          <div className="bg-red-800/30 rounded-lg p-4 border border-red-600/50">
+            <div className="text-2xl font-bold text-red-400">❌</div>
+            <div className="text-sm text-red-300">Active P2P Links</div>
+            <div className="text-xs text-red-500">No data</div>
           </div>
 
-          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-600/50">
-            <div className="text-2xl font-bold text-gray-400">--</div>
-            <div className="text-sm text-gray-300">Upgrade Success</div>
-            <div className="text-xs text-gray-500">Connecting...</div>
+          <div className="bg-red-800/30 rounded-lg p-4 border border-red-600/50">
+            <div className="text-2xl font-bold text-red-400">❌</div>
+            <div className="text-sm text-red-300">Upgrade Success</div>
+            <div className="text-xs text-red-500">No data</div>
           </div>
 
-          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-600/50">
-            <div className="text-2xl font-bold text-gray-400">--</div>
-            <div className="text-sm text-gray-300">Avg Latency</div>
-            <div className="text-xs text-gray-500">Connecting...</div>
+          <div className="bg-red-800/30 rounded-lg p-4 border border-red-600/50">
+            <div className="text-2xl font-bold text-red-400">❌</div>
+            <div className="text-sm text-red-300">Avg Latency</div>
+            <div className="text-xs text-red-500">No data</div>
           </div>
         </div>
 
         {/* Debug Info */}
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-blue-200 mb-2">🔍 Debug Info</h3>
-          <div className="text-blue-300 text-sm space-y-1">
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-red-200 mb-2">🔍 Connection Debug</h3>
+          <div className="text-red-300 text-sm space-y-1">
             <div>• Environment: {typeof window !== 'undefined' ? window.location.hostname : 'unknown'}</div>
             <div>• API URL: {getApiUrl()}</div>
             <div>• Error: {error}</div>
+            <div>• Status: WebSocket server connection failed</div>
           </div>
         </div>
 
         {/* Status */}
-        <div className="mt-4 text-xs text-gray-400">
-          Phase 1: Hybrid Architecture • Attempting reconnection every 5s
+        <div className="mt-4 text-xs text-red-400">
+          ❌ WebSocket Server Required • Check server connectivity
         </div>
       </div>
     );
@@ -284,7 +407,7 @@ export function MeshNetworkStatus({ isLoading = false }: MeshNetworkStatusProps)
           <h2 className="text-2xl font-bold text-white flex items-center">
             🌐 Mesh Network Status
             <span className="ml-2 text-sm font-normal text-gray-300">
-              (Phase 1 - Hybrid Architecture)
+              ({isDevelopment() ? 'Development - Mock P2P Data' : 'Phase 1 - Hybrid Architecture'})
             </span>
           </h2>
         </div>
@@ -490,7 +613,7 @@ export function MeshNetworkStatus({ isLoading = false }: MeshNetworkStatusProps)
           <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 rounded">poor</span>
         </div>
         <div>
-          Phase 1: Hybrid Architecture • Auto-refresh every 5s
+          {isDevelopment() ? 'Phase 1: Mock Development Mode • Auto-refresh every 5s' : 'Phase 1: Hybrid Architecture • Auto-refresh every 5s'}
         </div>
       </div>
     </div>

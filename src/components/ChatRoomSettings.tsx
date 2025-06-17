@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { usePushNotifications } from '@/hooks/use-push-notifications';
-import { useBackgroundNotifications } from '@/hooks/use-background-notifications';
+import { usePushNotifications } from '../hooks/use-push-notifications';
+import { useBackgroundNotifications } from '../hooks/use-background-notifications';
 
 interface ChatRoomSettingsProps {
   roomId: string;

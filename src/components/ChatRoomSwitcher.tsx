@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
-import { RoomCodeManager } from '@/utils/room-codes';
-import { useUnreadMessages } from '@/hooks/use-unread-messages';
+import { RoomCodeManager } from '../utils/room-codes';
+import { useUnreadMessages } from '../hooks/use-unread-messages';
 
 interface ChatRoomSwitcherProps {
   currentRoomId: string;

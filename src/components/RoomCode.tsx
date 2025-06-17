@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { RoomCodeManager, RoomCodeDiagnostics } from '@/utils/room-codes';
+import { RoomCodeManager, RoomCodeDiagnostics } from '../utils/room-codes';
 
 interface RoomCodeJoinProps {
   className?: string;

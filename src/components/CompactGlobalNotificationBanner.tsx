@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { usePushNotifications } from '@/hooks/use-push-notifications';
+import { usePushNotifications } from '../hooks/use-push-notifications';
 
 interface CompactGlobalNotificationBannerProps {
   className?: string;

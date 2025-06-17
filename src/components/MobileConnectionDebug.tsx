@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MobileNetworkDebug } from '@/utils/mobile-network-debug';
+import { MobileNetworkDebug } from '../utils/mobile-network-debug';
 
 interface MobileConnectionDebugProps {
   serverUrl?: string;

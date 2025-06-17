@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MessagePersistence } from '@/utils/message-persistence';
-import { ServerUtils } from '@/utils/server-utils';
+import { MessagePersistence } from '../utils/message-persistence';
+import { ServerUtils } from '../utils/server-utils';
 
 interface ConnectionTestProps {
   className?: string;

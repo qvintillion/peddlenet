@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePushNotifications } from '@/hooks/use-push-notifications';
+import { usePushNotifications } from '../hooks/use-push-notifications';
 
 interface NotificationSettingsProps {
   roomId?: string;

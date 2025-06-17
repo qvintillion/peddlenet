@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useBackgroundNotifications } from '@/hooks/use-background-notifications';
+import { useBackgroundNotifications } from '../hooks/use-background-notifications';
 
 interface FavoriteButtonProps {
   roomId: string;

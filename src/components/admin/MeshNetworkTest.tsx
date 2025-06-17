@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useHybridChat } from '@/hooks/use-hybrid-chat';
+import { useHybridChat } from '../hooks/use-hybrid-chat';
 
 interface MeshTestProps {
   roomId?: string;

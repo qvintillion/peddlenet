@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useBackgroundNotifications } from '@/hooks/use-background-notifications';
-import { RoomCodeManager } from '@/utils/room-codes';
+import { useBackgroundNotifications } from '../hooks/use-background-notifications';
+import { RoomCodeManager } from '../utils/room-codes';
 
 interface FavoriteRoom {
   roomId: string;

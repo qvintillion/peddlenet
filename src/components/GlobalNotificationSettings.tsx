@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { usePushNotifications } from '@/hooks/use-push-notifications';
+import { usePushNotifications } from '../hooks/use-push-notifications';
 
 interface GlobalNotificationSettingsProps {
   className?: string;

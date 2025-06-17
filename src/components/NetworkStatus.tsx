@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ConnectionHealthMonitor, type ConnectionHealth } from '@/utils/connection-resilience';
+import { ConnectionHealthMonitor, type ConnectionHealth } from '../utils/connection-resilience';
 
 interface NetworkStatusProps {
   className?: string;
