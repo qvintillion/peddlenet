@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ActivityFeed } from '@/components/admin/ActivityFeed.tsx';
-import { AdminControls } from '@/components/admin/AdminControls.tsx';
-import { DetailedUserView } from '@/components/admin/DetailedUserView.tsx';
-import { DetailedRoomView } from '@/components/admin/DetailedRoomView.tsx';
-import { MeshNetworkStatus } from '@/components/admin/MeshNetworkStatus.tsx';
+import { ActivityFeed } from '../../components/admin/ActivityFeed';
+import { AdminControls } from '../../components/admin/AdminControls';
+import { DetailedUserView } from '../../components/admin/DetailedUserView';
+import { DetailedRoomView } from '../../components/admin/DetailedRoomView';
+import { MeshNetworkStatus } from '../../components/admin/MeshNetworkStatus';
 
 // Force dynamic rendering (no static generation)
 export const dynamic = 'force-dynamic';
