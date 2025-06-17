@@ -63,7 +63,10 @@
     "sqlite3": "^5.1.7",
     "tailwindcss": "3.4.0",
     "autoprefixer": "10.4.16",
-    "postcss": "8.4.32"
+    "postcss": "8.4.32",
+    "typescript": "^5",
+    "@types/react": "^19",
+    "@types/react-dom": "^19"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -85,8 +88,7 @@
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "firebase-tools": "^13.0.0",
-    "jest": "^29.7.0",
-    "typescript": "^5"
+    "jest": "^29.7.0"
   },
   "overrides": {
     "sourcemap-codec": "npm:@jridgewell/sourcemap-codec@^1.5.0",
