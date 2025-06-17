@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   --background: #ffffff;
@@ -40,3 +38,4 @@ body {
 .dot {
   transition: transform 0.2s ease;
 }
+
