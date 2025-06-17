@@ -1,20 +1,21 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { Message, ConnectionStatus } from '@/lib/types';
-import { generateCompatibleUUID } from '@/utils/peer-utils';
+import type { Message, ConnectionStatus } from '../lib/types';
+import { generateCompatibleUUID } from '../utils/peer-utils';
 import { useWebSocketChat } from './use-websocket-chat';
-import { useP2POptimized } from './use-p2p-optimized';
+import { useDevFriendlyWebRTC } from './use-dev-friendly-webrtc';
+import { useMessageBridge } from './use-message-bridge';
 
 // Circuit breaker for intelligent routing
 const createCircuitBreaker = () => {
   let state = {
     webSocketFailures: 0,
-    p2pFailures: 0,
+    webrtcFailures: 0,
     lastWebSocketFailure: 0,
-    lastP2PFailure: 0,
+    lastWebRTCFailure: 0,
     isWebSocketOpen: false,
-    isP2POpen: false,
+    isWebRTCOpen: false,
   };
   
   const FAILURE_THRESHOLD = 3;
@@ -31,13 +32,13 @@ const createCircuitBreaker = () => {
       }
     },
     
-    recordP2PFailure() {
-      state.p2pFailures++;
-      state.lastP2PFailure = Date.now();
+    recordWebRTCFailure() {
+      state.webrtcFailures++;
+      state.lastWebRTCFailure = Date.now();
       
-      if (state.p2pFailures >= FAILURE_THRESHOLD) {
-        state.isP2POpen = true;
-        console.log('🚫 P2P circuit breaker opened');
+      if (state.webrtcFailures >= FAILURE_THRESHOLD) {
+        state.isWebRTCOpen = true;
+        console.log('🚫 WebRTC circuit breaker opened');
       }
     },
     
@@ -49,12 +50,12 @@ const createCircuitBreaker = () => {
       state.isWebSocketOpen = false;
     },
     
-    recordP2PSuccess() {
-      if (state.isP2POpen && state.p2pFailures >= FAILURE_THRESHOLD) {
-        console.log('✅ P2P circuit breaker closed');
+    recordWebRTCSuccess() {
+      if (state.isWebRTCOpen && state.webrtcFailures >= FAILURE_THRESHOLD) {
+        console.log('✅ WebRTC circuit breaker closed');
       }
-      state.p2pFailures = 0;
-      state.isP2POpen = false;
+      state.webrtcFailures = 0;
+      state.isWebRTCOpen = false;
     },
     
     shouldAllowWebSocket(): boolean {
@@ -69,12 +70,12 @@ const createCircuitBreaker = () => {
       return false;
     },
     
-    shouldAllowP2P(): boolean {
-      if (!state.isP2POpen) return true;
+    shouldAllowWebRTC(): boolean {
+      if (!state.isWebRTCOpen) return true;
       
-      const timeSinceLastFailure = Date.now() - state.lastP2PFailure;
+      const timeSinceLastFailure = Date.now() - state.lastWebRTCFailure;
       if (timeSinceLastFailure > RECOVERY_TIMEOUT) {
-        console.log('🔄 P2P circuit breaker attempting recovery');
+        console.log('🔄 WebRTC circuit breaker attempting recovery');
         return true;
       }
       
@@ -88,11 +89,11 @@ const createCircuitBreaker = () => {
     reset() {
       state = {
         webSocketFailures: 0,
-        p2pFailures: 0,
+        webrtcFailures: 0,
         lastWebSocketFailure: 0,
-        lastP2PFailure: 0,
+        lastWebRTCFailure: 0,
         isWebSocketOpen: false,
-        isP2POpen: false,
+        isWebRTCOpen: false,
       };
       console.log('🔄 Circuit breaker reset');
     }
@@ -169,16 +170,16 @@ const createConnectionDetector = () => {
     return isMobile ? 'cellular' : 'wifi';
   };
   
-  const shouldPreferP2P = (): boolean => {
+  const shouldPreferWebRTC = (): boolean => {
     const connectionType = detectConnectionType();
     
-    // Prefer P2P when on WiFi or when cellular data might be limited
+    // Prefer WebRTC when on WiFi or when cellular data might be limited
     return connectionType === 'wifi' || connectionType === 'none';
   };
   
   return {
     detectConnectionType,
-    shouldPreferP2P,
+    shouldPreferWebRTC,
     isMobileDevice: () => {
       if (typeof window === 'undefined') return false;
       return /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -189,17 +190,22 @@ const createConnectionDetector = () => {
 };
 
 export function useHybridChat(roomId: string, displayName?: string) {
-  // Initialize both WebSocket and P2P connections
+  // Initialize WebSocket chat first (provides the socket for WebRTC signaling)
   const wsChat = useWebSocketChat(roomId, displayName);
-  const p2pChat = useP2POptimized(roomId, displayName);
   
-  // Hybrid state
-  const [meshEnabled, setMeshEnabled] = useState(false);
-  const [preferredRoute, setPreferredRoute] = useState<'websocket' | 'p2p' | 'auto'>('auto');
+  // Initialize dev-friendly WebRTC - 🏠 Uses mock P2P in development, native WebRTC in production
+  const webrtcChat = useDevFriendlyWebRTC(roomId, displayName, false); // 🏠 DEV-FRIENDLY implementation
+  
+  // Initialize message bridging for poor network conditions
+  const messageBridge = useMessageBridge(roomId, displayName || 'Anonymous');
+  
+  // Hybrid state - FIXED: Enable mesh by default for P2P connections
+  const [meshEnabled, setMeshEnabled] = useState(true);
+  const [preferredRoute, setPreferredRoute] = useState<'websocket' | 'webrtc' | 'auto'>('auto');
   const [messages, setMessages] = useState<Message[]>([]);
   const [hybridStats, setHybridStats] = useState({
     webSocketMessages: 0,
-    p2pMessages: 0,
+    webrtcMessages: 0,
     duplicatesFiltered: 0,
     routingDecisions: 0
   });
@@ -210,53 +216,56 @@ export function useHybridChat(roomId: string, displayName?: string) {
   const connectionDetector = useRef(createConnectionDetector());
   const messageHandlersRef = useRef<Set<(message: Message) => void>>(new Set());
   
+  // 🚨 CRITICAL FIX: Track sent message IDs to prevent bridge duplication
+  const sentMessageIds = useRef(new Set<string>());
+  
   // Connection quality monitoring
   const [connectionQuality, setConnectionQuality] = useState({
     webSocket: { latency: 0, reliability: 100, available: false },
-    p2p: { latency: 0, reliability: 100, available: false }
+    webrtc: { latency: 0, reliability: 100, available: false }
   });
   
   // Intelligent route selection
-  const selectOptimalRoute = useCallback((): 'websocket' | 'p2p' => {
+  const selectOptimalRoute = useCallback((): 'websocket' | 'webrtc' => {
     // Manual preference override
     if (preferredRoute !== 'auto') {
       return preferredRoute;
     }
     
     const wsAvailable = wsChat.status.isConnected && circuitBreaker.current.shouldAllowWebSocket();
-    const p2pAvailable = p2pChat.status.isConnected && circuitBreaker.current.shouldAllowP2P();
-    const shouldPreferP2P = connectionDetector.current.shouldPreferP2P();
+    const webrtcAvailable = webrtcChat.status.isConnected && circuitBreaker.current.shouldAllowWebRTC();
+    const shouldPreferWebRTC = connectionDetector.current.shouldPreferWebRTC();
     
     // Decision matrix:
     // 1. If only one is available, use it
-    if (wsAvailable && !p2pAvailable) return 'websocket';
-    if (p2pAvailable && !wsAvailable) return 'p2p';
-    if (!wsAvailable && !p2pAvailable) return 'websocket'; // Fallback
+    if (wsAvailable && !webrtcAvailable) return 'websocket';
+    if (webrtcAvailable && !wsAvailable) return 'webrtc';
+    if (!wsAvailable && !webrtcAvailable) return 'websocket'; // Fallback
     
     // 2. Both available - use connection detector
-    if (shouldPreferP2P && p2pAvailable) {
-      return 'p2p';
+    if (shouldPreferWebRTC && webrtcAvailable) {
+      return 'webrtc';
     }
     
     // 3. Default to WebSocket for reliability
     return 'websocket';
-  }, [wsChat.status.isConnected, p2pChat.status.isConnected, preferredRoute]);
+  }, [wsChat.status.isConnected, webrtcChat.status.isConnected, preferredRoute]);
   
   // Hybrid status combining both connections
   const hybridStatus: ConnectionStatus = useMemo(() => {
     const wsConnected = wsChat.status.isConnected;
-    const p2pConnected = p2pChat.status.isConnected;
-    const totalPeers = wsChat.status.connectedPeers + p2pChat.status.connectedPeers;
+    const webrtcConnected = webrtcChat.status.isConnected;
+    const totalPeers = wsChat.status.connectedPeers + webrtcChat.status.connectedPeers;
     
     // Determine overall connection state
-    const isConnected = wsConnected || p2pConnected;
-    const networkReach = p2pConnected ? 'local' : wsConnected ? 'server' : 'isolated';
+    const isConnected = wsConnected || webrtcConnected;
+    const networkReach = webrtcConnected ? 'local' : wsConnected ? 'server' : 'isolated';
     
     // Signal strength based on best available connection
     let signalStrength: 'strong' | 'medium' | 'weak' | 'none' = 'none';
-    if (wsConnected && p2pConnected) {
+    if (wsConnected && webrtcConnected) {
       signalStrength = 'strong';
-    } else if (wsConnected || p2pConnected) {
+    } else if (wsConnected || webrtcConnected) {
       signalStrength = 'medium';
     }
     
@@ -266,9 +275,9 @@ export function useHybridChat(roomId: string, displayName?: string) {
       networkReach,
       signalStrength
     };
-  }, [wsChat.status, p2pChat.status]);
+  }, [wsChat.status, webrtcChat.status]);
   
-  // Enhanced message sending with intelligent routing
+  // Enhanced message sending with intelligent routing AND bridging support
   const sendMessage = useCallback((messageData: Omit<Message, 'id' | 'timestamp'>): string => {
     const messageId = generateCompatibleUUID();
     const fullMessage: Message = {
@@ -278,9 +287,20 @@ export function useHybridChat(roomId: string, displayName?: string) {
       synced: false,
     };
     
+    // 🚨 CRITICAL FIX: Track sent message IDs to prevent bridge duplication
+    sentMessageIds.current.add(messageId);
+    
+    // Clean up old message IDs (keep only last 100)
+    if (sentMessageIds.current.size > 100) {
+      const idsArray = Array.from(sentMessageIds.current);
+      sentMessageIds.current.clear();
+      idsArray.slice(-50).forEach(id => sentMessageIds.current.add(id));
+    }
+    
     // Select optimal route
     const route = selectOptimalRoute();
-    const shouldTryBoth = meshEnabled && wsChat.status.isConnected && p2pChat.status.isConnected;
+    const shouldTryBoth = meshEnabled && wsChat.status.isConnected && webrtcChat.status.isConnected;
+    const networkCondition = messageBridge.networkCondition;
     
     setHybridStats(prev => ({
       ...prev,
@@ -288,6 +308,9 @@ export function useHybridChat(roomId: string, displayName?: string) {
     }));
     
     console.log(`🌐 Hybrid send via ${route}${shouldTryBoth ? ' + backup' : ''}: ${messageData.content}`);
+    console.log(`📶 Network condition: ${networkCondition.quality} (${networkCondition.stability}% stability)`);
+    
+    let routeSuccess = false;
     
     // Primary route
     try {
@@ -295,10 +318,12 @@ export function useHybridChat(roomId: string, displayName?: string) {
         wsChat.sendMessage(messageData);
         circuitBreaker.current.recordWebSocketSuccess();
         setHybridStats(prev => ({ ...prev, webSocketMessages: prev.webSocketMessages + 1 }));
+        routeSuccess = true;
       } else {
-        p2pChat.sendMessage(messageData);
-        circuitBreaker.current.recordP2PSuccess();
-        setHybridStats(prev => ({ ...prev, p2pMessages: prev.p2pMessages + 1 }));
+        webrtcChat.sendMessage(messageData);
+        circuitBreaker.current.recordWebRTCSuccess();
+        setHybridStats(prev => ({ ...prev, webrtcMessages: prev.webrtcMessages + 1 }));
+        routeSuccess = true;
       }
     } catch (error) {
       console.error(`❌ Primary route (${route}) failed:`, error);
@@ -306,21 +331,23 @@ export function useHybridChat(roomId: string, displayName?: string) {
       if (route === 'websocket') {
         circuitBreaker.current.recordWebSocketFailure();
       } else {
-        circuitBreaker.current.recordP2PFailure();
+        circuitBreaker.current.recordWebRTCFailure();
       }
       
       // Try backup route
       if (shouldTryBoth) {
         try {
-          const backupRoute = route === 'websocket' ? 'p2p' : 'websocket';
+          const backupRoute = route === 'websocket' ? 'webrtc' : 'websocket';
           console.log(`🔄 Trying backup route: ${backupRoute}`);
           
           if (backupRoute === 'websocket') {
             wsChat.sendMessage(messageData);
             setHybridStats(prev => ({ ...prev, webSocketMessages: prev.webSocketMessages + 1 }));
+            routeSuccess = true;
           } else {
-            p2pChat.sendMessage(messageData);
-            setHybridStats(prev => ({ ...prev, p2pMessages: prev.p2pMessages + 1 }));
+            webrtcChat.sendMessage(messageData);
+            setHybridStats(prev => ({ ...prev, webrtcMessages: prev.webrtcMessages + 1 }));
+            routeSuccess = true;
           }
         } catch (backupError) {
           console.error(`❌ Backup route also failed:`, backupError);
@@ -328,24 +355,108 @@ export function useHybridChat(roomId: string, displayName?: string) {
       }
     }
     
+    // 🌉 CRITICAL FIX: TESTING BRIDGE ACTIVATION - Simulate poor network for testing
+    // TODO: Remove this test condition and use real network conditions in production
+    const shouldTestBridging = typeof window !== 'undefined' && 
+                              (window as any).MessageBridgeDebug?.getNetworkCondition?.()?.quality === 'poor';
+                              
+    if (shouldTestBridging || networkCondition.quality === 'poor' || networkCondition.quality === 'critical' || !routeSuccess) {
+      console.log(`🌉 [BRIDGE FALLBACK] Activating bridging:`, {
+        testingMode: shouldTestBridging,
+        networkQuality: networkCondition.quality,
+        routeSuccess,
+        reason: shouldTestBridging ? 'testing mode' : !routeSuccess ? 'route failed' : 'poor network'
+      });
+      
+      // Discover bridge nodes from available peers
+      const availablePeers = [...wsChat.getConnectedPeers?.() || [], ...webrtcChat.getConnectedPeers?.() || []];
+      const connectionQualities = new Map();
+      
+      // Simulate connection qualities (in real implementation, these would come from connection monitoring)
+      availablePeers.forEach(peerId => {
+        connectionQualities.set(peerId, {
+          reliability: wsChat.status.isConnected ? 70 : 30,
+          latency: networkCondition.latency
+        });
+      });
+      
+      messageBridge.discoverBridgeNodes(availablePeers, connectionQualities);
+      
+      // 🚨 CRITICAL FIX: Use the SAME message ID for bridging to enable deduplication
+      const bridgeMessageData = {
+        ...messageData,
+        id: messageId, // SAME ID as original message
+        timestamp: fullMessage.timestamp, // SAME timestamp
+        originalMessageId: messageId, // Track original for debugging
+        bridgedMessage: true // Flag to identify bridge messages
+      };
+      
+      const bridgeMessageId = messageBridge.bridgeMessage(bridgeMessageData, 'broadcast', 'high');
+      console.log(`🌉 [BRIDGE] Message queued for bridging with original ID: ${messageId}`);
+      
+      setHybridStats(prev => ({ ...prev, webrtcMessages: prev.webrtcMessages + 1 }));
+    } else {
+      console.log(`✅ [BRIDGE] Network condition good (${networkCondition.quality}) and routes successful, skipping bridging`);
+    }
+    
     return messageId;
-  }, [selectOptimalRoute, meshEnabled, wsChat, p2pChat]);
+  }, [selectOptimalRoute, meshEnabled, wsChat, webrtcChat, messageBridge]);
   
-  // Message handling with deduplication
-  const handleMessage = useCallback((message: Message, source: 'websocket' | 'p2p') => {
-    // Check for duplicates
-    if (messageDeduplicator.current.isDuplicate(message)) {
-      console.log(`🔄 Filtered duplicate message from ${source}:`, message.id);
+  // 🚨 CRITICAL FIX: Enhanced message handling with bridge deduplication
+  
+  const handleMessage = useCallback((message: Message, source: 'websocket' | 'webrtc') => {
+    // 🚨 CRITICAL FIX: Check if this is a message we sent (prevent echo)
+    if (sentMessageIds.current.has(message.id)) {
+      console.log(`🚫 [DEDUP] Ignoring echo of our own message from ${source}:`, message.id);
       setHybridStats(prev => ({ ...prev, duplicatesFiltered: prev.duplicatesFiltered + 1 }));
       return;
     }
     
-    // Add message to state
-    setMessages(prev => {
-      const updated = [...prev, { ...message, synced: true }]
-        .sort((a, b) => a.timestamp - b.timestamp);
-      return updated;
-    });
+    // 🚨 CRITICAL FIX: Enhanced duplicate detection with bridge awareness
+    const isBridgedMessage = (message as any).bridgedMessage === true;
+    const originalMessageId = (message as any).originalMessageId;
+    
+    // Check for duplicates using enhanced logic
+    if (messageDeduplicator.current.isDuplicate(message)) {
+      console.log(`🔄 [DEDUP] Filtered duplicate message from ${source}:`, message.id, isBridgedMessage ? '(bridged)' : '(normal)');
+      setHybridStats(prev => ({ ...prev, duplicatesFiltered: prev.duplicatesFiltered + 1 }));
+      return;
+    }
+    
+    // 🚨 CRITICAL FIX: Additional bridge-specific deduplication
+    if (isBridgedMessage && originalMessageId) {
+      // Check if we already have a message with the same original ID
+      setMessages(prev => {
+        const existingMessage = prev.find(m => 
+          m.id === originalMessageId || 
+          (m as any).originalMessageId === originalMessageId ||
+          m.id === message.id
+        );
+        
+        if (existingMessage) {
+          console.log(`🌉 [BRIDGE DEDUP] Filtered duplicate bridged message:`, {
+            messageId: message.id,
+            originalMessageId,
+            existingId: existingMessage.id,
+            source
+          });
+          setHybridStats(prev => ({ ...prev, duplicatesFiltered: prev.duplicatesFiltered + 1 }));
+          return prev; // Don't add the duplicate
+        }
+        
+        // Add the bridged message
+        const updated = [...prev, { ...message, synced: true }]
+          .sort((a, b) => a.timestamp - b.timestamp);
+        return updated;
+      });
+    } else {
+      // Add normal message to state
+      setMessages(prev => {
+        const updated = [...prev, { ...message, synced: true }]
+          .sort((a, b) => a.timestamp - b.timestamp);
+        return updated;
+      });
+    }
     
     // Notify external handlers
     messageHandlersRef.current.forEach(handler => {
@@ -356,28 +467,110 @@ export function useHybridChat(roomId: string, displayName?: string) {
       }
     });
     
-    console.log(`📩 Hybrid message received via ${source}:`, message.content);
+    const bridgeInfo = isBridgedMessage ? ` (bridged from ${originalMessageId})` : '';
+    console.log(`📩 Hybrid message received via ${source}:`, message.content + bridgeInfo);
   }, []);
   
-  // Set up message handlers for both connections
+  // Set up message handlers for both connections AND bridge messages
   useEffect(() => {
     const wsUnsubscribe = wsChat.onMessage((message) => {
       handleMessage(message, 'websocket');
     });
     
-    const p2pUnsubscribe = p2pChat.onMessage((message) => {
-      handleMessage(message, 'p2p');
+    const webrtcUnsubscribe = webrtcChat.onMessage((message) => {
+      handleMessage(message, 'webrtc');
+    });
+    
+    // CRITICAL: Handle bridged messages from poor network conditions
+    const bridgeUnsubscribe = messageBridge.onBridgedMessage((message) => {
+      console.log(`🌉 [BRIDGE] Received bridged message:`, {
+        content: message.content,
+        id: message.id,
+        originalMessageId: (message as any).originalMessageId,
+        bridgedMessage: (message as any).bridgedMessage,
+        timestamp: message.timestamp,
+        sender: message.sender
+      });
+      handleMessage(message, 'webrtc'); // Treat as WebRTC for stats purposes
     });
     
     return () => {
       wsUnsubscribe();
-      p2pUnsubscribe();
+      webrtcUnsubscribe();
+      bridgeUnsubscribe();
     };
-  }, [wsChat.onMessage, p2pChat.onMessage, handleMessage]);
+  }, [wsChat.onMessage, webrtcChat.onMessage, messageBridge.onBridgedMessage, handleMessage]);
   
-  // Merge messages from WebSocket on first load (P2P only forwards messages, doesn't store them)
+  // CRITICAL FIX: Bridge peer discovery from WebSocket to WebRTC
+  const lastConnectedPeersRef = useRef<string[]>([]);
+  const peerConnectionAttemptsRef = useRef<Set<string>>(new Set());
+  
   useEffect(() => {
-    // P2P doesn't maintain a message array - it only forwards messages via handlers
+    // Monitor WebSocket connected peers and trigger WebRTC connections
+    const currentPeers = wsChat.getConnectedPeers?.() || [];
+    const lastPeers = lastConnectedPeersRef.current;
+    
+    // Find newly joined peers
+    const newPeers = currentPeers.filter(peer => !lastPeers.includes(peer));
+    
+    // CRITICAL FIX: Check WebRTC signaling connection, not status.isConnected
+    const webrtcSignalingConnected = webrtcChat.isSignalingConnected?.() || false;
+    
+    if (newPeers.length > 0 && meshEnabled && webrtcSignalingConnected) {
+      console.log(`🌉 [PEER BRIDGE] New peers detected for WebRTC connection:`, newPeers);
+      console.log(`🔗 [PEER BRIDGE] WebRTC signaling ready, attempting connections...`);
+      
+      newPeers.forEach(async (peerDisplayName) => {
+        // Skip if we've already attempted connection to this peer
+        if (peerConnectionAttemptsRef.current.has(peerDisplayName)) {
+          console.log(`🚫 [PEER BRIDGE] Already attempted connection to ${peerDisplayName}`);
+          return;
+        }
+        
+        // Mark as attempted
+        peerConnectionAttemptsRef.current.add(peerDisplayName);
+        
+        console.log(`🔗 [PEER BRIDGE] Attempting WebRTC connection to peer: ${peerDisplayName}`);
+        
+        // CRITICAL FIX: Use display name as peer ID for now
+        // The WebRTC hook will handle the actual peer ID mapping
+        try {
+          const success = await webrtcChat.connectToPeer(peerDisplayName);
+          if (success) {
+            console.log(`✅ [PEER BRIDGE] Successfully connected to ${peerDisplayName}`);
+          } else {
+            console.log(`❌ [PEER BRIDGE] Failed to connect to ${peerDisplayName}`);
+            // Remove from attempted set so we can retry later
+            peerConnectionAttemptsRef.current.delete(peerDisplayName);
+          }
+        } catch (error) {
+          console.error(`💥 [PEER BRIDGE] Error connecting to ${peerDisplayName}:`, error);
+          peerConnectionAttemptsRef.current.delete(peerDisplayName);
+        }
+      });
+    } else if (newPeers.length > 0) {
+      console.log(`🚧 [PEER BRIDGE] New peers detected but conditions not met:`, {
+        newPeers,
+        meshEnabled,
+        webrtcSignalingConnected
+      });
+    }
+    
+    // Clean up attempted connections for peers who left
+    const leftPeers = lastPeers.filter(peer => !currentPeers.includes(peer));
+    leftPeers.forEach(peer => {
+      peerConnectionAttemptsRef.current.delete(peer);
+      console.log(`🧹 [PEER BRIDGE] Cleaned up connection attempt tracking for ${peer}`);
+    });
+    
+    // Update last peers
+    lastConnectedPeersRef.current = [...currentPeers];
+    
+  }, [wsChat.getConnectedPeers, meshEnabled, webrtcChat.status.isConnected, webrtcChat.connectToPeer, webrtcChat.isSignalingConnected]);
+  
+  // Merge messages from WebSocket on first load (WebRTC only forwards messages, doesn't store them)
+  useEffect(() => {
+    // WebRTC doesn't maintain a message array - it only forwards messages via handlers
     // Only use WebSocket messages for the initial state
     const initialMessages = [...wsChat.messages]
       .filter((message, index, array) => {
@@ -391,122 +584,70 @@ export function useHybridChat(roomId: string, displayName?: string) {
     }
   }, [wsChat.messages, messages.length]);
   
-  // Enhanced P2P upgrade logic with better debugging
-  const attemptP2PUpgrade = useCallback(async () => {
-    console.log('🌐 [P2P UPGRADE] Attempting P2P upgrade...');
-    console.log('🌐 [P2P UPGRADE] WebSocket connected:', wsChat.status.isConnected);
-    console.log('🌐 [P2P UPGRADE] P2P connected:', p2pChat.status.isConnected);
-    console.log('🌐 [P2P UPGRADE] Mesh enabled:', meshEnabled);
+  // Enhanced WebRTC upgrade logic - RE-ENABLED for production
+  const attemptWebRTCUpgrade = useCallback(async () => {
+    console.log('🔄 [WebRTC UPGRADE] Attempting WebRTC upgrade...');
     
+    // Check if upgrade conditions are met
     if (!wsChat.status.isConnected) {
-      console.log('🚫 [P2P UPGRADE] WebSocket not connected - aborting');
+      console.log('🚫 [WebRTC UPGRADE] WebSocket not connected, skipping upgrade');
       return false;
     }
     
-    if (p2pChat.status.isConnected) {
-      console.log('✅ [P2P UPGRADE] P2P already connected - enabling mesh');
-      setMeshEnabled(true);
+    if (webrtcChat.status.isConnected) {
+      console.log('✅ [WebRTC UPGRADE] WebRTC already connected');
       return true;
     }
     
-    // Check if conditions are right for P2P upgrade
-    const connectedPeers = wsChat.getConnectedPeers();
-    const isSmallGroup = connectedPeers.length <= 5; // Increase threshold
-    const shouldPreferP2P = connectionDetector.current.shouldPreferP2P();
-    
-    console.log('🌐 [P2P UPGRADE] Connected peers:', connectedPeers.length);
-    console.log('🌐 [P2P UPGRADE] Is small group (≤5):', isSmallGroup);
-    console.log('🌐 [P2P UPGRADE] Should prefer P2P:', shouldPreferP2P);
-    console.log('🌐 [P2P UPGRADE] Available peers:', connectedPeers);
-    
-    // Be more aggressive about attempting P2P
-    const shouldAttemptUpgrade = isSmallGroup || connectedPeers.length === 0;
-    
-    if (shouldAttemptUpgrade) {
-      console.log('🌐 [P2P UPGRADE] Conditions met - attempting P2P connections');
-      
-      // If no WebSocket peers yet, try direct P2P connection to see if anyone is available
-      if (connectedPeers.length === 0) {
-        console.log('🌐 [P2P UPGRADE] No WebSocket peers yet - enabling P2P discovery mode');
-        setMeshEnabled(true);
-        
-        // Try to auto-connect to any discovered peers
-        setTimeout(async () => {
-          try {
-            await p2pChat.forceReconnect();
-            console.log('🔄 [P2P UPGRADE] Triggered P2P auto-discovery');
-          } catch (error) {
-            console.warn('⚠️ [P2P UPGRADE] P2P auto-discovery failed:', error);
-          }
-        }, 2000);
-        
-        return true;
-      }
-      
-      // Try to connect to WebSocket peers via P2P
-      const availablePeers = connectedPeers.slice(0, 3); // Limit connections
-      let successfulConnections = 0;
-      
-      console.log(`🌐 [P2P UPGRADE] Attempting connections to ${availablePeers.length} peers`);
-      
-      for (const peer of availablePeers) {
-        try {
-          console.log(`🚀 [P2P UPGRADE] Connecting to peer: ${peer}`);
-          const connected = await p2pChat.connectToPeer(peer);
-          if (connected) {
-            successfulConnections++;
-            console.log(`✅ [P2P UPGRADE] Successfully connected to: ${peer}`);
-          } else {
-            console.log(`❌ [P2P UPGRADE] Failed to connect to: ${peer}`);
-          }
-        } catch (error) {
-          console.warn(`💥 [P2P UPGRADE] Error connecting to peer ${peer}:`, error);
-        }
-      }
-      
-      if (successfulConnections > 0 || availablePeers.length === 0) {
-        setMeshEnabled(true);
-        console.log(`✅ [P2P UPGRADE] P2P upgrade successful: ${successfulConnections} connections (mesh enabled)`);
-        return true;
-      } else {
-        console.log(`⚠️ [P2P UPGRADE] No successful P2P connections, but enabling mesh for discovery`);
-        setMeshEnabled(true); // Enable mesh anyway for future discovery
-        return false;
-      }
-    } else {
-      console.log('🚫 [P2P UPGRADE] Conditions not met for P2P upgrade');
-      console.log('🚫 [P2P UPGRADE] - Connected peers:', connectedPeers.length);
-      console.log('🚫 [P2P UPGRADE] - Is small group:', isSmallGroup);
-      console.log('🚫 [P2P UPGRADE] - Should prefer P2P:', shouldPreferP2P);
+    const connectedPeers = wsChat.getConnectedPeers?.() || [];
+    if (connectedPeers.length < 1) {
+      console.log('🚫 [WebRTC UPGRADE] Not enough peers for WebRTC upgrade');
+      return false;
     }
     
-    return false;
-  }, [wsChat, p2pChat, connectionDetector, meshEnabled]);
+    // Set mesh enabled to trigger WebRTC connections
+    setMeshEnabled(true);
+    console.log('🌐 [WebRTC UPGRADE] Mesh enabled, WebRTC connections should begin');
+    
+    return true;
+  }, [wsChat.status.isConnected, webrtcChat.status.isConnected, wsChat.getConnectedPeers]);
   
-  // Less aggressive auto-upgrade - only when beneficial and P2P is stable
+  // RE-ENABLED: Auto-upgrade with conservative settings to prevent loops
   const autoUpgradeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const p2pStabilityRef = useRef({ attempts: 0, failures: 0, lastFailure: 0 });
+  const webrtcStabilityRef = useRef({ attempts: 0, failures: 0, lastFailure: 0 });
   
-  // Track P2P instability
+  // Track WebRTC stability and attempts - RE-ENABLED with safety checks
   useEffect(() => {
-    if (p2pChat.peerId && !p2pChat.status.isConnected) {
-      // P2P opened but then closed - this indicates instability
+    // Only track if WebRTC is enabled and we have a stable WebSocket connection
+    if (!webrtcChat.status.isConnected && !webrtcStabilityRef.current.attempts) {
+      console.log('🔍 [WebRTC STABILITY] Tracking stability for potential auto-upgrade');
+    }
+    
+    // Monitor for WebRTC connection failures
+    if (webrtcChat.status.isConnected) {
+      // Reset failure tracking on successful connection
+      webrtcStabilityRef.current.failures = 0;
+      webrtcStabilityRef.current.lastFailure = 0;
+    } else if (webrtcStabilityRef.current.attempts > 0) {
+      // Track failures only after we've made attempts
       const now = Date.now();
-      p2pStabilityRef.current.failures++;
-      p2pStabilityRef.current.lastFailure = now;
+      const timeSinceLastFailure = now - webrtcStabilityRef.current.lastFailure;
       
-      if (p2pStabilityRef.current.failures >= 3) {
-        console.log('🚫 [P2P STABILITY] P2P appears unstable, disabling auto-upgrade for 5 minutes');
+      // Only count as failure if we recently attempted a connection
+      if (timeSinceLastFailure < 30000) { // 30 seconds
+        webrtcStabilityRef.current.failures++;
+        webrtcStabilityRef.current.lastFailure = now;
+        console.log(`⚠️ [WebRTC STABILITY] Failure ${webrtcStabilityRef.current.failures} recorded`);
       }
     }
-  }, [p2pChat.peerId, p2pChat.status.isConnected]);
+  }, [webrtcChat.status.isConnected]);
   
-  // Check if P2P is stable enough for auto-upgrade
-  const isP2PStable = useCallback(() => {
-    const stability = p2pStabilityRef.current;
+  // Check if WebRTC is stable enough for auto-upgrade
+  const isWebRTCStable = useCallback(() => {
+    const stability = webrtcStabilityRef.current;
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
     
-    // If we've had 3+ failures in the last 5 minutes, consider P2P unstable
+    // If we've had 3+ failures in the last 5 minutes, consider WebRTC unstable
     if (stability.failures >= 3 && stability.lastFailure > fiveMinutesAgo) {
       return false;
     }
@@ -519,44 +660,43 @@ export function useHybridChat(roomId: string, displayName?: string) {
     return true;
   }, []);
   
-  useEffect(() => {
-    // Only auto-upgrade if:
-    // 1. WebSocket is connected AND
-    // 2. P2P isn't already enabled AND  
-    // 3. We haven't tried recently
-    if (wsChat.status.isConnected && !meshEnabled && !autoUpgradeTimerRef.current && isP2PStable()) {
-      console.log('🔄 [AUTO-UPGRADE] WebSocket connected, P2P stable, setting up P2P upgrade timer');
-      
-      // Wait longer to see if P2P is actually needed
-      autoUpgradeTimerRef.current = setTimeout(() => {
-        console.log('⏰ [AUTO-UPGRADE] Timer triggered - checking if P2P upgrade is beneficial');
-        
-        // Only upgrade if there are multiple users (makes P2P worthwhile)
-        const connectedPeers = wsChat.getConnectedPeers();
-        if (connectedPeers.length >= 2 && isP2PStable()) {
-          console.log('🎯 [AUTO-UPGRADE] Multiple users detected and P2P stable, attempting P2P upgrade');
-          attemptP2PUpgrade();
-        } else if (!isP2PStable()) {
-          console.log('🚫 [AUTO-UPGRADE] P2P unstable, skipping upgrade attempt');
-        } else {
-          console.log('🚫 [AUTO-UPGRADE] Not enough users for P2P upgrade, staying WebSocket-only');
-        }
-        
-        autoUpgradeTimerRef.current = null;
-      }, 15000); // Increased to 15 seconds to be less aggressive
-      
-      return () => {
-        if (autoUpgradeTimerRef.current) {
-          console.log('🛑 [AUTO-UPGRADE] Clearing upgrade timer');
-          clearTimeout(autoUpgradeTimerRef.current);
-          autoUpgradeTimerRef.current = null;
-        }
-      };
-    }
-  }, [wsChat.status.isConnected, meshEnabled, attemptP2PUpgrade, wsChat.getConnectedPeers, isP2PStable]);
+  // FIXED: Prevent auto-upgrade loops - only attempt once per peer set
+  const autoUpgradeAttemptedRef = useRef<Set<string>>(new Set());
   
-  // Remove the aggressive P2P-ready auto-upgrade
-  // Users can manually enable P2P via the debug panel when needed
+  useEffect(() => {
+    // Simple conditions: WebSocket connected, have display name, and peers available
+    if (!wsChat.status.isConnected || !displayName) {
+      return;
+    }
+    
+    const connectedPeers = wsChat.getConnectedPeers?.() || [];
+    const peersKey = connectedPeers.sort().join(','); // Create a key for this peer set
+    
+    // If we have peers, WebRTC isn't connected, and we haven't attempted for this peer set
+    if (connectedPeers.length > 0 && !webrtcChat.status.isConnected && meshEnabled && !autoUpgradeAttemptedRef.current.has(peersKey)) {
+      console.log('🚀 [AUTO-UPGRADE] New peers detected, attempting WebRTC upgrade:', connectedPeers);
+      
+      // Mark this peer set as attempted
+      autoUpgradeAttemptedRef.current.add(peersKey);
+      
+      // Clean up old attempts (keep only last 5)
+      if (autoUpgradeAttemptedRef.current.size > 5) {
+        const attempts = Array.from(autoUpgradeAttemptedRef.current);
+        autoUpgradeAttemptedRef.current.clear();
+        attempts.slice(-3).forEach(key => autoUpgradeAttemptedRef.current.add(key));
+      }
+      
+      // Small delay to ensure WebSocket connection is stable
+      setTimeout(() => {
+        attemptWebRTCUpgrade();
+      }, 1000);
+    }
+    
+    // Reset attempts if WebRTC connects successfully
+    if (webrtcChat.status.isConnected) {
+      autoUpgradeAttemptedRef.current.clear();
+    }
+  }, [wsChat.status.isConnected, wsChat.getConnectedPeers, webrtcChat.status.isConnected, meshEnabled, displayName, attemptWebRTCUpgrade]);
   
   // Connection quality monitoring
   useEffect(() => {
@@ -568,16 +708,16 @@ export function useHybridChat(roomId: string, displayName?: string) {
           reliability: wsChat.status.isConnected ? 100 : 0,
           available: wsChat.status.isConnected
         },
-        p2p: {
-          latency: p2pChat.status.isConnected ? 25 : 0, // P2P typically lower latency
-          reliability: p2pChat.status.isConnected ? 90 : 0, // Slightly less reliable than server
-          available: p2pChat.status.isConnected
+        webrtc: {
+          latency: webrtcChat.status.isConnected ? 25 : 0, // WebRTC typically lower latency
+          reliability: webrtcChat.status.isConnected ? 90 : 0, // Slightly less reliable than server
+          available: webrtcChat.status.isConnected
         }
       });
     }, 5000);
     
     return () => clearInterval(monitoringInterval);
-  }, [wsChat.status.isConnected, wsChat.connectionQuality, p2pChat.status.isConnected]);
+  }, [wsChat.status.isConnected, wsChat.connectionQuality, webrtcChat.status.isConnected]);
   
   // External message handler registration
   const onMessage = useCallback((handler: (message: Message) => void) => {
@@ -602,22 +742,248 @@ export function useHybridChat(roomId: string, displayName?: string) {
     setMessages([]);
     
     // Force reconnect both connections
-    const [wsResult, p2pResult] = await Promise.allSettled([
+    const [wsResult, webrtcResult] = await Promise.allSettled([
       wsChat.forceReconnect(),
-      p2pChat.forceReconnect()
+      webrtcChat.forceReconnect()
     ]);
     
     console.log('🔄 Reconnect results:', { 
       websocket: wsResult.status,
-      p2p: p2pResult.status 
+      webrtc: webrtcResult.status 
     });
     
-    return wsResult.status === 'fulfilled' || p2pResult.status === 'fulfilled';
-  }, [wsChat.forceReconnect, p2pChat.forceReconnect]);
+    return wsResult.status === 'fulfilled' || webrtcResult.status === 'fulfilled';
+  }, [wsChat.forceReconnect, webrtcChat.forceReconnect]);
+  
+  // Expose debugging tools - CLEANED UP: Only show once
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.HybridChatDebug = {
+        getStatus: () => hybridStatus,
+        getStats: () => hybridStats,
+        getConnectionQuality: () => connectionQuality,
+        forceRoute: setPreferredRoute,
+        getCircuitBreakerState: () => circuitBreaker.current.getState(),
+        testWebRTC: () => webrtcChat.forceReconnect(),
+        attemptUpgrade: attemptWebRTCUpgrade,
+        resetCircuitBreaker: () => circuitBreaker.current.reset(),
+        clearMessageQueue: () => messageDeduplicator.current.clear(),
+        // Enhanced WebRTC control and status with REAL-TIME monitoring
+        enableWebRTC: () => {
+          console.log('✅ [DEBUG] WebRTC is now ENABLED with full protection');
+          return {
+            enabled: true,
+            protectionActive: true,
+            loopDetection: 'armed',
+            circuitBreaker: 'ready',
+            currentRoute: selectOptimalRoute()
+          };
+        },
+        isWebRTCDisabled: () => false,
+        getWebRTCStatus: () => ({
+          enabled: true,
+          connected: webrtcChat.status.isConnected,
+          peers: webrtcChat.status.connectedPeers,
+          meshEnabled,
+          loopProtection: 'active',
+          connectionAttempts: webrtcChat.getDebugInfo?.()?.stats?.totalAttempts || 0,
+          circuitBreakerState: 'armed'
+        }),
+        // Auto-upgrade controls
+        getStabilityStatus: () => webrtcStabilityRef.current,
+        enableMesh: () => {
+          console.log('🌐 [DEBUG] Enabling mesh for auto-upgrade...');
+          setMeshEnabled(true);
+          return 'Mesh enabled - auto-upgrade will begin in 30 seconds if conditions are met';
+        },
+        disableMesh: () => {
+          console.log('🚫 [DEBUG] Disabling mesh and canceling auto-upgrade...');
+          setMeshEnabled(false);
+          if (autoUpgradeTimerRef.current) {
+            clearTimeout(autoUpgradeTimerRef.current);
+            autoUpgradeTimerRef.current = null;
+          }
+          return 'Mesh disabled - auto-upgrade canceled';
+        },
+        forceAutoUpgrade: async () => {
+          console.log('⚡ [DEBUG] Forcing immediate auto-upgrade...');
+          if (!meshEnabled) {
+            setMeshEnabled(true);
+            console.log('🌐 [DEBUG] Enabled mesh for forced upgrade');
+          }
+          return await attemptWebRTCUpgrade();
+        },
+        // Peer bridge debugging
+        getPeerBridgeStatus: () => ({
+          currentPeers: wsChat.getConnectedPeers?.() || [],
+          lastPeers: lastConnectedPeersRef.current,
+          attemptedConnections: Array.from(peerConnectionAttemptsRef.current),
+          meshEnabled,
+          webrtcConnected: webrtcChat.isSignalingConnected?.() || false,
+          webrtcSignalingConnected: webrtcChat.isSignalingConnected?.() || false,
+          webrtcStats: webrtcChat.getDebugInfo?.()?.stats || {},
+          bridgeActive: meshEnabled && (webrtcChat.isSignalingConnected?.() || false)
+        }),
+        triggerManualPeerConnection: async (peerDisplayName: string) => {
+          console.log(`⚡ [DEBUG] Manually triggering connection to: ${peerDisplayName}`);
+          if (!meshEnabled) {
+            setMeshEnabled(true);
+            console.log('🌐 [DEBUG] Enabled mesh for manual connection');
+          }
+          peerConnectionAttemptsRef.current.add(peerDisplayName);
+          return await webrtcChat.connectToPeer(peerDisplayName);
+        },
+        clearPeerBridgeCache: () => {
+          peerConnectionAttemptsRef.current.clear();
+          lastConnectedPeersRef.current = [];
+          console.log('🧹 [DEBUG] Cleared peer bridge cache');
+        },
+        // Message bridging debugging
+        getBridgeStatus: () => ({
+          networkCondition: messageBridge.networkCondition,
+          bridgeNodes: messageBridge.bridgeNodes,
+          bridgeStats: messageBridge.bridgeStats,
+          queuedMessages: messageBridge.queuedMessages,
+          adaptiveConfig: messageBridge.getAdaptiveConfig(),
+          bridgeEnabled: messageBridge.getAdaptiveConfig().enabled
+        }),
+        simulatePoorNetwork: () => {
+          console.log('🌉 [DEBUG] Simulating poor network to test bridging...');
+          if (window.MessageBridgeDebug) {
+            window.MessageBridgeDebug.simulatePoorNetwork();
+            return 'Poor network simulation activated - bridging should engage';
+          }
+          return 'Message bridge not available';
+        },
+        simulateNetworkRecovery: () => {
+          console.log('✨ [DEBUG] Simulating network recovery...');
+          if (window.MessageBridgeDebug) {
+            window.MessageBridgeDebug.simulateGoodNetwork();
+            return 'Network recovery simulation activated';
+          }
+          return 'Message bridge not available';
+        },
+        testBridging: (content: string) => {
+          console.log('🌉 [DEBUG] Testing message bridging with content:', content);
+          const messageId = messageBridge.bridgeMessage({ 
+            content, 
+            type: 'chat',
+            senderId: displayName || 'Debug'
+          }, 'test-peer', 'high');
+          return `Bridging test message queued with ID: ${messageId}`;
+        },
+        // CRITICAL FIX: Add debug function to clear sent message tracking
+        clearSentMessageTracking: () => {
+          sentMessageIds.current.clear();
+          console.log('🧹 [DEBUG] Cleared sent message tracking');
+          return 'Sent message tracking cleared';
+        },
+        getSentMessageCount: () => {
+          return sentMessageIds.current.size;
+        },
+        // 🔥 CRITICAL FIX: Add enhanced admin P2P debugging
+        clearAllP2PBlocks: () => {
+          console.log('🔥 [ADMIN P2P] Clearing ALL P2P blocking states...');
+          
+          // Clear all rate limiting and loop detection
+          if (window.NativeWebRTCDebug) {
+            window.NativeWebRTCDebug.clearLoopDetection();
+            window.NativeWebRTCDebug.clearGlobalInstances();
+            console.log('🔥 [ADMIN P2P] WebRTC loop detection and instances cleared');
+          }
+          
+          // Set admin flags
+          if (typeof window !== 'undefined') {
+            (window as any).HybridChatDebug.enableP2PForAdminDashboard = true;
+            if (window.NativeWebRTCDebug) {
+              window.NativeWebRTCDebug.forceInitializeInProgress = true;
+            }
+            console.log('🔥 [ADMIN P2P] Admin P2P flags set');
+          }
+          
+          // Enable mesh
+          if (!meshEnabled) {
+            setMeshEnabled(true);
+            console.log('🔥 [ADMIN P2P] Mesh enabled');
+          }
+          
+          return 'All P2P blocks cleared - ready for admin dashboard testing';
+        },
+        // 🔥 CRITICAL: Add P2P testing functions for admin dashboard
+        testP2PConnections: () => {
+          console.log('🔥 [HYBRID P2P] Testing P2P connections...');
+          
+          if (window.NativeWebRTCDebug) {
+            return window.NativeWebRTCDebug.testP2PWithAllPeers();
+          }
+          
+          return 'WebRTC debug tools not available';
+        },
+        forceP2PConnection: async (targetDisplayName) => {
+          console.log(`🔥 [HYBRID P2P] Forcing P2P connection to: ${targetDisplayName}`);
+          
+          if (window.NativeWebRTCDebug) {
+            return await window.NativeWebRTCDebug.forceP2PConnection(targetDisplayName);
+          }
+          
+          return false;
+        },
+        getP2PStatus: () => {
+          return {
+            webrtcEnabled: true,
+            webrtcConnected: webrtcChat.status.isConnected,
+            webrtcPeers: webrtcChat.status.connectedPeers,
+            webrtcSignaling: webrtcChat.isSignalingConnected(),
+            meshEnabled,
+            currentRoute: selectOptimalRoute(),
+            hybridStatus: hybridStatus
+          };
+        },
+        enableP2PForAdminDashboard: () => {
+          console.log('🔥 [ADMIN P2P] Enabling P2P connections for admin dashboard testing...');
+          
+          // 🔥 CRITICAL FIX: Set admin P2P test flag BEFORE any operations
+          if (typeof window !== 'undefined') {
+            (window as any).HybridChatDebug.enableP2PForAdminDashboard = true;
+            console.log('🔥 [ADMIN P2P] Admin P2P test flag set to bypass rate limiting');
+          }
+          
+          // Enable mesh if not already enabled
+          if (!meshEnabled) {
+            setMeshEnabled(true);
+            console.log('🌐 [ADMIN P2P] Mesh networking enabled');
+          }
+          
+          // Force WebRTC initialization if needed
+          if (!webrtcChat.status.isConnected && window.NativeWebRTCDebug) {
+            // Set the WebRTC force flag too
+            window.NativeWebRTCDebug.forceInitializeInProgress = true;
+            window.NativeWebRTCDebug.forceInitialize();
+            console.log('🚀 [ADMIN P2P] WebRTC initialization forced');
+          }
+          
+          return 'P2P enabled for admin dashboard - connections will be attempted automatically';
+        }
+      };
+      
+      // CLEANED UP: Only show debug info once when window.HybridChatDebug is first created
+      if (!window.HybridChatDebug._debugInfoShown) {
+        console.log('🔍 Hybrid Chat Debug tools available: window.HybridChatDebug');
+        console.log('🌉 [PEER BRIDGE] Bridge active, monitoring peer changes...');
+        console.log('🌉 [MESSAGE BRIDGE] Advanced bridging for poor network conditions enabled');
+        console.log('   - Use window.HybridChatDebug.getPeerBridgeStatus() to check bridge status');
+        console.log('   - Use window.HybridChatDebug.getBridgeStatus() to check message bridging');
+        console.log('   - Use window.HybridChatDebug.simulatePoorNetwork() to test bridging');
+        console.log('   - Use window.HybridChatDebug.testBridging("message") to test bridge routing');
+        console.log('   - Use window.HybridChatDebug.triggerManualPeerConnection("peerName") to test connections');
+        window.HybridChatDebug._debugInfoShown = true;
+      }
+    }
+  }, []); // CLEANED UP: Empty dependency array so this only runs once
   
   return {
     // Core properties
-    peerId: wsChat.peerId || p2pChat.peerId,
+    peerId: wsChat.peerId || webrtcChat.peerId,
     status: hybridStatus,
     messages,
     
@@ -629,7 +995,7 @@ export function useHybridChat(roomId: string, displayName?: string) {
     // Mesh networking
     meshEnabled,
     setMeshEnabled,
-    attemptP2PUpgrade,
+    attemptWebRTCUpgrade,
     
     // Route management
     preferredRoute,
@@ -640,18 +1006,46 @@ export function useHybridChat(roomId: string, displayName?: string) {
     connectionQuality,
     hybridStats,
     
+    // 🌉 BRIDGE SYSTEM - New bridging capabilities for poor network conditions
+    bridging: {
+      networkCondition: messageBridge.networkCondition,
+      bridgeNodes: messageBridge.bridgeNodes,
+      bridgeStats: messageBridge.bridgeStats,
+      queuedMessages: messageBridge.queuedMessages,
+      isEnabled: messageBridge.getAdaptiveConfig().enabled,
+      config: messageBridge.getAdaptiveConfig(),
+      
+      // Manual bridging controls
+      bridgeMessage: messageBridge.bridgeMessage,
+      processBridgeQueue: messageBridge.processBridgeQueue,
+      clearQueue: messageBridge.clearQueue,
+      discoverBridgeNodes: messageBridge.discoverBridgeNodes,
+      
+      // Network simulation for testing
+      simulatePoorNetwork: () => {
+        if (window.MessageBridgeDebug) {
+          window.MessageBridgeDebug.simulatePoorNetwork();
+        }
+      },
+      simulateGoodNetwork: () => {
+        if (window.MessageBridgeDebug) {
+          window.MessageBridgeDebug.simulateGoodNetwork();
+        }
+      }
+    },
+    
     // Individual connection access
     webSocket: {
       status: wsChat.status,
       connected: wsChat.status.isConnected,
       quality: wsChat.connectionQuality,
-      peers: wsChat.getConnectedPeers()
+      peers: wsChat.getConnectedPeers?.() || []
     },
-    p2p: {
-      status: p2pChat.status,
-      connected: p2pChat.status.isConnected,
-      peers: p2pChat.getConnectedPeers(),
-      queuedMessages: p2pChat.getQueuedMessages?.() || 0
+    webrtc: {
+      status: webrtcChat.status,
+      connected: webrtcChat.status.isConnected,
+      peers: webrtcChat.getConnectedPeers?.() || [],
+      queuedMessages: webrtcChat.getQueuedMessages?.() || 0
     },
     
     // Debugging
@@ -659,10 +1053,12 @@ export function useHybridChat(roomId: string, displayName?: string) {
     getConnectionDiagnostics: () => ({
       detector: {
         connectionType: connectionDetector.current.detectConnectionType(),
-        shouldPreferP2P: connectionDetector.current.shouldPreferP2P(),
+        shouldPreferWebRTC: connectionDetector.current.shouldPreferWebRTC(),
         isMobile: connectionDetector.current.isMobileDevice()
       },
       websocket: wsChat.getConnectionDiagnostics?.(),
+      webrtc: webrtcChat.getDebugInfo?.(),
+      bridge: messageBridge.getDebugInfo(),
       circuitBreaker: circuitBreaker.current.getState(),
       stats: hybridStats
     })

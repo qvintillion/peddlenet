@@ -2,8 +2,8 @@
 
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { Message } from '@/lib/types';
-import { generateCompatibleUUID } from '@/utils/peer-utils';
+import type { Message } from '../lib/types';
+import { generateCompatibleUUID } from '../utils/peer-utils';
 
 // Socket.IO P2P Integration for Phase 1 Mesh Networking
 // This provides automatic P2P upgrade for WebSocket connections

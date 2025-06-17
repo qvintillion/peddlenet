@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ServerUtils } from '@/utils/server-utils';
+import { ServerUtils } from '../utils/server-utils';
 
 interface RoomStats {
   roomId: string;

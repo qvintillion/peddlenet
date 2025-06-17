@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Message, ConnectionStatus } from '@/lib/types';
-import { generateCompatibleUUID, generateShortId } from '@/utils/peer-utils';
+import type { Message, ConnectionStatus } from '../lib/types';
+import { generateCompatibleUUID, generateShortId } from '../utils/peer-utils';
 
 declare global {
   interface Window {

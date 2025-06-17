@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { ServerUtils } from '@/utils/server-utils';
+import { ServerUtils } from '../utils/server-utils';
 
 export interface RealTimeStats {
   activeUsers: number;

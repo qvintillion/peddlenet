@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { Message } from '@/lib/types';
-import { ServerUtils } from '@/utils/server-utils';
-import { useMessageNotifications } from '@/hooks/use-push-notifications';
-import { unreadMessageManager } from '@/hooks/use-unread-messages';
+import type { Message } from '../lib/types';
+import { ServerUtils } from '../utils/server-utils';
+import { useMessageNotifications } from './use-push-notifications';
+import { unreadMessageManager } from './use-unread-messages';
 
 // Global background notification state
 interface NotificationSubscription {

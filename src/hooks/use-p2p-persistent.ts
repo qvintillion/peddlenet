@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Message, ConnectionStatus } from '@/lib/types';
-import { generateCompatibleUUID } from '@/utils/peer-utils';
+import type { Message, ConnectionStatus } from '../lib/types';
+import { generateCompatibleUUID } from '../utils/peer-utils';
 import { 
   connectionRetry, 
   ConnectionHealthMonitor, 
   SessionPersistence,
   type RetryConfig,
   type ConnectionMetrics
-} from '@/utils/connection-resilience';
+} from '../utils/connection-resilience';
 
 declare global {
   interface Window {

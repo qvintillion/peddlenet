@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { Message, ConnectionStatus } from '../lib/types';
-import { generateCompatibleUUID, generateShortId } from '../utils/peer-utils';
+import type { Message, ConnectionStatus } from '@/lib/types';
+import { generateCompatibleUUID, generateShortId } from '@/utils/peer-utils';
 
 interface WebRTCConnection {
   peerId: string;
@@ -243,7 +243,7 @@ export function useNativeWebRTC(roomId: string, displayName?: string, disabled: 
       return url;
     }
     
-    // 🔧 CRITICAL FIX: Use environment variable from build process
+    // Use environment variable from build process
     const envServerUrl = process.env.NEXT_PUBLIC_SIGNALING_SERVER;
     if (envServerUrl) {
       console.log(`🌍 Using environment WebSocket URL: ${envServerUrl}`);
@@ -333,20 +333,20 @@ export function useNativeWebRTC(roomId: string, displayName?: string, disabled: 
       return 'No connections found';
     }
     
-    currentConnections.forEach(([peerIdForRestart, conn]) => {
-      console.log(`⚡ [ICE RESTART] Restarting ICE for ${peerIdForRestart} (current state: ${conn.peerConnection.iceConnectionState})`);
+    currentConnections.forEach(([peerId, conn]) => {
+      console.log(`⚡ [ICE RESTART] Restarting ICE for ${peerId} (current state: ${conn.peerConnection.iceConnectionState})`);
       try {
         conn.peerConnection.restartIce();
       } catch (error) {
-        console.error(`❌ Failed to restart ICE for ${peerIdForRestart}:`, error);
+        console.error(`❌ Failed to restart ICE for ${peerId}:`, error);
       }
     });
     
     // Check results after 5 seconds
     setTimeout(() => {
       console.log('🔍 [ICE RESTART] Results after 5 seconds:');
-      currentConnections.forEach(([peerIdForRestart, conn]) => {
-        console.log(`   ${peerIdForRestart}:`, {
+      currentConnections.forEach(([peerId, conn]) => {
+        console.log(`   ${peerId}:`, {
           iceState: conn.peerConnection.iceConnectionState,
           connectionState: conn.connectionState,
           dataChannel: conn.dataChannel?.readyState || 'none'
