@@ -1,4 +1,4 @@
-// utils/network-utils.ts - Network detection for mobile access with fresh IP detection
+// utils/network-utils.js - Network detection for mobile access with fresh IP detection
 export const NetworkUtils = {
   // Always detect fresh local IP using WebRTC (no caching)
   async detectLocalIP(): Promise<string> {

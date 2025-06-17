@@ -1,4 +1,4 @@
-// src/hooks/use-dev-friendly-webrtc.ts
+// src/hooks/use-dev-friendly-webrtc.js
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';

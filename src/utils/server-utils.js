@@ -1,4 +1,4 @@
-// utils/server-utils.ts - Centralized server URL management with Vercel support
+// utils/server-utils.js - Centralized server URL management with Vercel support
 
 export const ServerUtils = {
   /**

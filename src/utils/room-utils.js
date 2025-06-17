@@ -1,4 +1,4 @@
-// utils/room-utils.ts
+// utils/room-utils.js
 'use client';
 
 /**
