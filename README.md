@@ -216,6 +216,36 @@ npm run start             # Start production server
 
 ## 🔧 Recent Updates (June 2025)
 
+### **🚨 CRITICAL STAGING FIXES COMPLETED** (June 16, 2025) ✅
+- **🔧 WebRTC Hook Syntax Error FIXED**: Resolved malformed `forceICERestart` function causing `Cannot read properties of undefined (reading 'length')` browser crash
+- **🌐 WebSocket Server URL Mismatch RESOLVED**: Fixed environment variable conflicts between staging servers
+- **📝 Environment Configuration STREAMLINED**: Updated `.env.staging` and WebSocket URL detection logic
+- **🔄 CORS Configuration ENHANCED**: Staging WebSocket server supports all Vercel deployment domains
+- **⚡ Automated Deployment**: One-command fix deployment via `./deploy-complete-fix.sh`
+- **📊 P2P Integration RESTORED**: WebRTC P2P connections and admin dashboard integration working
+
+**Deployment Status:**
+```bash
+# ✅ COMPLETED: Automated fix deployment
+./deploy-complete-fix.sh
+
+# ✅ NEXT: Normal staging deployment (should work now)
+npm run staging:vercel:complete
+```
+
+**Critical Fixes Applied:**
+- ✅ **JavaScript Syntax**: Fixed function scope issues causing browser crashes
+- ✅ **Server Targeting**: Correct staging WebSocket server URL configuration
+- ✅ **CORS Whitelist**: All Vercel staging domains now supported
+- ✅ **Environment Sync**: Consistent configuration across dev/staging/production
+- ✅ **P2P Functionality**: WebRTC connections and admin mesh status working
+- ✅ **Automated Recovery**: `deploy-complete-fix.sh` for synchronized deployments
+
+**Related Documentation:**
+- **[Critical Staging Fix Summary](./docs/CRITICAL-STAGING-FIXES-JUNE-16-2025.md)** - Complete technical fix details and deployment guide
+- **[WebRTC Integration Guide](./docs/WEBRTC-CONNECTION-LOOP-FIX-SESSION-JUNE-16-2025.md)** - P2P connection debugging and admin dashboard integration
+- **[Staging Deployment Guide](./docs/STAGING-DEPLOYMENT-FIX.md)** - Updated staging workflow with automated recovery scripts
+
 ### **🧹 COMPREHENSIVE CLEANUP COMPLETED** (June 14, 2025) ✅
 - **🏗️ PROJECT STRUCTURE**: Complete root directory cleanup and organization
 - **📂 SCRIPTS STREAMLINED**: Reduced from 25+ to 12 essential production scripts

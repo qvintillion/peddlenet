@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // TEMPORARY: Disable React Strict Mode to prevent WebRTC hook loops
+  reactStrictMode: false,
+  
   // Disable ESLint during builds for now
   transpilePackages: ['archive'], // Add this line to transpile the archive directory
   eslint: {
@@ -11,14 +14,15 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // 🚀 DEPLOYMENT OUTPUT LOGIC (FIXED):
-  // Only use static export for explicit GitHub Pages builds
-  // Firebase should ALWAYS use regular Next.js builds with SSR/functions
+  // 🚀 DEPLOYMENT OUTPUT LOGIC (PLATFORM SPECIFIC):
+  // Firebase staging needs static export, others use regular builds
   output: (() => {
-    if (process.env.VERCEL) return undefined; // Vercel default
-    if (process.env.BUILD_TARGET === 'github-pages') return 'export'; // ONLY for GitHub Pages
-    // Firebase (staging, production, etc.) should NEVER use static export
-    return undefined; // Default: regular Next.js build with SSR support
+    // Only use static export for Firebase staging deployments
+    if (process.env.BUILD_TARGET === 'staging' || process.env.BUILD_TARGET === 'firebase') {
+      return 'export';
+    }
+    // Regular Next.js build for development and Vercel production
+    return undefined;
   })(),
   
   trailingSlash: false,

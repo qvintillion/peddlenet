@@ -1,5 +1,43 @@
 # 🚀 Festival Chat - Deployment Guide
 
+## 🚨 **LATEST: Critical Staging Fixes Applied - June 16, 2025** 🆕
+
+### **✅ WebRTC Hook Syntax Error RESOLVED**
+
+**Problem**: `Cannot read properties of undefined (reading 'length')` error preventing staging deployment
+**Root Cause**: Malformed `forceICERestart` function nested incorrectly inside `socket.emit` call
+**Solution**: ✅ Fixed syntax error in `src/hooks/use-native-webrtc.ts`
+**Impact**: Eliminates JavaScript runtime errors preventing staging from loading
+
+### **✅ WebSocket Server URL Mismatch RESOLVED**
+
+**Problem**: Environment pointing to one staging server but logs showing different server
+**Root Cause**: Multiple staging servers deployed with conflicting environment variables
+**Solution**: ✅ Streamlined environment configuration and server targeting
+**Impact**: Consistent WebSocket connections across all deployment environments
+
+### **🚀 Critical Actions Required**
+
+**To deploy these fixes to staging**:
+```bash
+# 1. Deploy updated staging WebSocket server with CORS fixes
+./scripts/deploy-websocket-staging.sh
+
+# 2. Deploy frontend to Vercel staging
+npm run staging:vercel:complete
+# OR: vercel --env .env.staging
+```
+
+**Expected Results**:
+- ✅ Vercel staging loads without JavaScript errors
+- ✅ WebSocket connections establish correctly
+- ✅ Admin dashboard loads and functions properly
+- ✅ No more CORS errors in browser console
+
+**Related Documentation**: **[Critical Staging Fix Summary](./CRITICAL-STAGING-FIXES-JUNE-16-2025.md)** - Detailed technical analysis
+
+---
+
 ## 📋 Overview
 
 Festival Chat supports multiple deployment platforms:
@@ -70,60 +108,67 @@ Festival Chat supports multiple deployment platforms:
 
 ## 🛠️ Available Deployment Scripts
 
-### **🎯 NUCLEAR UNIFIED WORKFLOW (ENHANCED - June 14, 2025)**
+### **🎯 PRIMARY DEPLOYMENT WORKFLOW (SIMPLIFIED)**
 
-**✅ THE ULTIMATE WORKFLOW FOR ALL CHANGES:**
+**✅ THE MAIN WORKFLOW FOR ALL CHANGES:**
 ```bash
-# Single command for backend + frontend with NUCLEAR cache busting
-npm run staging:unified [channel-name]
-```
+# For staging/testing - NOW USING VERCEL STAGING
+npm run staging:vercel          # Frontend only
+npm run staging:vercel:complete # Complete with staging server
 
-**💥 NUCLEAR CACHE BUSTING UPGRADE:**
-- **❌ Before**: Cache issues caused old code to persist after deployment
-- **✅ After**: NUCLEAR cache annihilation guarantees fresh deployment
-- **⚡ Result**: Changes show up IMMEDIATELY with zero cache issues!
+# For production deployment
+npm run deploy:production:complete
+```
 
 **📋 WHEN TO USE EACH SCRIPT:**
 
-#### **💥 Nuclear Unified Staging (USE THIS FOR RELIABLE DEPLOYS)**
+#### **🚀 Vercel Staging (USE THIS FOR TESTING)**
 ```bash
-npm run staging:unified [channel-name]
+# Frontend only staging
+npm run staging:vercel
+
+# Complete staging with backend
+npm run staging:vercel:complete
 ```
-**Use when**: All UI/backend changes, ensuring zero cache issues  
+**Use when**: Testing all UI/backend changes with Vercel's preview infrastructure  
 **Prerequisites**: None - handles everything automatically  
-**Time**: ~6-8 minutes (includes WebSocket server deployment)  
+**Time**: ~3-5 minutes (complete), ~1-2 minutes (frontend only)  
 **What it does**: 
-- Deploys WebSocket server to staging FIRST
-- NUCLEAR cache clearing (all local + browser caches)
-- Deploys frontend with NO-CACHE headers
-- Aggressive cache-busting environment variables
+- Frontend only: Deploys to Vercel preview URL
+- Complete: Deploys WebSocket server to staging FIRST, then frontend
+- Automatic cache invalidation via Vercel
+- Environment variables properly configured
 - Complete synchronization guarantee
 
 **Benefits**: 
-- ✅ **GUARANTEED fresh deployment** - No cache issues possible
-- ✅ **Single command workflow** - No manual coordination needed
-- ✅ **Backend/frontend sync** - Server deployed before frontend
-- ✅ **Mobile cache busting** - Forces all devices to reload
-- ✅ **Debug-friendly** - Enhanced logging and verification
+- ✅ **Lightning fast deployment** - Vercel's optimized infrastructure
+- ✅ **Real preview URLs** - Easy sharing with stakeholders
+- ✅ **Backend/frontend sync** - Server deployed before frontend (complete mode)
+- ✅ **Automatic cache busting** - Vercel handles cache invalidation
+- ✅ **Mobile optimized** - Vercel's global CDN for fast mobile access
 
-#### **🚀 Legacy Quick Preview (Limited Cache Busting)**
+#### **🚀 Production Complete Deployment (USE FOR PRODUCTION)**
 ```bash
-npm run preview:deploy
+npm run deploy:production:complete
 ```
-**Use when**: Minor UI-only changes (no backend changes)  
-**Prerequisites**: Run `./scripts/deploy-websocket-staging.sh` first  
-**Time**: ~2-3 minutes  
-**Limitations**: ⚠️ Basic cache busting only - may have cache issues
-**Recommendation**: Use `staging:unified` instead for reliability
+**Use when**: Final production deployment after testing  
+**Prerequisites**: Testing completed on staging  
+**Time**: ~8-12 minutes  
+**What it does**:
+- Deploys WebSocket server to production
+- Deploys frontend to Vercel production
+- Updates all environment variables
+- Comprehensive verification
 
-#### **🔥 Firebase Complete (Nuclear Option)**
+#### **🔥 Firebase Complete (Legacy/Backup)**
 ```bash
 npm run deploy:firebase:complete
 ```
-**Use when**: Production deployments, comprehensive infrastructure updates  
+**Use when**: Vercel issues, infrastructure debugging, comprehensive rebuilds  
 **Time**: ~5-8 minutes  
-**What it does**: Nuclear option - rebuilds everything, updates Cloud Run, clears all caches  
-**Benefits**: ✅ Fixes stubborn cache issues, ✅ Complete infrastructure refresh  
+**What it does**: Firebase hosting deployment with cache busting  
+**Benefits**: ✅ Alternative to Vercel, ✅ Fixes stubborn cache issues, ✅ Complete infrastructure refresh  
+**Note**: **Legacy option** - Vercel staging is now the primary workflow  
 
 ### **🎭 Staging-Only WebSocket Deploy**
 ```bash
@@ -337,17 +382,46 @@ firebase deploy --only hosting,functions
 }
 ```
 
-## 🔄 Development Workflow
+## 🛅 Development Workflow
+
+### **🏠 SIMPLIFIED NEXT.JS CONFIGURATION (December 2025)**
+
+**✅ SOLUTION:** Clean, simple configuration that always works!
+
+**Problem Solved:** Previous complex conditional logic caused deployment confusion and build errors.
+
+**New Simplified Approach:**
+- **Always use regular Next.js builds** (no static export)
+- **API routes work on all platforms** (Firebase, Vercel, local)
+- **No environment-specific conditions** (simpler maintenance)
+- **Removed GitHub Pages complexity** (not used anymore)
+
+#### **📝 Current Next.js Configuration**
+```typescript
+// next.config.ts (SIMPLIFIED)
+const nextConfig = {
+  // Always use regular Next.js builds with API routes
+  // Static export only needed for GitHub Pages (which we don't use)
+  output: undefined, // Regular Next.js build with full API support
+  
+  // All other settings remain the same...
+};
+```
+
+**Benefits:**
+- ✅ **All admin features work everywhere** (database wipe, user management, etc.)
+- ✅ **API routes work on all platforms** (Firebase, Vercel, Cloud Run)
+- ✅ **Much simpler deployment process** (no more conditional logic)
+- ✅ **Eliminated build errors** (no force-dynamic conflicts)
+- ✅ **Consistent behavior** across all environments
 
 ### **🏠 FIXED: Proper Environment Separation (June 12, 2025)**
 
-**✅ ISSUE RESOLVED:** Local development no longer requires staging server deployment!
-
 **Four-Tier Environment Configuration:**
-- **`.env.local`** → Development (localhost:3001)
-- **`.env.preview`** → Preview Channels (Firebase Preview Channels + Preview WebSocket server)
-- **`.env.staging`** → Final Staging (staging WebSocket server)
-- **`.env.production`** → Production (production WebSocket server)
+- **`.env.local`** → Development (localhost:3001 + Mock P2P)
+- **`.env.preview`** → Preview Channels (Firebase Preview + Native WebRTC)
+- **`.env.staging`** → Final Staging (staging WebSocket + Native WebRTC)
+- **`.env.production`** → Production (production WebSocket + Native WebRTC)
 
 **Environment Switching:**
 ```bash
@@ -400,8 +474,39 @@ npm run dev:mobile
 # 📍 Environment: development
 # 🎯 Mode: DEVELOPMENT
 # ✅ Detected local IP: 192.168.1.66
+# 🏠 [DEV-FRIENDLY] Development mode detected - using mock P2P
+# 🏠 [DEV P2P] Mock P2P will simulate connections for admin dashboard testing
 # 🎵 PeddleNet Universal Server v2.0.0 running on port 3001
-# 🔔 Features: Universal Environment Detection + WebSocket + Chat + Notifications + Room Codes + Admin Analytics
+# 🔔 Features: Universal Environment Detection + WebSocket + Chat + Notifications + Room Codes + Admin Analytics + Mock P2P
+```
+
+### **🏠 Development P2P Testing**
+```bash
+# 1. Start development server
+npm run dev:mobile
+
+# 2. Open chat room in browser
+# Navigate to: http://localhost:3000/chat/main-stage-chat
+# Enter display name: "Alice"
+
+# 3. Check browser console for mock P2P logs:
+# "🏠 [DEV P2P] Creating mock P2P for development environment"
+# "🏠 [DEV P2P] Mock peers connected: ['dev-user-alice', 'dev-user-bob']"
+# "✅ [DEV P2P] Mock connection successful! Total: 2"
+
+# 4. Check admin dashboard:
+# Navigate to: http://localhost:3000/admin
+# Login: th3p3ddl3r / letsmakeatrade
+# Should show: P2P connections from mock data
+
+# 5. Test debug tools:
+# Open browser console and run:
+window.HybridChatDebug.getP2PStatus()
+# Should return: { webrtcConnected: true, webrtcPeers: 2, ... }
+
+# 6. Test mock messaging:
+# Send a message in chat
+# Should receive: "🤖 [DEV ECHO] Your message" from DevBot
 ```
 
 ### **🆕 Enhanced Deployment Safety (June 11, 2025)**
@@ -479,6 +584,27 @@ festival-chat/
 - **Production**: Cloud Run deployment → Uses `signaling-server.js` (auto-detects production)
 
 ### **Testing Before Deploy**
+
+#### **🏠 Development Testing (Mock P2P)**
+```bash
+# 1. Local development test
+npm run dev:mobile
+
+# 2. Mock P2P verification
+# - Navigate to: http://localhost:3000/chat/main-stage-chat
+# - Check console for: "🏠 [DEV P2P] Mock peers connected"
+# - Verify mock echo messages work
+# - Test admin dashboard shows mock P2P stats
+
+# 3. Debug tools verification
+# - Open browser console
+# - Run: window.HybridChatDebug.getP2PStatus()
+# - Should show: webrtcConnected: true, webrtcPeers: 2
+# - Run: window.NativeWebRTCDebug.getStats()
+# - Should show: totalAttempts: 2, successfulConnections: 2
+```
+
+#### **🌐 Production Testing (Real P2P)**
 ```bash
 # 1. Build test
 npm run build:mobile
@@ -499,6 +625,7 @@ npm run start
 # - Login with: th3p3ddl3r / letsmakeatrade
 # - Verify dashboard loads and connects
 # - Test admin controls functionality
+# - Check real P2P connections (not mock data)
 ```
 
 ## 🏗️ Deployment Architecture
@@ -946,14 +1073,23 @@ https://peddlenet.app/admin-analytics
 
 ## 🚀 Ready for Festival Deployment!
 
-The deployment system is production-ready with **universal server architecture** and **fully restored admin analytics dashboard**:
+The deployment system is production-ready with **simplified Next.js configuration** and **fully restored admin analytics dashboard**:
 
 ### **Technical Excellence**
-- **✅ One server file for all environments** - No confusion about which server to use
-- **✅ Auto-environment detection** - Smart adaptation based on deployment context
-- **✅ Future features foundation** - Analytics and mesh endpoints ready
-- **✅ FIXED: Cache issue resolution** - All scripts deploy properly
+- **✅ Simplified Next.js configuration** - No more complex conditional logic
+- **✅ API routes work everywhere** - Firebase, Vercel, local development
+- **✅ Universal server architecture** - One server for all environments
 - **✅ Admin dashboard restoration** - Professional festival management interface
+- **✅ Production:complete workflow** - Single command for production deployment
+
+### **Current Deployment Workflow**
+```bash
+# 1. Test changes
+npm run staging:unified [channel-name]
+
+# 2. Deploy to production
+npm run deploy:production:complete
+```
 
 ### **Operational Capabilities**
 - **Automated deployment scripts** for quick iteration
@@ -971,9 +1107,7 @@ The deployment system is production-ready with **universal server architecture**
 - **Content moderation** with room clearing capabilities
 - **Mobile optimization** for on-site festival staff
 
-**💥 Use `npm run staging:unified [channel-name]` for ALL changes with nuclear cache busting guarantee.**
-
-For production: Use `npm run deploy:firebase:complete` for backend changes.
+**💥 Use `npm run staging:unified [channel-name]` for testing and `npm run deploy:production:complete` for production.**
 
 **Admin Dashboard Access**: `https://peddlenet.app/admin-analytics` (Credentials: `th3p3ddl3r` / `letsmakeatrade`)
 

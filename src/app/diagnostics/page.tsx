@@ -1,6 +1,6 @@
 'use client';
 
-import { ConnectionTest } from '@/components/ConnectionTest';
+import { ConnectionTest } from '../../components/ConnectionTest';
 import Link from 'next/link';
 
 // Force dynamic rendering (no static generation)

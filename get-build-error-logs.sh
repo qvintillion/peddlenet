@@ -1,0 +1,110 @@
+#!/bin/bash
+
+# 🔍 GET ACTUAL BUILD ERROR LOGS
+# ==============================
+
+set -e
+
+echo "🔍 GETTING ACTUAL BUILD ERROR LOGS"
+echo "=================================="
+echo ""
+
+echo "🎯 New failed deployment:"
+echo "https://festival-chat-jjjxkd7z1-thepeddlers-projects-d74f9d42.vercel.app"
+echo ""
+
+echo "📋 STEP 1: Try to get logs from this deployment"
+echo "==============================================="
+echo ""
+
+# Try multiple ways to get logs
+echo "🔍 Method 1: Vercel logs command"
+vercel logs https://festival-chat-jjjxkd7z1-thepeddlers-projects-d74f9d42.vercel.app || echo "❌ Logs command failed"
+
+echo ""
+echo "🔍 Method 2: Check if we can inspect the deployment"
+vercel inspect https://festival-chat-jjjxkd7z1-thepeddlers-projects-d74f9d42.vercel.app || echo "❌ Inspect failed"
+
+echo ""
+echo "📋 STEP 2: Test local build to isolate the issue"
+echo "==============================================="
+echo ""
+
+echo "🧪 Testing local build to see if the issue is local or Vercel-specific..."
+echo ""
+echo "Running: npm run build"
+echo ""
+
+if npm run build; then
+    echo ""
+    echo "✅ LOCAL BUILD WORKS!"
+    echo "   → This is a Vercel-specific issue"
+    echo ""
+    echo "🎯 Likely causes:"
+    echo "   1. TypeScript strict mode differences"
+    echo "   2. ESLint configuration differences" 
+    echo "   3. Node.js version differences"
+    echo "   4. Missing dependencies in production"
+    echo "   5. Import path case sensitivity (Linux vs macOS/Windows)"
+    echo ""
+else
+    echo ""
+    echo "❌ LOCAL BUILD ALSO FAILS!"
+    echo "   → The error is in the code itself"
+    echo ""
+    echo "🔧 Look at the error above and fix it locally first"
+    echo ""
+fi
+
+echo ""
+echo "📋 STEP 3: Alternative ways to see the error"
+echo "==========================================="
+echo ""
+echo "🌐 Method 1: Vercel Dashboard"
+echo "   1. Go to: https://vercel.com/dashboard"
+echo "   2. Find festival-chat project"
+echo "   3. Click on the failed deployment"
+echo "   4. Look at the 'Building' section"
+echo "   5. Expand it to see the actual error message"
+echo ""
+echo "🌐 Method 2: Direct log URL"
+echo "   https://festival-chat-jjjxkd7z1-thepeddlers-projects-d74f9d42.vercel.app/_logs"
+echo ""
+echo "🔧 Method 3: Force verbose build locally"
+echo "   npm run build -- --debug"
+echo ""
+
+echo "📋 STEP 4: Common build errors to check"
+echo "======================================="
+echo ""
+echo "🔍 Check for these common issues:"
+echo ""
+echo "1. 📝 TypeScript errors:"
+echo "   - Type errors that pass locally but fail on Vercel"
+echo "   - React 19 type compatibility issues"
+echo ""
+echo "2. 📝 ESLint errors:"
+echo "   - Unused variables"
+echo "   - Missing dependencies in useEffect"
+echo "   - Import/export issues"
+echo ""
+echo "3. 📝 Import errors:"
+echo "   - Case sensitivity: './Component' vs './component'"
+echo "   - Missing file extensions"
+echo "   - Server-only imports used in client code"
+echo ""
+echo "4. 📝 Environment-specific code:"
+echo "   - Code that works on macOS/Windows but fails on Linux"
+echo "   - File system operations"
+echo "   - Path separators"
+echo ""
+
+echo "🎯 NEXT STEPS:"
+echo "============="
+echo ""
+echo "1. ✅ Run local build test above"
+echo "2. 🌐 Check Vercel Dashboard for detailed error"
+echo "3. 🔧 Fix the specific error shown"
+echo "4. 🚀 Redeploy: vercel --prod --force"
+echo ""
+echo "💡 The environment variables are set now, so this is a code/build issue!"

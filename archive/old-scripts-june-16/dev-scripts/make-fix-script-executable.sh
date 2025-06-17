@@ -1,0 +1,1 @@
+chmod +x fix-and-redeploy-staging.sh

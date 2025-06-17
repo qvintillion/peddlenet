@@ -48,13 +48,16 @@ npm run preview:deploy test-websocket
 
 ## 🎯 **Overview**
 
-Festival Chat uses a **4-tier deployment strategy** for safe, iterative development:
+Festival Chat uses a **5-tier deployment strategy** for safe, iterative development:
 
 ```
-Local Development → Preview Testing → Firebase Staging → GitHub Production
+Local Development → Vercel Staging → Firebase Preview (Legacy) → Firebase Staging → Production
 ```
 
-**Recent Updates (June 11, 2025):**
+**Recent Updates (June 16, 2025):**
+- ✅ **Vercel Staging Integration** - Primary staging workflow now uses Vercel for faster deployments
+- ✅ **Firebase Preview Channels** - Moved to legacy/fallback role for special scenarios
+- ✅ **Streamlined Workflow** - `npm run staging:vercel` and `npm run staging:vercel:complete` for optimal testing
 - ✅ **WebSocket CORS Fixed** - Firebase hosting domains fully supported
 - ✅ **API Endpoints Complete** - All required endpoints now available
 - ✅ **Data Format Issues Resolved** - Fixed JavaScript errors in peer connections
@@ -71,18 +74,33 @@ npm run dev:mobile
 - **Features**: Full WebSocket server, SQLite persistence, cross-device testing
 - **When to use**: All development work, initial feature testing
 
-### **2. Preview Testing (Firebase Channels)**
+### **2. Vercel Staging (Primary Testing)**
+```bash
+# Frontend only staging
+npm run staging:vercel
+# → Vercel preview URL
+
+# Complete staging with backend
+npm run staging:vercel:complete
+# → Vercel preview URL with staging server
+```
+- **Purpose**: Fast iteration, stakeholder review, real environment validation
+- **URL**: Vercel preview URL (auto-generated)
+- **Features**: Production infrastructure, real URLs, mobile testing, auto cache invalidation
+- **When to use**: Primary testing workflow, feature validation, stakeholder demos
+
+### **3. Preview Testing (Firebase Channels - Legacy)**
 ```bash
 # Manual preview deployment
 npm run preview:deploy feature-name
 # → https://festival-chat-peddlenet--feature-name.web.app
 ```
-- **Purpose**: Shareable testing, stakeholder review, real environment validation
+- **Purpose**: Alternative testing when Vercel isn't suitable
 - **URL**: `https://festival-chat-peddlenet--[channel-name].web.app`
 - **Features**: Production infrastructure, real URLs, mobile testing
-- **When to use**: Feature testing, stakeholder demos, pre-staging validation
+- **When to use**: Vercel fallback, special testing scenarios
 
-### **3. Firebase Staging (Pre-Production)**
+### **4. Firebase Staging (Pre-Production)**
 ```bash
 npm run deploy:firebase:complete  
 # → https://festival-chat-peddlenet.web.app
@@ -92,7 +110,7 @@ npm run deploy:firebase:complete
 - **Features**: Full production stack, cache busting, infrastructure updates
 - **When to use**: Major releases, infrastructure changes, final validation
 
-### **4. GitHub Production (Live Users)**
+### **5. Production (Live Users)**
 ```bash
 git push origin main
 ./deploy.sh
@@ -105,13 +123,13 @@ git push origin main
 
 ## 🎪 **When to Use Each Environment**
 
-### **🚀 Skip Firebase Staging (Streamlined)**
-**Direct Preview → Production for most changes:**
+### **🚀 Streamlined Vercel Staging (Primary Workflow)**
+**Direct Vercel Staging → Production for most changes:**
 
 ```bash
 # Small bug fixes, UI tweaks, content updates
 npm run dev:mobile              # Local development
-npm run preview:deploy test     # Preview testing  
+npm run staging:vercel          # Vercel staging (frontend only)
 git push origin main && ./deploy.sh  # Straight to production
 ```
 
@@ -119,16 +137,17 @@ git push origin main && ./deploy.sh  # Straight to production
 - ✅ Small bug fixes
 - ✅ UI tweaks and improvements
 - ✅ Content updates
-- ✅ When preview testing was thorough
+- ✅ Fast iteration cycles
+- ✅ Stakeholder review with real URLs
 
-### **🛡️ Use Firebase Staging (Extra Safety)**
-**Preview → Firebase → Production for major changes:**
+### **🛡️ Complete Vercel Staging (Extra Safety)**
+**Complete Vercel Staging → Firebase Staging → Production for major changes:**
 
 ```bash
 # Major feature releases, infrastructure changes
 npm run dev:mobile                    # Local development
-npm run preview:deploy major-feature  # Preview testing
-npm run deploy:firebase:complete      # Firebase staging validation
+npm run staging:vercel:complete       # Complete Vercel staging (frontend + backend)
+npm run deploy:firebase:complete      # Firebase staging validation (optional)
 git push origin main && ./deploy.sh  # Production deployment
 ```
 
@@ -136,13 +155,14 @@ git push origin main && ./deploy.sh  # Production deployment
 - ✅ Major feature releases (cross-room notifications, new UI)
 - ✅ Infrastructure changes (WebSocket server updates)
 - ✅ Mobile-critical features (QR scanning, notifications)
+- ✅ Backend + frontend coordination testing
 - ✅ When you want maximum confidence before production
 
 ## 📋 **Firebase Deployment Scripts**
 
 ### **Streamlined Firebase Scripts (Optimized June 2025)**
 
-With the 4-tier workflow, Firebase staging scripts have been streamlined:
+With the 5-tier workflow, Firebase staging scripts have been streamlined for legacy/fallback use:
 
 ```bash
 # Complete Deploy (Full Stack) - Primary staging script
@@ -272,22 +292,22 @@ npm run preview:manage open feature-test
 🤔 What type of change are you making?
 
 ├── 🐛 Bug Fix / Small UI Change
-│   └── Local → Preview → Production
+│   └── Local → Vercel Staging → Production
 │       ├── npm run dev:mobile
-│       ├── npm run preview:deploy bugfix
+│       ├── npm run staging:vercel
 │       └── git push origin main && ./deploy.sh
 │
 ├── ✨ New Feature / UI Enhancement
-│   └── Local → Preview → [Optional: Staging] → Production
+│   └── Local → Vercel Staging → [Optional: Firebase Staging] → Production
 │       ├── npm run dev:mobile
-│       ├── npm run preview:deploy new-feature
+│       ├── npm run staging:vercel:complete
 │       ├── [npm run deploy:firebase:complete] (if complex)
 │       └── git push origin main && ./deploy.sh
 │
 ├── 🏗️ Infrastructure / Server Changes
-│   └── Local → Preview → Staging → Production
+│   └── Local → Vercel Complete → Firebase Staging → Production
 │       ├── npm run dev:mobile
-│       ├── npm run preview:deploy infrastructure-test
+│       ├── npm run staging:vercel:complete
 │       ├── npm run deploy:firebase:complete
 │       └── git push origin main && ./deploy.sh
 │
@@ -308,9 +328,9 @@ npm run preview:manage open feature-test
 npm run dev:mobile
 # → Fix CSS, test on mobile device
 
-# 2. Preview testing  
-npm run preview:deploy button-fix
-# → Share with stakeholders for approval
+# 2. Vercel staging
+npm run staging:vercel
+# → Share Vercel preview URL with stakeholders for approval
 
 # 3. Direct to production
 git push origin main && ./deploy.sh
@@ -326,9 +346,9 @@ git push origin main && ./deploy.sh
 npm run dev:mobile
 # → Build feature, test locally
 
-# 2. Preview testing
-npm run preview:deploy cross-room-notifications
-# → Share with team for testing
+# 2. Complete Vercel staging
+npm run staging:vercel:complete
+# → Share with team for testing (frontend + backend)
 
 # 3. Firebase staging (extra safety)
 npm run deploy:firebase:complete
@@ -428,7 +448,8 @@ curl https://[cloud-run-url]/health
 
 ### **Development Workflow**
 - ✅ Always test locally first with `npm run dev:mobile`
-- ✅ Use preview channels for stakeholder review
+- ✅ Use Vercel staging for fast iteration and stakeholder review
+- ✅ Use Firebase preview channels as fallback when needed
 - ✅ Test on multiple devices before staging
 - ✅ Validate staging before production
 
@@ -439,7 +460,8 @@ curl https://[cloud-run-url]/health
 - ✅ Have rollback plan ready
 
 ### **Team Collaboration**
-- ✅ Share preview URLs for review
+- ✅ Share Vercel preview URLs for review (primary)
+- ✅ Use Firebase preview channels for special scenarios
 - ✅ Document significant changes
 - ✅ Test cross-device functionality
 - ✅ Communicate deployment schedule
@@ -448,7 +470,7 @@ curl https://[cloud-run-url]/health
 
 ## 🚀 **Ready for Production!**
 
-This 4-tier deployment strategy provides:
+This 5-tier deployment strategy provides:
 - **🛡️ Safety** - Multiple validation stages
 - **⚡ Speed** - Skip stages when appropriate  
 - **🎯 Flexibility** - Adapt to change complexity

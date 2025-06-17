@@ -1,75 +1,79 @@
 #!/bin/bash
 
-# Deploy WebSocket server using Google Cloud Build (no local Docker needed)
-# Version: 1.3.0-frontend-error-fix-complete
-# Date: June 14, 2025
-# Includes: All frontend error fixes + production optimizations
+# 🎪 PRODUCTION WebSocket Server Deployment Script
+# =================================================
+# Deploys universal WebSocket server to PRODUCTION environment
+# Uses universal server with automatic production environment detection
 
-echo "🎪 Production WebSocket Server Deployment - ERROR-FIX COMPLETE"
-echo "================================================================"
-echo "🎯 Target: PRODUCTION Environment"
-echo "🌍 Platform: Google Cloud Run"
-echo "🔧 Features: All frontend error fixes + admin enhancements"
-echo "📈 Version: 1.3.0-frontend-error-fix-complete"
-echo ""
+set -e
 
-# Check if we're in the right directory
-if [ ! -f "signaling-server.js" ]; then
-    echo "❌ Error: signaling-server.js not found in current directory"
-    echo "Please run this script from the project root directory"
-    exit 1
-fi
+echo "🎪 Production WebSocket Server Deployment"
+echo "====================================="
 
-# Set project variables - PRODUCTION PROJECT ID
-PROJECT_ID="festival-chat-peddlenet"  # Production project ID
+PROJECT_ID="festival-chat-peddlenet"
 SERVICE_NAME="peddlenet-websocket-server"
 REGION="us-central1"
 
-echo "📋 Configuration:"
-echo "   Project: $PROJECT_ID"
-echo "   Service: $SERVICE_NAME"
-echo "   Region: $REGION"
-echo "   Method: Google Cloud Build (no local Docker required)"
-echo ""
-
-echo "✅ Production Enhancement Checklist:"
-echo "=====================================" 
-echo "✅ Enhanced room stats API with proper 404 handling"
-echo "✅ Admin mesh-status endpoint with null safety"
-echo "✅ Improved error responses and validation"
-echo "✅ SQLite fallback system for cross-platform compatibility"
-echo "✅ CORS enhancements for all frontend environments"
-echo "✅ Production-hardened admin authentication"
-echo ""
-
-# Check if gcloud is authenticated
-echo "🔐 Checking Google Cloud authentication..."
-gcloud auth list --filter=status:ACTIVE --format="value(account)" > /dev/null 2>&1
-
-if [ $? -ne 0 ]; then
-    echo "❌ Not authenticated with Google Cloud"
-    echo "Please run: gcloud auth login"
+# SAFETY: Check if we're not accidentally targeting staging
+if [[ "$SERVICE_NAME" == *"staging"* ]]; then
+    echo "❌ ERROR: This script is for PRODUCTION only!"
+    echo "Use ./scripts/deploy-websocket-staging.sh for staging"
     exit 1
 fi
 
-# Set the project
-echo "🎯 Setting project to $PROJECT_ID..."
+echo "🎯 Target: PRODUCTION Environment"
+echo "📦 Service: $SERVICE_NAME"
+echo "🌍 Region: $REGION"
+echo "🏢 Project: $PROJECT_ID"
+echo ""
+
+# Check if gcloud is available
+if ! command -v gcloud &> /dev/null; then
+    echo "❌ Google Cloud CLI not found. Please install gcloud CLI."
+    exit 1
+fi
+
+# Set project
+echo "⚙️ Configuring Google Cloud project..."
 gcloud config set project $PROJECT_ID
 
-# Submit build to Cloud Build (production configuration)
-echo "☁️  Submitting production build to Google Cloud Build..."
-echo "⚡ Using cache-busting for fresh build with all error fixes..."
+# Verify we're using the correct Docker configuration
+echo "📋 Using universal server configuration:"
+echo "   🐳 Dockerfile: Dockerfile.minimal"
+echo "   🖥️ Server: signaling-server.js (universal with auto-detection)"
+echo "   📦 Dependencies: Minimal (no SQLite compilation issues)"
+echo "   🔧 Version: 2.0.0-universal-production"
+echo ""
+
+# Build specifically for production
+echo "🎨 Building container image for PRODUCTION..."
+echo "Using universal server with auto-detection..."
+echo "⚡ Forcing fresh build with cache-busting..."
+
+# Use the production Docker configuration with cache busting
 gcloud builds submit \
-  --config deployment/cloudbuild-production.yaml \
+  --config=deployment/cloudbuild-production.yaml \
   --substitutions=_SERVICE_NAME=$SERVICE_NAME
 
-if [ $? -ne 0 ]; then
-    echo "❌ Cloud Build deployment failed"
-    exit 1
-fi
+echo ""
+echo "🚀 Deploying to Cloud Run (PRODUCTION)..."
+gcloud run deploy $SERVICE_NAME \
+    --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
+    --platform managed \
+    --region $REGION \
+    --allow-unauthenticated \
+    --port 8080 \
+    --memory 512Mi \
+    --cpu 1 \
+    --min-instances 0 \
+    --max-instances 10 \
+    --set-env-vars NODE_ENV=production \
+    --set-env-vars BUILD_TARGET=production \
+    --set-env-vars PLATFORM=cloudrun \
+    --set-env-vars VERSION="2.0.0-universal-production"
 
-# CRITICAL: Set environment variables after deployment
-echo "🔧 Setting production environment variables..."
+# CRITICAL: Ensure environment variables are set properly
+echo "🔧 Verifying production environment variables..."
 gcloud run services update $SERVICE_NAME \
   --set-env-vars="NODE_ENV=production,BUILD_TARGET=production,PLATFORM=cloudrun" \
   --region=$REGION \
@@ -77,49 +81,95 @@ gcloud run services update $SERVICE_NAME \
 
 if [ $? -ne 0 ]; then
     echo "⚠️ Warning: Failed to set environment variables"
-    echo "Admin dashboard may not work properly"
+    echo "Admin dashboard may not work properly in production"
 else
-    echo "✅ Environment variables set successfully"
+    echo "✅ Production environment variables set successfully"
 fi
 
-# Get the service URL
-echo "📍 Getting service URL..."
-SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --platform managed --region $REGION --format 'value(status.url)' --project $PROJECT_ID)
+# Get the service URL for verification
+echo ""
+echo "📡 Getting production WebSocket server URL..."
+SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
+  --region=$REGION \
+  --project=$PROJECT_ID \
+  --format="value(status.url)" 2>/dev/null)
+
+if [ -z "$SERVICE_URL" ]; then
+    echo "❌ Failed to get production service URL"
+    exit 1
+fi
+
+# Convert HTTP to WSS for WebSocket
+WEBSOCKET_URL="wss://${SERVICE_URL#https://}"
+
+echo "✅ Production service deployed: $SERVICE_URL"
+echo "🔌 WebSocket URL: $WEBSOCKET_URL"
+
+# Test the health endpoint
+echo ""
+echo "🧪 Testing production service health..."
+if curl -s --fail "$SERVICE_URL/health" > /dev/null; then
+    echo "✅ Production service is healthy"
+    
+    # Get version info if available
+    VERSION_INFO=$(curl -s "$SERVICE_URL/health" | grep -o '"version":"[^"]*"' || echo '')
+    if [ ! -z "$VERSION_INFO" ]; then
+        echo "📦 $VERSION_INFO"
+    fi
+else
+    echo "⚠️ Production service health check failed"
+    echo "💡 The service might still be starting up. Try again in 30 seconds."
+fi
+
+# Update the production environment file
+echo ""
+echo "📝 Updating .env.production with new WebSocket URL..."
+cat > .env.production << EOF
+# Environment variables for Vercel PRODUCTION deployment  
+# Auto-generated on $(date)
+
+# PRODUCTION WebSocket server on Google Cloud Run
+NEXT_PUBLIC_SIGNALING_SERVER=$WEBSOCKET_URL
+
+# Build target
+BUILD_TARGET=production
+NODE_ENV=production
+PLATFORM=vercel
+
+# Cloud Run service details
+# Service URL: $SERVICE_URL
+# Project: $PROJECT_ID
+# Region: $REGION
+EOF
+
+echo "✅ Updated .env.production"
 
 echo ""
-echo "🎉 PRODUCTION WEBSOCKET SERVER DEPLOYMENT SUCCESSFUL!"
-echo "====================================================="
-echo "📍 Service URL: $SERVICE_URL"
-echo "🏥 Health check: $SERVICE_URL/health"
-echo "📊 Admin analytics: $SERVICE_URL/admin/analytics"
-echo "🌐 Mesh status: $SERVICE_URL/admin/mesh-status"
-echo "📋 Room stats: $SERVICE_URL/room-stats/[room-id]"
+echo "🎉 Production WebSocket Server Deployment Complete!"
+echo "==============================================="
+echo "🎪 Environment: PRODUCTION"
+echo "🔌 WebSocket URL: $WEBSOCKET_URL"
+echo "🌐 Service URL: $SERVICE_URL"
+echo "🛠️ Version: 2.0.0-universal-production"
 echo ""
-echo "🎯 Production Features Active:"
-echo "==============================="
-echo "✅ Enhanced error handling for all frontend components"
-echo "✅ Silent 404 handling for non-existent public rooms"
-echo "✅ Null safety for admin dashboard mesh metrics"
-echo "✅ SQLite persistence with automatic fallback"
-echo "✅ Production-grade CORS and security"
-echo "✅ Real-time analytics and monitoring"
-echo "✅ Room-specific broadcasting"
-echo "✅ Admin authentication with session management"
+echo "📋 Key Features Deployed:"
+echo "   ✅ Universal Server: Auto-detects production environment"
+echo "   ✅ Messaging Fix: io.to(roomId) includes sender"
+echo "   ✅ Background Notifications: Cross-room system"
+echo "   ✅ Room Codes: Registration and resolution"
+echo "   ✅ Connection Recovery: Mobile-optimized"
+echo "   ✅ Admin Dashboard: Complete analytics and management"
+echo "   ✅ Production Ready: High performance, scaling enabled"
 echo ""
-echo "🧪 Production Testing URLs:"
-echo "==========================="
-echo "• Health: $SERVICE_URL/health"
-echo "• Analytics: $SERVICE_URL/admin/analytics"
-echo "• Mesh Status: $SERVICE_URL/admin/mesh-status"
-echo "• Room Stats: $SERVICE_URL/room-stats/test-room (will return 404 - expected)"
+echo "🧪 Test the production server:"
+echo "   curl $SERVICE_URL/health"
 echo ""
-echo "📝 IMPORTANT: Copy this WebSocket URL for .env.production:"
-echo "============================================================"
-echo "NEXT_PUBLIC_SIGNALING_SERVER=$SERVICE_URL"
+echo "🚀 Next step - Deploy frontend to production:"
+echo "   npm run deploy:vercel:complete"
 echo ""
-echo "⚠️  REMEMBER: Change 'https://' to 'wss://' in .env.production"
-echo "Correct format: NEXT_PUBLIC_SIGNALING_SERVER=wss://[domain]"
+echo "🔍 Monitor production deployment:"
+echo "   Cloud Run Console: https://console.cloud.google.com/run/detail/$REGION/$SERVICE_NAME?project=$PROJECT_ID"
 echo ""
-echo "⏱️  Version: 1.3.0-frontend-error-fix-complete"
-echo "🛠️  Deployed via: Google Cloud Build"
-echo "🎪 Ready for frontend deployment!"
+echo "⚡ Once frontend deployed, LIVE at:"
+echo "   https://peddlenet.app"
+echo "   https://peddlenet.app/admin-analytics (Admin Dashboard)"

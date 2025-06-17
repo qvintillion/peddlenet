@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": ".next",
+    "public": "out",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -8,28 +8,13 @@
     ],
     "rewrites": [
       {
-        "source": "/api/**",
-        "function": "nextjsFunc"
-      },
-      {
         "source": "**",
-        "function": "nextjsFunc"
-      }
-    ],
-    "headers": [
-      {
-        "source": "**/*.@(js|css|html|json)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=3600"
-          }
-        ]
+        "destination": "/index.html"
       }
     ]
   },
   "functions": {
     "source": "functions",
-    "runtime": "nodejs20"
+    "runtime": "nodejs18"
   }
 }

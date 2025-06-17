@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ServerUtils } from '@/utils/server-utils';
+import { ServerUtils } from '../../utils/server-utils';
 
 export default function RoomStatsTestPage() {
   const [testResults, setTestResults] = useState<any[]>([]);

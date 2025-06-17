@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
-import { slugifyRoomName, generateFestivalRoomName } from '@/utils/room-utils';
+import { slugifyRoomName, generateFestivalRoomName } from '../../utils/room-utils';
 
 export default function ImprovedAdminPage() {
   const router = useRouter();

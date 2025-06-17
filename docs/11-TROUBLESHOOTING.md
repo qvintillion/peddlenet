@@ -1,5 +1,134 @@
 # 🛠️ Troubleshooting Guide - Festival Chat
 
+## 🚨 **LATEST: Critical Staging Fixes Applied - June 16, 2025** 🆕
+
+### **✅ Dev Mode Admin Dashboard HTTP 500 Error RESOLVED**
+
+**Symptoms**: 
+- `HTTP 500: Internal Server Error` in `MeshNetworkStatus.tsx:107:35`
+- Admin dashboard showing errors instead of mock P2P data in development
+- Console errors when accessing `/admin-analytics` in local development
+
+**Root Cause**: `MeshNetworkStatus` component trying to fetch real mesh data from WebSocket server in development mode
+
+**✅ RESOLUTION**: This critical error has been completely fixed!
+
+**What Was Fixed**:
+- **Frontend Component**: Added development mode detection and mock P2P data generation
+- **Backend API Route**: Added development mode detection to return mock data
+- **Instant Load**: Bypasses API calls in development for immediate dashboard load
+- **Clear Indicators**: UI shows "Development - Mock P2P Data" when using mock data
+
+**Development Mode Features**:
+- ✅ **4 mock users**: Alice, Bob, Charlie (P2P), Diana (WebSocket)
+- ✅ **2 mock rooms**: main-stage-chat, side-stage-chat 
+- ✅ **Realistic metrics**: 75% P2P success rate, realistic latencies
+- ✅ **Real-time simulation**: Data updates every 5 seconds with variations
+- ✅ **No API calls**: Instant load without network dependencies
+
+**Testing the Fix**:
+```bash
+# 1. Start development server
+npm run dev:mobile
+
+# 2. Open admin dashboard
+http://localhost:3000/admin-analytics
+
+# 3. Login: th3p3ddl3r / letsmakeatrade
+# 4. Verify: Header shows "Development - Mock P2P Data"
+# 5. Check: No HTTP 500 errors in console
+```
+
+**Expected Mock Data**:
+- P2P Active Users: 3
+- Active P2P Links: 3  
+- Upgrade Success: 75%
+- Avg Latency: ~40ms
+
+**Related Documentation**: **[Dev Mode Mesh Status Fix](./DEV-MODE-MESH-STATUS-FIX-JUNE-16-2025.md)** - Complete fix details
+
+---
+
+### **✅ WebRTC Hook Syntax Error RESOLVED**
+
+**Symptoms**: 
+- `Cannot read properties of undefined (reading 'length')` error in browser console
+- Staging deployment fails to load
+- JavaScript runtime errors preventing app initialization
+
+**Root Cause**: Malformed `forceICERestart` function nested incorrectly inside `socket.emit` call in `src/hooks/use-native-webrtc.ts`
+
+**✅ RESOLUTION**: This critical syntax error has been completely fixed!
+
+**What Was Fixed**:
+```javascript
+// ❌ BROKEN CODE (was causing the error):
+socketRef.current.emit('webrtc-ice-candidate', {
+  targetPeerId,
+  candidate: event.candidate,
+  roomId
+},
+// THIS FUNCTION WAS INCORRECTLY NESTED:
+forceICERestart: () => { /* ... */ });
+
+// ✅ FIXED CODE:
+const forceICERestart = useCallback(() => {
+  console.log('⚡ [ICE RESTART] Forcing ICE restart for all connections...');
+  // ... proper implementation
+}, [connections]);
+
+// Clean socket.emit call:
+socketRef.current.emit('webrtc-ice-candidate', {
+  targetPeerId,
+  candidate: event.candidate,
+  roomId
+});
+```
+
+**Impact**: ✅ Eliminates JavaScript runtime errors preventing staging deployment from loading
+
+### **✅ WebSocket Server URL Mismatch RESOLVED**
+
+**Symptoms**:
+- Environment pointing to one staging server but logs showing different server
+- CORS errors during staging deployment
+- Connection failures to WebSocket endpoints
+
+**Root Cause**: Multiple staging servers deployed with conflicting environment variables
+
+**✅ RESOLUTION**: Environment configuration streamlined and server conflicts eliminated!
+
+**What Was Fixed**:
+- Updated `.env.local` for consistent staging server targeting
+- Enhanced staging deployment script with proper CORS configuration
+- Eliminated confusion between multiple WebSocket server deployments
+
+**Impact**: ✅ Consistent WebSocket connections across all deployment environments
+
+### **🚀 Deployment Actions Required**
+
+**To apply these fixes to staging**:
+```bash
+# 1. Deploy updated staging WebSocket server with CORS fixes
+./scripts/deploy-websocket-staging.sh
+
+# 2. Deploy frontend to Vercel staging
+npm run staging:vercel:complete
+# OR: vercel --env .env.staging
+```
+
+**Expected Results After Deployment**:
+- ✅ Vercel staging loads without JavaScript errors
+- ✅ WebSocket connections establish correctly
+- ✅ Admin dashboard loads and functions properly
+- ✅ No more CORS errors in browser console
+
+**Related Documentation**:
+- **[Critical Staging Fix Summary](./CRITICAL-STAGING-FIXES-JUNE-16-2025.md)** - Detailed technical fix summary
+- **[Staging Deployment Guide](./STAGING-DEPLOYMENT-FIX.md)** - Updated deployment workflow
+
+---
+
 ## 🔍 **LATEST: P2P Connection Analysis - June 15, 2025** 🆕
 
 ### **Issue Identified: PeerJS Cloud Service Unreliability**

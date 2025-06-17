@@ -56,3 +56,4 @@ backup-to-github.sh.backup*
 !next.config.ts
 !package.json
 !package-lock.json
+.vercel

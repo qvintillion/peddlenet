@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ActivityFeed } from '@/components/admin/ActivityFeed';
-import { AdminControls } from '@/components/admin/AdminControls';
-import { DetailedUserView } from '@/components/admin/DetailedUserView';
-import { DetailedRoomView } from '@/components/admin/DetailedRoomView';
+// import { ActivityFeed } from '@/components/admin/ActivityFeed';
+// import { AdminControls } from '@/components/admin/AdminControls';
+// import { DetailedUserView } from '@/components/admin/DetailedUserView';
+// import { DetailedRoomView } from '@/components/admin/DetailedRoomView';
 
 // Force dynamic rendering (no static generation)
 export const dynamic = 'force-dynamic';

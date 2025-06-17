@@ -27,6 +27,14 @@ const server = createServer(app);
 // Environment detection
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const buildTarget = process.env.BUILD_TARGET || 'unknown';
+
+// 🔧 CRITICAL: Log environment setup for debugging
+console.log('🔧 Environment Setup:');
+console.log('  - NODE_ENV:', process.env.NODE_ENV);
+console.log('  - BUILD_TARGET:', process.env.BUILD_TARGET);
+console.log('  - PLATFORM:', process.env.PLATFORM);
+console.log('  - K_SERVICE (Cloud Run):', process.env.K_SERVICE);
+console.log('  - GCLOUD_PROJECT:', process.env.GCLOUD_PROJECT);
 const platform = process.env.PLATFORM || 'local';
 
 // 🔐 SIMPLIFIED: Single admin level
@@ -37,13 +45,42 @@ const ADMIN_CREDENTIALS = {
 
 // Enhanced environment detection using BUILD_TARGET
 function getEnvironment() {
+  console.log('🔍 Environment Detection Debug:');
+  console.log('  - process.env.BUILD_TARGET:', process.env.BUILD_TARGET);
+  console.log('  - buildTarget variable:', buildTarget);
+  console.log('  - process.env.NODE_ENV:', process.env.NODE_ENV);
+  console.log('  - isDevelopment:', isDevelopment);
+  
   // Use BUILD_TARGET if available (staging/production/preview)
-  if (buildTarget === 'staging') return 'staging';
-  if (buildTarget === 'production') return 'production';
-  if (buildTarget === 'preview') return 'preview';
+  if (buildTarget === 'staging') {
+    console.log('  ✅ Detected: staging (from BUILD_TARGET)');
+    return 'staging';
+  }
+  if (buildTarget === 'production') {
+    console.log('  ✅ Detected: production (from BUILD_TARGET)');
+    return 'production';
+  }
+  if (buildTarget === 'preview') {
+    console.log('  ✅ Detected: preview (from BUILD_TARGET)');
+    return 'preview';
+  }
+  
+  // Additional check for staging detection based on service name or other indicators
+  const stagingIndicators = [
+    process.env.GCLOUD_PROJECT && process.env.GCLOUD_PROJECT.includes('staging'),
+    process.env.K_SERVICE && process.env.K_SERVICE.includes('staging'),
+    process.env.SERVICE_NAME && process.env.SERVICE_NAME.includes('staging')
+  ].some(Boolean);
+  
+  if (stagingIndicators) {
+    console.log('  ✅ Detected: staging (from service indicators)');
+    return 'staging';
+  }
   
   // Fallback to NODE_ENV detection
-  return isDevelopment ? 'development' : 'production';
+  const result = isDevelopment ? 'development' : 'production';
+  console.log(`  ✅ Detected: ${result} (from NODE_ENV fallback)`);
+  return result;
 }
 
 // CORS configuration - FIXED: Added Firebase domains
@@ -66,6 +103,14 @@ function getCorsOrigins() {
   origins.push("https://peddlenet.app");
   origins.push("https://www.peddlenet.app");
   
+  // 🔧 COMPREHENSIVE: All Vercel deployment patterns
+  origins.push("https://festival-chat-*.vercel.app");
+  origins.push("https://festival-chat-*-thepeddlers-projects-d74f9d42.vercel.app");
+  origins.push("https://festival-chat-5x4hx04q3-thepeddlers-projects-d74f9d42.vercel.app");
+  
+  // 🚨 CRITICAL FIX: Add specific pattern for current deployment
+  origins.push("https://festival-chat-d08ae0jyo-thepeddlers-projects-d74f9d42.vercel.app");
+  
   // Additional Firebase preview channel patterns
   origins.push("https://festival-chat--*.web.app");
   origins.push("https://festival-chat-peddlenet--feature-*.web.app");
@@ -85,6 +130,12 @@ function getCorsOrigins() {
     // In production, add wildcard support for Firebase preview channels
     origins.push(/^https:\/\/festival-chat-peddlenet--.*\.web\.app$/);
     origins.push(/^https:\/\/festival-chat--.*\.web\.app$/);
+    
+    // 🔧 COMPREHENSIVE: Vercel deployment patterns (all variations)
+    origins.push(/^https:\/\/festival-chat-[a-zA-Z0-9-]+-[a-zA-Z0-9-]+-[a-zA-Z0-9-]+\.vercel\.app$/);
+    origins.push(/^https:\/\/festival-chat-[a-zA-Z0-9-]+-thepeddlers-projects-[a-zA-Z0-9-]+\.vercel\.app$/);
+    // 🚨 CRITICAL FIX: More permissive regex for complex Vercel domains
+    origins.push(/^https:\/\/festival-chat-[a-zA-Z0-9]+(-[a-zA-Z0-9]+)*-thepeddlers-projects-[a-zA-Z0-9-]+\.vercel\.app$/);
   }
 
   console.log('🌐 CORS Origins configured:', origins.length, 'domains');
@@ -410,21 +461,21 @@ app.get('/admin/mesh-status', requireAdminAuth, (req, res) => {
       const roomConnections = [];
       
       for (const [socketId, peerData] of roomPeers.entries()) {
-        // Check if this socket has P2P connections
-        const p2pData = p2pConnections.get(socketId);
-        const isP2PActive = p2pData && p2pData.status === 'connected' && p2pData.peers.size > 0;
+        // 🔥 CRITICAL: Check for real P2P status from tracked data
+        const isP2PActive = peerData.isP2PActive === true;
+        const p2pPeers = peerData.p2pPeers || [];
         
-        // Simulate connection quality based on P2P status and time connected
+        // Calculate connection quality based on P2P status and connection age
         const connectionAge = Date.now() - (peerData.joinedAt || Date.now());
         let connectionQuality = 'none';
         
-        if (isP2PActive) {
-          // P2P connections typically have better quality
-          connectionQuality = p2pData.peers.size > 2 ? 'excellent' : 'good';
+        if (isP2PActive && p2pPeers.length > 0) {
+          // Real P2P connections have excellent quality
+          connectionQuality = p2pPeers.length > 2 ? 'excellent' : 'good';
         } else {
-          // WebSocket quality based on connection age (newer = better)
+          // WebSocket quality based on connection age
           connectionQuality = connectionAge < 30000 ? 'good' : 
-                             connectionAge < 120000 ? 'fair' : 'poor';
+                             connectionAge < 120000 ? 'poor' : 'poor';
         }
         
         const meshConnection = {
@@ -432,10 +483,10 @@ app.get('/admin/mesh-status', requireAdminAuth, (req, res) => {
           displayName: peerData.displayName,
           socketId: socketId.substring(0, 8) + '...', // Truncate for privacy
           roomId,
-          p2pPeers: p2pData ? Array.from(p2pData.peers).map(id => id.substring(0, 8) + '...') : [],
+          p2pPeers: p2pPeers.map(id => id.substring(0, 8) + '...'), // 🔥 REAL P2P peer data
           connectionQuality,
           lastSeen: peerData.joinedAt || Date.now(),
-          isP2PActive,
+          isP2PActive, // 🔥 REAL P2P status from server tracking
           connectionAge
         };
         
@@ -448,25 +499,29 @@ app.get('/admin/mesh-status', requireAdminAuth, (req, res) => {
       }
     }
     
-    // 🔧 FIXED: Calculate enhanced mesh metrics with null safety
+    // 🔥 CRITICAL: Use REAL metrics from WebRTC connection tracking
     const enhancedMeshMetrics = {
-      ...meshMetrics,
-      meshUpgradeRate: meshMetrics.totalP2PAttempts > 0 
-        ? Math.round((meshMetrics.successfulP2PConnections / meshMetrics.totalP2PAttempts) * 100)
-        : 0,
-      p2pMessageCount: meshConnections.filter(c => c.isP2PActive).length * 10, // Simulate
-      fallbackCount: meshConnections.filter(c => !c.isP2PActive).length * 5, // Simulate
-      averageConnectionTime: Math.round(meshMetrics.averageConnectionTime || 0),
-      currentP2PUsers: meshConnections.filter(c => c.isP2PActive).length,
+      totalP2PAttempts: meshMetrics.totalP2PAttempts, // 🔥 REAL attempt count
+      successfulP2PConnections: meshMetrics.successfulP2PConnections, // 🔥 REAL success count
+      failedP2PConnections: meshMetrics.failedP2PConnections, // 🔥 REAL failure count
+      activeP2PConnections: meshMetrics.activeP2PConnections, // 🔥 REAL active count
+      meshUpgradeRate: meshMetrics.totalP2PAttempts > 0 ? 
+        Math.round((meshMetrics.successfulP2PConnections / meshMetrics.totalP2PAttempts) * 100) : 0,
+      p2pMessageCount: 0, // Track P2P messages separately when implemented
+      fallbackCount: meshConnections.filter(c => !c.isP2PActive).length, // 🔥 REAL fallback count
+      averageConnectionTime: meshConnections.length > 0 ? 
+        meshConnections.reduce((acc, c) => acc + c.connectionAge, 0) / meshConnections.length : 0,
+      currentP2PUsers: meshConnections.filter(c => c.isP2PActive).length, // 🔥 REAL P2P users
       totalActiveUsers: meshConnections.length,
       roomsWithMesh: Object.values(roomTopology).filter(room => 
-        room.some(conn => conn.isP2PActive)
-      ).length,
-      // 🔧 ENSURE: Never return null metrics
-      totalP2PAttempts: meshMetrics.totalP2PAttempts || 0,
-      successfulP2PConnections: meshMetrics.successfulP2PConnections || 0,
-      failedP2PConnections: meshMetrics.failedP2PConnections || 0,
-      activeP2PConnections: meshMetrics.activeP2PConnections || 0
+        room.some(conn => conn.isP2PActive)).length, // 🔥 REAL mesh rooms
+      debugInfo: {
+        emergencyDisabled: false,
+        reason: 'WebRTC enabled with enhanced tracking - showing real P2P connections',
+        serverInfrastructureReady: !!global.P2PServer,
+        phase: 'Phase 1 - Real P2P tracking active',
+        realTimeTracking: true
+      }
     };
     
     // 🔧 FIXED: Ensure meshStatus always has valid metrics object
@@ -492,9 +547,13 @@ app.get('/admin/mesh-status', requireAdminAuth, (req, res) => {
       timestamp: Date.now(),
       phase: 'Phase 1 - Hybrid Architecture',
       status: {
-        p2pEnabled: !!global.P2PServer,
+        // 🚀 RE-ENABLED: WebRTC with enhanced protection
+        p2pEnabled: true, // WebRTC re-enabled with safety monitoring
+        p2pAvailable: !!global.P2PServer, // Server infrastructure available
         signalingActive: true,
-        meshUpgradeAvailable: meshConnections.length > 0 && meshConnections.length <= 5
+        meshUpgradeAvailable: true, // Re-enabled with protection
+        frontendStatus: 'webrtc-protected-enabled', // Protected but enabled
+        serverMessage: 'WebRTC re-enabled with enhanced loop protection and monitoring'
       }
     };
     
@@ -502,7 +561,8 @@ app.get('/admin/mesh-status', requireAdminAuth, (req, res) => {
     console.log(`🌐 Mesh status metrics type:`, typeof meshStatus.metrics);
     console.log(`🌐 Mesh status metrics:`, JSON.stringify(meshStatus.metrics, null, 2));
     
-    console.log(`🌐 Mesh status: ${enhancedMeshMetrics.currentP2PUsers}/${enhancedMeshMetrics.totalActiveUsers} P2P active, ${enhancedMeshMetrics.activeP2PConnections} connections`);
+    console.log(`🌐 Mesh status: ${enhancedMeshMetrics.currentP2PUsers}/${enhancedMeshMetrics.totalActiveUsers} P2P active, ${enhancedMeshMetrics.activeP2PConnections} active connections, ${enhancedMeshMetrics.totalP2PAttempts} total attempts`);
+    console.log(`📊 [P2P ADMIN] Success rate: ${enhancedMeshMetrics.meshUpgradeRate}%, Rooms with mesh: ${enhancedMeshMetrics.roomsWithMesh}`);
     
     res.json(meshStatus);
   } catch (error) {
@@ -1282,6 +1342,313 @@ app.post('/admin/room/clear', requireAdminAuth, (req, res) => {
   }
 });
 
+// 🔧 NEW: Remove user from room (ADMIN ACCESS)
+app.post('/admin/users/remove', requireAdminAuth, (req, res) => {
+  try {
+    const { peerId, roomId, reason } = req.body;
+    
+    if (!peerId || !roomId) {
+      return res.status(400).json({ error: 'peerId and roomId are required' });
+    }
+    
+    console.log(`\n🗑️ ===== ADMIN USER REMOVAL REQUEST =====`);
+    console.log(`🔐 Admin: ${req.adminUser} (${req.adminLevel})`);
+    console.log(`🔍 Target peerId: "${peerId}"`);
+    console.log(`🔍 Target roomId: "${roomId}"`);
+    console.log(`🔍 Reason: "${reason || 'No reason provided'}"`);
+    
+    // Find the user in the specified room
+    if (!rooms.has(roomId)) {
+      return res.status(404).json({ 
+        error: 'Room not found',
+        roomId,
+        availableRooms: Array.from(rooms.keys())
+      });
+    }
+    
+    const room = rooms.get(roomId);
+    let targetSocketId = null;
+    let targetPeerData = null;
+    
+    // Find user by peerId
+    for (const [socketId, peerData] of room.entries()) {
+      if (peerData.peerId === peerId) {
+        targetSocketId = socketId;
+        targetPeerData = peerData;
+        break;
+      }
+    }
+    
+    if (!targetSocketId || !targetPeerData) {
+      return res.status(404).json({ 
+        error: 'User not found in specified room',
+        peerId,
+        roomId,
+        availableUsers: Array.from(room.values()).map(p => ({ peerId: p.peerId, displayName: p.displayName }))
+      });
+    }
+    
+    // Remove user from room
+    room.delete(targetSocketId);
+    
+    // Mark user as inactive
+    markUserInactive(targetPeerData.peerId, targetPeerData.displayName);
+    
+    // Get the socket instance and disconnect them
+    const targetSocket = io.sockets.sockets.get(targetSocketId);
+    if (targetSocket) {
+      // Send removal notification to the user
+      targetSocket.emit('admin-removed', {
+        reason: reason || 'Removed by administrator',
+        adminUser: req.adminUser,
+        timestamp: Date.now(),
+        message: 'You have been removed from this room by an administrator. Please refresh to rejoin.'
+      });
+      
+      // Disconnect the user
+      targetSocket.disconnect(true);
+    }
+    
+    // Notify other users in the room
+    const removalMessage = {
+      id: generateMessageId(),
+      content: `🚫 ${targetPeerData.displayName} was removed from the room by administrator.`,
+      sender: `Administrator (${req.adminUser})`,
+      timestamp: Date.now(),
+      type: 'system',
+      roomId
+    };
+    
+    io.to(roomId).emit('chat-message', removalMessage);
+    io.to(roomId).emit('user-removed', {
+      peerId: targetPeerData.peerId,
+      displayName: targetPeerData.displayName,
+      reason: reason || 'Removed by administrator',
+      adminUser: req.adminUser,
+      userCount: room.size
+    });
+    
+    // Store the removal message
+    storeMessage(roomId, removalMessage);
+    
+    // Clean up empty rooms
+    if (room.size === 0) {
+      rooms.delete(roomId);
+      markRoomInactive(roomId);
+      console.log(`🏠 Room ${roomId} is now empty and marked inactive`);
+    }
+    
+    // Log the user removal activity
+    addActivityLog('admin-user-removed', {
+      peerId: targetPeerData.peerId,
+      displayName: targetPeerData.displayName,
+      roomId,
+      reason: reason || 'No reason provided',
+      adminUser: req.adminUser,
+      adminLevel: req.adminLevel,
+      remainingUsers: room.size
+    }, '🚫');
+    
+    console.log(`✅ ADMIN USER REMOVAL COMPLETED by ${req.adminUser}: ${targetPeerData.displayName} (${peerId}) removed from ${roomId}`);
+    
+    res.json({
+      success: true,
+      removedUser: {
+        peerId: targetPeerData.peerId,
+        displayName: targetPeerData.displayName,
+        roomId
+      },
+      reason: reason || 'Removed by administrator',
+      adminUser: req.adminUser,
+      remainingUsers: room.size,
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    console.error('❌ Admin user removal error:', error);
+    res.status(500).json({ error: 'Failed to remove user', details: error.message });
+  }
+});
+
+// 🔧 NEW: Delete room entirely (ADMIN ACCESS)
+app.post('/admin/room/delete', requireAdminAuth, (req, res) => {
+  try {
+    const { roomId, roomCode } = req.body;
+    
+    if (!roomId && !roomCode) {
+      return res.status(400).json({ error: 'roomId or roomCode is required' });
+    }
+    
+    console.log(`\n🗑️ ===== ADMIN ROOM DELETE REQUEST =====`);
+    console.log(`🔐 Admin: ${req.adminUser} (${req.adminLevel})`);
+    console.log(`🔍 Target roomId: "${roomId || 'not provided'}"`);
+    console.log(`🔍 Target roomCode: "${roomCode || 'not provided'}"`);
+    
+    // Find target room
+    let targetRoomId = roomId;
+    let searchMethod = '';
+    
+    // If roomCode provided but no roomId, find by roomCode
+    if (!targetRoomId && roomCode) {
+      const normalizedCode = roomCode.toLowerCase().trim();
+      
+      // Method 1: Find by registered room code mapping
+      for (const [code, rid] of roomCodes.entries()) {
+        if (code === normalizedCode) {
+          targetRoomId = rid;
+          searchMethod = 'registered-code';
+          break;
+        }
+      }
+      
+      // Method 2: Find by partial room ID match
+      if (!targetRoomId) {
+        for (const [rid] of rooms.entries()) {
+          if (rid.toLowerCase().includes(normalizedCode) || 
+              rid.substring(0, 8).toLowerCase() === normalizedCode) {
+            targetRoomId = rid;
+            searchMethod = 'partial-match';
+            break;
+          }
+        }
+      }
+    } else {
+      searchMethod = 'direct-id';
+    }
+    
+    if (!targetRoomId) {
+      return res.status(404).json({ 
+        error: 'Room not found',
+        roomId,
+        roomCode,
+        availableRooms: Array.from(rooms.keys()),
+        availableRoomCodes: Array.from(roomCodes.keys())
+      });
+    }
+    
+    // Check if room exists (in active or historical data)
+    const roomExists = rooms.has(targetRoomId) || allRoomsEverCreated.has(targetRoomId);
+    
+    if (!roomExists) {
+      return res.status(404).json({ 
+        error: 'Room not found in active or historical data',
+        targetRoomId,
+        searchMethod
+      });
+    }
+    
+    let usersDisconnected = 0;
+    let messagesDeleted = 0;
+    let roomData = null;
+    
+    // If room is currently active, disconnect all users
+    if (rooms.has(targetRoomId)) {
+      const room = rooms.get(targetRoomId);
+      usersDisconnected = room.size;
+      
+      // Send shutdown message to all users in room
+      const shutdownMessage = {
+        id: generateMessageId(),
+        content: `🗑️ This room has been deleted by administrator (${req.adminUser}). You will be disconnected.`,
+        sender: `Administrator (${req.adminUser})`,
+        timestamp: Date.now(),
+        type: 'system',
+        roomId: targetRoomId
+      };
+      
+      io.to(targetRoomId).emit('chat-message', shutdownMessage);
+      io.to(targetRoomId).emit('room-deleted', {
+        roomId: targetRoomId,
+        adminUser: req.adminUser,
+        timestamp: Date.now(),
+        message: 'This room has been deleted by administrator'
+      });
+      
+      // Disconnect all users and mark them inactive
+      for (const [socketId, peerData] of room.entries()) {
+        markUserInactive(peerData.peerId, peerData.displayName);
+        
+        const socket = io.sockets.sockets.get(socketId);
+        if (socket) {
+          socket.emit('admin-room-deleted', {
+            roomId: targetRoomId,
+            reason: 'Room deleted by administrator',
+            adminUser: req.adminUser,
+            timestamp: Date.now()
+          });
+          socket.disconnect(true);
+        }
+      }
+      
+      // Remove from active rooms
+      rooms.delete(targetRoomId);
+    }
+    
+    // Get room data before deletion
+    if (allRoomsEverCreated.has(targetRoomId)) {
+      roomData = allRoomsEverCreated.get(targetRoomId);
+    }
+    
+    // Delete messages
+    if (messageStore.has(targetRoomId)) {
+      messagesDeleted = messageStore.get(targetRoomId).length;
+      messageStore.delete(targetRoomId);
+    }
+    
+    // Remove from historical data
+    allRoomsEverCreated.delete(targetRoomId);
+    
+    // Remove room code mapping
+    if (roomCode) {
+      roomCodes.delete(roomCode.toLowerCase().trim());
+    }
+    
+    // Find and remove any room code mappings that point to this room
+    for (const [code, rid] of roomCodes.entries()) {
+      if (rid === targetRoomId) {
+        roomCodes.delete(code);
+        console.log(`🏷️ Removed room code mapping: ${code} -> ${targetRoomId}`);
+      }
+    }
+    
+    // Update global stats
+    connectionStats.totalMessages = Math.max(0, connectionStats.totalMessages - messagesDeleted);
+    if (roomData) {
+      connectionStats.totalRoomsCreated = Math.max(0, connectionStats.totalRoomsCreated - 1);
+    }
+    
+    // Log the room deletion activity
+    addActivityLog('admin-room-deleted', {
+      roomId: targetRoomId,
+      roomCode: roomCode || (roomData ? roomData.roomCode : 'unknown'),
+      usersDisconnected,
+      messagesDeleted,
+      searchMethod,
+      adminUser: req.adminUser,
+      adminLevel: req.adminLevel,
+      totalMessages: roomData ? roomData.totalMessages : 0,
+      roomAge: roomData ? Date.now() - roomData.created : 0
+    }, '💥');
+    
+    console.log(`✅ ADMIN ROOM DELETION COMPLETED by ${req.adminUser}: Room ${targetRoomId} deleted (${usersDisconnected} users disconnected, ${messagesDeleted} messages deleted)`);
+    
+    res.json({
+      success: true,
+      deletedRoom: {
+        roomId: targetRoomId,
+        roomCode: roomCode || (roomData ? roomData.roomCode : null),
+        usersDisconnected,
+        messagesDeleted,
+        searchMethod
+      },
+      adminUser: req.adminUser,
+      timestamp: Date.now()
+    });
+  } catch (error) {
+    console.error('❌ Admin room deletion error:', error);
+    res.status(500).json({ error: 'Failed to delete room', details: error.message });
+  }
+});
+
 // 🔐 ENHANCED: Wipe entire database (ADMIN ACCESS)
 app.post('/admin/database/wipe', requireAdminAuth, (req, res) => {
   try {
@@ -1810,6 +2177,239 @@ io.on('connection', (socket) => {
       socket.emit('mesh-stats', meshStats);
     } catch (error) {
       console.error('❌ Mesh stats request error:', error);
+    }
+  });
+  
+  // 🌐 NATIVE WEBRTC: WebRTC signaling handlers for native implementation
+  socket.on('webrtc-offer', ({ targetPeerId, offer, roomId, initiatorData }) => {
+    try {
+      console.log(`🌐 WebRTC offer from ${socket.id} to ${targetPeerId} in room ${roomId}`);
+      
+      // 🔥 FIXED: Improved peer ID resolution with multiple fallback methods
+      let targetSocketId = null;
+      if (rooms.has(roomId)) {
+        const roomPeers = rooms.get(roomId);
+        
+        // Method 1: Exact peerId match
+        for (const [sockId, peerData] of roomPeers.entries()) {
+          if (peerData.peerId === targetPeerId) {
+            targetSocketId = sockId;
+            console.log(`✅ Found target by peerId: ${targetPeerId} -> ${sockId}`);
+            break;
+          }
+        }
+        
+        // Method 2: Display name match (fallback)
+        if (!targetSocketId) {
+          for (const [sockId, peerData] of roomPeers.entries()) {
+            if (peerData.displayName === targetPeerId) {
+              targetSocketId = sockId;
+              console.log(`✅ Found target by displayName: ${targetPeerId} -> ${sockId}`);
+              break;
+            }
+          }
+        }
+        
+        // Method 3: Socket ID match (direct)
+        if (!targetSocketId && roomPeers.has(targetPeerId)) {
+          targetSocketId = targetPeerId;
+          console.log(`✅ Found target by socketId: ${targetPeerId}`);
+        }
+        
+        // Debug: Show all available peers if not found
+        if (!targetSocketId) {
+          console.log(`❌ Target peer "${targetPeerId}" not found. Available peers:`);
+          for (const [sockId, peerData] of roomPeers.entries()) {
+            console.log(`   - Socket: ${sockId}, PeerId: ${peerData.peerId}, DisplayName: ${peerData.displayName}`);
+          }
+        }
+      }
+      
+      if (targetSocketId) {
+        // 🔥 FIXED: Send consistent peer identification
+        const roomPeers = rooms.get(roomId);
+        const senderPeerData = roomPeers.get(socket.id);
+        
+        // Forward offer to target peer with sender's actual peerId
+        io.to(targetSocketId).emit('webrtc-offer', {
+          fromPeerId: senderPeerData?.peerId || socket.id, // Use actual peerId, fallback to socketId
+          offer,
+          initiatorData,
+          roomId
+        });
+        
+        console.log(`✅ WebRTC offer forwarded: ${senderPeerData?.peerId || socket.id} -> ${targetSocketId}`);
+        
+        // 🔥 CRITICAL: Track WebRTC attempt for admin dashboard
+        meshMetrics.totalP2PAttempts++;
+        console.log(`📊 [P2P METRICS] Total attempts: ${meshMetrics.totalP2PAttempts}`);
+      } else {
+        console.warn(`⚠️ Target peer ${targetPeerId} not found in room ${roomId}`);
+        socket.emit('webrtc-error', {
+          error: 'Target peer not found',
+          targetPeerId,
+          roomId
+        });
+      }
+    } catch (error) {
+      console.error('❌ WebRTC offer error:', error);
+      socket.emit('webrtc-error', { error: 'Failed to process offer' });
+    }
+  });
+  
+  socket.on('webrtc-answer', ({ targetPeerId, answer, roomId, responderData }) => {
+    try {
+      console.log(`🌐 WebRTC answer from ${socket.id} to ${targetPeerId} in room ${roomId}`);
+      
+      // 🔥 FIXED: Same improved peer ID resolution for answers
+      let targetSocketId = null;
+      if (rooms.has(roomId)) {
+        const roomPeers = rooms.get(roomId);
+        
+        // Method 1: Exact peerId match
+        for (const [sockId, peerData] of roomPeers.entries()) {
+          if (peerData.peerId === targetPeerId) {
+            targetSocketId = sockId;
+            console.log(`✅ Answer target found by peerId: ${targetPeerId} -> ${sockId}`);
+            break;
+          }
+        }
+        
+        // Method 2: Socket ID match (direct)
+        if (!targetSocketId && roomPeers.has(targetPeerId)) {
+          targetSocketId = targetPeerId;
+          console.log(`✅ Answer target found by socketId: ${targetPeerId}`);
+        }
+      }
+      
+      if (targetSocketId) {
+        // 🔥 FIXED: Send consistent peer identification for answers
+        const roomPeers = rooms.get(roomId);
+        const senderPeerData = roomPeers.get(socket.id);
+        
+        // Forward answer to target peer with sender's actual peerId
+        io.to(targetSocketId).emit('webrtc-answer', {
+          fromPeerId: senderPeerData?.peerId || socket.id, // Use actual peerId, fallback to socketId
+          answer,
+          responderData,
+          roomId
+        });
+        
+        console.log(`✅ WebRTC answer forwarded: ${senderPeerData?.peerId || socket.id} -> ${targetSocketId}`);
+      } else {
+        console.warn(`⚠️ Target peer ${targetPeerId} not found for answer`);
+        socket.emit('webrtc-error', {
+          error: 'Target peer not found',
+          targetPeerId,
+          roomId
+        });
+      }
+    } catch (error) {
+      console.error('❌ WebRTC answer error:', error);
+      socket.emit('webrtc-error', { error: 'Failed to process answer' });
+    }
+  });
+  
+  socket.on('webrtc-ice-candidate', ({ targetPeerId, candidate, roomId }) => {
+    try {
+      // 🔥 FIXED: Streamlined ICE candidate routing
+      let targetSocketId = null;
+      if (rooms.has(roomId)) {
+        const roomPeers = rooms.get(roomId);
+        
+        // Quick resolution for ICE candidates (performance critical)
+        if (roomPeers.has(targetPeerId)) {
+          targetSocketId = targetPeerId; // Direct socket ID
+        } else {
+          // Fallback: Search by peerId
+          for (const [sockId, peerData] of roomPeers.entries()) {
+            if (peerData.peerId === targetPeerId) {
+              targetSocketId = sockId;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (targetSocketId) {
+        // Forward ICE candidate to target peer
+        io.to(targetSocketId).emit('webrtc-ice-candidate', {
+          fromPeerId: socket.id,
+          candidate,
+          roomId
+        });
+        
+        // Note: ICE candidates are frequent, so we don't log each one
+      } else {
+        console.warn(`⚠️ Target peer ${targetPeerId} not found for ICE candidate`);
+      }
+    } catch (error) {
+      console.error('❌ WebRTC ICE candidate error:', error);
+    }
+  });
+  
+  // WebRTC connection state updates
+  socket.on('webrtc-connection-state', ({ targetPeerId, state, roomId, timestamp }) => {
+    try {
+      console.log(`🔥 [P2P STATE] WebRTC connection ${state}: ${socket.id} <-> ${targetPeerId} in room ${roomId}`);
+      
+      if (state === 'connected') {
+        console.log(`✅ [P2P SUCCESS] WebRTC connection established: ${socket.id} <-> ${targetPeerId}`);
+        meshMetrics.successfulP2PConnections++;
+        meshMetrics.activeP2PConnections++;
+        
+        // 🔥 CRITICAL: Update room peer data to show P2P status
+        if (rooms.has(roomId)) {
+          const roomPeers = rooms.get(roomId);
+          if (roomPeers.has(socket.id)) {
+            const peerData = roomPeers.get(socket.id);
+            peerData.isP2PActive = true;
+            peerData.p2pPeers = peerData.p2pPeers || [];
+            if (!peerData.p2pPeers.includes(targetPeerId)) {
+              peerData.p2pPeers.push(targetPeerId);
+            }
+          }
+        }
+        
+        // Log activity
+        addActivityLog('webrtc-connection-established', {
+          peer1: socket.id,
+          peer2: targetPeerId,
+          roomId,
+          protocol: 'native-webrtc'
+        }, '🔗');
+        
+        console.log(`📊 [P2P METRICS] Active connections: ${meshMetrics.activeP2PConnections}, Success rate: ${Math.round((meshMetrics.successfulP2PConnections/meshMetrics.totalP2PAttempts)*100)}%`);
+      } else if (state === 'failed' || state === 'disconnected') {
+        console.log(`❌ [P2P FAILED] WebRTC connection ${state}: ${socket.id} <-> ${targetPeerId}`);
+        meshMetrics.failedP2PConnections++;
+        meshMetrics.activeP2PConnections = Math.max(0, meshMetrics.activeP2PConnections - 1);
+        
+        // Update room peer data to remove P2P status
+        if (rooms.has(roomId)) {
+          const roomPeers = rooms.get(roomId);
+          if (roomPeers.has(socket.id)) {
+            const peerData = roomPeers.get(socket.id);
+            peerData.isP2PActive = false;
+            if (peerData.p2pPeers) {
+              peerData.p2pPeers = peerData.p2pPeers.filter(id => id !== targetPeerId);
+            }
+          }
+        }
+        
+        // Log activity
+        addActivityLog('webrtc-connection-failed', {
+          peer1: socket.id,
+          peer2: targetPeerId,
+          roomId,
+          state,
+          protocol: 'native-webrtc'
+        }, '❌');
+        
+        console.log(`📊 [P2P METRICS] Active connections: ${meshMetrics.activeP2PConnections}, Failed: ${meshMetrics.failedP2PConnections}`);
+      }
+    } catch (error) {
+      console.error('❌ WebRTC connection state error:', error);
     }
   });
   

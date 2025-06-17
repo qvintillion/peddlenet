@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { RoomCodeJoin } from '@/components/RoomCode';
-import { useBackgroundNotifications, useGlobalBackgroundNotifications } from '@/hooks/use-background-notifications';
-import { CompactGlobalNotificationBanner } from '@/components/CompactGlobalNotificationBanner';
-import { JoinedRooms } from '@/components/JoinedRooms';
-import { RecentRooms } from '@/components/RecentRooms';
-import { PublicRooms } from '@/components/PublicRooms';
-
+import { useRouter } from 'next/navigation';
+import { RoomCodeDisplay } from '../components/RoomCode';
+import { RoomCodeJoin } from '../components/RoomCode';
+import { useBackgroundNotifications, useGlobalBackgroundNotifications } from '../hooks/use-background-notifications';
+import { CompactGlobalNotificationBanner } from '../components/CompactGlobalNotificationBanner';
+import { JoinedRooms } from '../components/JoinedRooms';
+import { RecentRooms } from '../components/RecentRooms';
+import { PublicRooms } from '../components/PublicRooms';
 function slugifyRoomName(roomName: string): string {
   return roomName
     .trim()

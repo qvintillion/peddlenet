@@ -53,7 +53,7 @@ if [ -f ".env.production" ]; then
 else
     echo "⚠️ .env.production not found"
     echo "❌ Please create .env.production with production WebSocket server URL"
-    echo "   Get URL from: ./scripts/deploy-websocket-production-enhanced.sh"
+    echo "   Get URL from: npm run deploy:websocket:production"
     exit 1
 fi
 
@@ -74,7 +74,7 @@ if [ ! -z "$WS_SERVER" ]; then
         echo "❌ WebSocket server not responding"
         echo "   URL tested: $HEALTH_URL"
         echo "   Please deploy WebSocket server first:"
-        echo "   ./scripts/deploy-websocket-production-enhanced.sh"
+        echo "   npm run deploy:websocket:production"
         exit 1
     fi
 else

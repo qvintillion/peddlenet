@@ -174,17 +174,21 @@ if [ -f "firebase.json" ]; then
     cp firebase.json firebase.json.backup.$(date +%Y%m%d-%H%M%S)
 fi
 
-# Create firebase.json with NUCLEAR cache busting
+# Create firebase.json with NUCLEAR cache busting for REGULAR Next.js build
 cat > firebase.json << EOF
 {
   "hosting": {
-    "public": "out",
+    "public": ".next",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
     "rewrites": [
+      {
+        "source": "/api/**",
+        "destination": "/api/**"
+      },
       {
         "source": "**",
         "destination": "/index.html"

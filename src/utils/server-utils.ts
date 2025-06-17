@@ -178,59 +178,41 @@ export const ServerUtils = {
 
   /**
    * Detect current deployment environment based on URL patterns
+   * SIMPLIFIED: staging (Vercel preview) vs production (custom domain) vs development (localhost)
    */
   detectEnvironment(): 'development' | 'staging' | 'production' {
     if (typeof window === 'undefined') return 'development';
     
     const hostname = window.location.hostname;
-    const href = window.location.href;
     
-    console.log('🔍 Environment Detection Debug:');
+    console.log('🔍 Environment Detection (Simplified):');
     console.log('  - hostname:', hostname);
-    console.log('  - href:', href);
     
-    // Development - localhost or IP addresses
+    // DEVELOPMENT - localhost or IP addresses
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
       console.log('🏠 Detected: development (localhost/IP)');
       return 'development';
     }
     
-    // STAGING DETECTION (Enhanced - Firebase domains including preview channels)
-    const isStagingDomain = (
-      // Firebase preview channels (festival-chat-peddlenet--preview-name.web.app)
-      /^festival-chat-peddlenet--[\w-]+\.web\.app$/.test(hostname) ||
-      // Main Firebase staging domain
-      hostname === 'festival-chat-peddlenet.web.app' ||
-      // Generic preview channel pattern
-      (href.includes('--') && href.includes('.web.app')) ||
-      // Other staging patterns
-      hostname.includes('staging') ||
-      hostname.includes('preview')
-    );
-    
-    if (isStagingDomain) {
-      console.log('🎭 Detected: staging (Firebase/preview)');
-      return 'staging';
-    }
-    
-    // PRODUCTION DETECTION (Vercel domains ONLY)
-    const isProductionDomain = (
-      hostname.includes('peddlenet.app') ||
-      hostname.includes('.vercel.app')
-    );
-    
-    if (isProductionDomain) {
-      console.log('🚀 Detected: production (Vercel)');
+    // PRODUCTION - Custom domain only (peddlenet.app)
+    if (hostname.includes('peddlenet.app')) {
+      console.log('🚀 Detected: production (custom domain)');
       return 'production';
     }
     
-    // FALLBACK: Default to staging for unknown Firebase domains
-    if (hostname.includes('.web.app') || hostname.includes('.firebaseapp.com')) {
-      console.log('🎭 Fallback: staging (unknown Firebase domain)');
+    // STAGING - Any Vercel preview deployment (.vercel.app but NOT peddlenet.app)
+    if (hostname.includes('.vercel.app')) {
+      console.log('🎭 Detected: staging (Vercel preview)');
       return 'staging';
     }
     
-    // Final fallback: development for truly unknown domains
+    // FALLBACK - Firebase domains (legacy, treat as staging)
+    if (hostname.includes('.web.app') || hostname.includes('.firebaseapp.com')) {
+      console.log('🎭 Detected: staging (Firebase legacy)');
+      return 'staging';
+    }
+    
+    // DEFAULT FALLBACK - Unknown domains default to development
     console.log('❓ Fallback: development (unknown domain)');
     return 'development';
   },
@@ -273,7 +255,7 @@ export const ServerUtils = {
     webSocketUrl: string;
     adminApiPath: string;
     environment: 'development' | 'staging' | 'production';
-    platform: 'localhost' | 'vercel' | 'cloudrun' | 'firebase' | 'other';
+    platform: 'localhost' | 'vercel-preview' | 'vercel-production' | 'firebase-legacy' | 'other';
     protocol: string;
     hostname: string;
     isPreviewChannel: boolean;
@@ -288,18 +270,15 @@ export const ServerUtils = {
     
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname;
-      const href = window.location.href;
       
       if (hostname === 'localhost' || hostname === '127.0.0.1') {
         platform = 'localhost';
+      } else if (hostname.includes('peddlenet.app')) {
+        platform = 'vercel-production';
       } else if (hostname.includes('.vercel.app')) {
-        platform = 'vercel';
-      } else if (httpUrl.includes('run.app')) {
-        platform = 'cloudrun';
+        platform = 'vercel-preview';
       } else if (hostname.includes('.web.app') || hostname.includes('.firebaseapp.com')) {
-        platform = 'firebase';
-        // Detect Firebase preview channels
-        isPreviewChannel = href.includes('--') || /--[\w-]+\.web\.app$/.test(hostname);
+        platform = 'firebase-legacy';
       }
     }
     
