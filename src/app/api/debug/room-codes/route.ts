@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RoomCodeStorage } from '@/lib/room-code-storage';
+import { RoomCodeStorage } from '../../../../lib/room-code-storage';
 
 // Required for static export builds
 export const dynamic = 'force-dynamic';
