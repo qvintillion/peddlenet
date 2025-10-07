@@ -1,52 +1,59 @@
-# 📂 Documentation Archive
+# Documentation Archive
 
-This directory contains historical documentation and deprecated guides that are no longer current but preserved for reference.
+This directory contains historical documentation from the project's development history.
 
-## 📋 Archive Contents
+## Directory Structure
 
-### **🚀 Deployment Logs (June 2025)**
-Historical deployment debugging logs from the critical fix period:
+### `june-2025-fixes/`
+General bug fixes, build issues, and code improvements from June 2025:
+- Build and hydration fixes
+- Notification improvements
+- User deduplication
+- SQLite3 implementation
+- General code quality fixes
 
-- **[DEPLOY_LOG.md](./deployment-logs/DEPLOY_LOG.md)** - Initial notification fix attempt
-- **[DEPLOY_LOG_ENHANCED.md](./deployment-logs/DEPLOY_LOG_ENHANCED.md)** - Enhanced mobile background detection 
-- **[DEPLOY_LOG_FINAL.md](./deployment-logs/DEPLOY_LOG_FINAL.md)** - Comprehensive solution attempt
-- **[DEPLOY_LOG_SIMPLE.md](./deployment-logs/DEPLOY_LOG_SIMPLE.md)** - Simple mobile notification fix
+### `june-2025-deployment-issues/`
+Deployment pipeline issues and resolutions from June 2025:
+- Environment detection fixes
+- Deployment workflow optimizations
+- Firebase/Vercel configuration
+- WebSocket server deployment
+- Staging and production deployment guides
 
-**Status**: ✅ **RESOLVED** - See [CRITICAL-FIX-JUNE-2025.md](../CRITICAL-FIX-JUNE-2025.md) for final solution
+### `june-2025-admin-fixes/`
+Admin dashboard related fixes from June 2025:
+- Authentication implementation
+- Dashboard UI fixes
+- Room management improvements
+- Analytics restoration
+- URL routing fixes
 
-### **🔄 Cross-Room Notification System**
-Complete technical implementation for multi-room messaging:
+### `mesh-networking/`
+Mesh networking P2P implementation (removed in October 2025 reset):
+- Phase 1 implementation guides
+- Testing documentation
+- Debug panel access
+- P2P connection troubleshooting
 
-- **[Cross-Room-Notification-System-Technical-Summary.md](./Cross-Room-Notification-System-Technical-Summary.md)** - Detailed technical implementation
+## Why These Are Archived
 
-**Status**: 🔧 **ARCHIVED** - Working system temporarily disabled due to UI styling conflicts. Server-side implementation complete and ready for restoration.
+On October 7, 2025, we performed a hard reset to a clean state (origin/main from June 15, 2025) to resolve:
+- Deployment pipeline breakage
+- Environment synchronization issues
+- Build error cycling (Tailwind/TypeScript/Components)
+- Mesh networking complexity causing slow connections
 
-## 📚 Why These Are Archived
+These documents represent the fix attempts and solutions during the problematic period. They are archived for historical reference and to understand what issues were resolved by the reset.
 
-### **Deployment Logs**
-These logs document the debugging process for the June 2025 critical fixes but are superseded by:
-- **[06-DEPLOYMENT.md](../06-DEPLOYMENT.md)** - Current deployment guide
-- **[CRITICAL-FIX-JUNE-2025.md](../CRITICAL-FIX-JUNE-2025.md)** - Final resolution summary
+## Current Documentation
 
-### **Cross-Room System** 
-The cross-room notification system was fully functional but temporarily archived due to:
-- **UI styling conflicts** when implementing notification badges
-- **Complex CSS issues** with horizontal scrollbar removal
-- **Working server-side code** preserved for future restoration
-
-## 🔄 Restoration Notes
-
-### **Cross-Room System Restoration**
-When ready to re-implement:
-1. **Server-side code** is complete and documented
-2. **Step-by-step restoration plan** provided in archived documentation
-3. **Lessons learned** documented to avoid previous UI issues
-
-### **Accessing Archived Information**
-- **For reference only** - Do not implement archived solutions
-- **Historical context** - Understand evolution of current solutions
-- **Restoration planning** - Use archived technical details for future features
+See the parent `docs/` directory for current, active documentation:
+- `OCTOBER-2025-RESET-AND-RECOVERY.md` - Summary of what happened and why
+- `01-QUICK-START.md` through `12-COMPREHENSIVE-NEXT-STEPS.md` - Core guides
+- `DEPLOYMENT_READINESS.md` - Current deployment status
+- `WEB_APP_RESET_DOCUMENTATION.md` - Detailed reset process
 
 ---
 
-**Archive Policy**: Documents are moved here when superseded by newer implementations or temporarily disabled features. They remain for historical reference and potential future restoration.
+**Archive Date:** October 7, 2025  
+**Reason:** Reset to clean state, consolidated fix documentation
