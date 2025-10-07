@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": ".next",
+    "public": "out",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -8,12 +8,8 @@
     ],
     "rewrites": [
       {
-        "source": "/api/**",
-        "function": "nextjsFunc"
-      },
-      {
         "source": "**",
-        "function": "nextjsFunc"
+        "destination": "/index.html"
       }
     ],
     "headers": [
@@ -22,7 +18,40 @@
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "public, max-age=3600"
+            "value": "no-cache, no-store, must-revalidate, max-age=0, s-maxage=0"
+          },
+          {
+            "key": "Pragma",
+            "value": "no-cache"
+          },
+          {
+            "key": "Expires",
+            "value": "0"
+          },
+          {
+            "key": "X-Cache-Buster",
+            "value": "1759854418"
+          },
+          {
+            "key": "X-Deploy-ID", 
+            "value": "test-20251007-1759854418"
+          },
+          {
+            "key": "X-Build-Hash",
+            "value": "4b7e1ba55c744276"
+          }
+        ]
+      },
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate, max-age=0"
+          },
+          {
+            "key": "X-Nuclear-Cache-Bust",
+            "value": "1759854418"
           }
         ]
       }
@@ -30,6 +59,6 @@
   },
   "functions": {
     "source": "functions",
-    "runtime": "nodejs20"
+    "runtime": "nodejs18"
   }
 }
