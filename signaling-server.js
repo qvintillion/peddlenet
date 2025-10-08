@@ -2030,20 +2030,34 @@ function cleanupOldData() {
 
   console.log('\n🧹 ===== STARTING MEMORY CLEANUP =====');
 
-  // 1. Clean message stores - remove messages older than 24 hours AND keep only last 100 per room
+  // 1. Clean message stores - remove messages older than 24 hours for PUBLIC rooms only
+  // Public rooms (pre-defined): age-based deletion + 100 message limit
+  // User-created rooms: only 100 message limit (no age-based deletion)
+  const publicRoomIds = [
+    'main-stage-chat',
+    'food-court-meetup',
+    'lost-found',
+    'ride-share',
+    'after-party-planning',
+    'vip-lounge'
+  ];
+
   for (const [roomId, messages] of messageStore.entries()) {
     let filteredMessages = messages;
     let removedByAge = 0;
+    const isPublicRoom = publicRoomIds.includes(roomId);
 
-    // First, remove messages older than 24 hours
-    const oldLength = filteredMessages.length;
-    filteredMessages = filteredMessages.filter(msg => {
-      const messageAge = now - msg.timestamp;
-      return messageAge < INACTIVE_USER_THRESHOLD; // 24 hours
-    });
-    removedByAge = oldLength - filteredMessages.length;
+    // For PUBLIC rooms only: remove messages older than 24 hours
+    if (isPublicRoom) {
+      const oldLength = filteredMessages.length;
+      filteredMessages = filteredMessages.filter(msg => {
+        const messageAge = now - msg.timestamp;
+        return messageAge < INACTIVE_USER_THRESHOLD; // 24 hours
+      });
+      removedByAge = oldLength - filteredMessages.length;
+    }
 
-    // Then, keep only last 100 messages
+    // For ALL rooms: keep only last 100 messages
     if (filteredMessages.length > MAX_MESSAGES_PER_ROOM) {
       const removedByCount = filteredMessages.length - MAX_MESSAGES_PER_ROOM;
       filteredMessages = filteredMessages.slice(-MAX_MESSAGES_PER_ROOM);
