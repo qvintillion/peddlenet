@@ -87,10 +87,10 @@ function getCorsOrigins() {
   // Production Vercel domain
   origins.push("https://peddlenet.app");
   origins.push("https://www.peddlenet.app");
-  
-  // Additional Firebase preview channel patterns
-  origins.push("https://festival-chat--*.web.app");
-  origins.push("https://festival-chat-peddlenet--feature-*.web.app");
+
+  // Additional Firebase preview channel patterns (not currently used)
+  // origins.push("https://festival-chat--*.web.app");
+  // origins.push("https://festival-chat-peddlenet--feature-*.web.app");
 
   if (isDevelopment) {
     // Add local network IPs for mobile testing
@@ -104,9 +104,14 @@ function getCorsOrigins() {
       }
     }
   } else {
-    // In production, add wildcard support for Firebase preview channels
-    origins.push(/^https:\/\/festival-chat-peddlenet--.*\.web\.app$/);
-    origins.push(/^https:\/\/festival-chat--.*\.web\.app$/);
+    // In production, add regex patterns for dynamic subdomains
+    // Firebase preview channels (not currently used)
+    // origins.push(/^https:\/\/festival-chat-peddlenet--.*\.web\.app$/);
+    // origins.push(/^https:\/\/festival-chat--.*\.web\.app$/);
+
+    // Vercel preview deployments - must use regex for wildcard support
+    origins.push(/^https:\/\/festival-chat-.*\.vercel\.app$/);
+    origins.push(/^https:\/\/.*\.vercel\.app$/);
   }
 
   console.log('🌐 CORS Origins configured:', origins.length, 'domains');
@@ -2025,13 +2030,33 @@ function cleanupOldData() {
 
   console.log('\n🧹 ===== STARTING MEMORY CLEANUP =====');
 
-  // 1. Clean message stores - keep only last 100 messages per room
+  // 1. Clean message stores - remove messages older than 24 hours AND keep only last 100 per room
   for (const [roomId, messages] of messageStore.entries()) {
-    if (messages.length > MAX_MESSAGES_PER_ROOM) {
-      const removed = messages.length - MAX_MESSAGES_PER_ROOM;
-      messageStore.set(roomId, messages.slice(-MAX_MESSAGES_PER_ROOM));
-      messagesRemoved += removed;
+    let filteredMessages = messages;
+    let removedByAge = 0;
+
+    // First, remove messages older than 24 hours
+    const oldLength = filteredMessages.length;
+    filteredMessages = filteredMessages.filter(msg => {
+      const messageAge = now - msg.timestamp;
+      return messageAge < INACTIVE_USER_THRESHOLD; // 24 hours
+    });
+    removedByAge = oldLength - filteredMessages.length;
+
+    // Then, keep only last 100 messages
+    if (filteredMessages.length > MAX_MESSAGES_PER_ROOM) {
+      const removedByCount = filteredMessages.length - MAX_MESSAGES_PER_ROOM;
+      filteredMessages = filteredMessages.slice(-MAX_MESSAGES_PER_ROOM);
+      messagesRemoved += removedByAge + removedByCount;
       roomsCleaned++;
+    } else if (removedByAge > 0) {
+      messagesRemoved += removedByAge;
+      roomsCleaned++;
+    }
+
+    // Update the message store if anything was removed
+    if (filteredMessages.length !== messages.length) {
+      messageStore.set(roomId, filteredMessages);
     }
   }
 
