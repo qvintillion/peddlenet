@@ -5,10 +5,27 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  
+
   // Disable TypeScript checks during builds for faster deployment
   typescript: {
     ignoreBuildErrors: true,
+  },
+
+  // Environment variables - Override for preview deployments
+  env: {
+    NEXT_PUBLIC_SIGNALING_SERVER: (() => {
+      // Vercel automatically sets VERCEL_ENV to 'production', 'preview', or 'development'
+      const vercelEnv = process.env.VERCEL_ENV;
+
+      if (vercelEnv === 'preview') {
+        // Preview deployments use staging server
+        return 'wss://peddlenet-websocket-server-staging-hfttiarlja-uc.a.run.app';
+      }
+
+      // Production and all other environments use production server
+      // This will be overridden by .env.production if present
+      return process.env.NEXT_PUBLIC_SIGNALING_SERVER || 'wss://peddlenet-websocket-server-hfttiarlja-uc.a.run.app';
+    })(),
   },
 
   // 🚀 DEPLOYMENT OUTPUT LOGIC (FIXED):
