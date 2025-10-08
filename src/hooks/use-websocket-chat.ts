@@ -315,21 +315,22 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     const socket = io(serverUrl, {
       // CRITICAL: Polling first for Cloud Run compatibility
       transports: ['polling', 'websocket'],
-      timeout: adaptiveTimeout,
+      timeout: Math.max(adaptiveTimeout, 20000), // UPDATED: At least 20s
       forceNew: true,
       autoConnect: true,
-      
+
       // Enhanced reconnection strategy (disabled for manual control)
       reconnection: false,
       reconnectionAttempts: 0,
-      
+
       // Cloud Run optimized transport settings
       upgrade: true,
       rememberUpgrade: false, // Don't remember for cold starts
-      
-      // Enhanced timeouts for Cloud Run cold starts
-      pingTimeout: 60000,
-      pingInterval: 25000,
+
+      // UPDATED: Enhanced timeouts for Cloud Run cold starts (match server)
+      connectTimeout: 30000,     // NEW: 30s for cold starts
+      pingTimeout: 90000,        // INCREASED from 60s: Match server (90s)
+      pingInterval: 35000,       // INCREASED from 25s: Match server (35s)
       
       // CORS and credentials for Cloud Run
       withCredentials: true,

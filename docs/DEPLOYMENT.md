@@ -222,15 +222,30 @@ BUILD_TARGET=production
 NODE_ENV=production
 ```
 
-**Vercel Dashboard Settings:**
-Go to Vercel Dashboard → Project Settings → Environment Variables
+### ✅ Vercel Automatic Configuration (Current Setup)
 
-Set for **Production**:
+**Environment variables are now configured in Vercel dashboard to automatically route to the correct WebSocket server:**
+
+**Production Deployments** (triggered by merges to `main`):
 ```
 NEXT_PUBLIC_SIGNALING_SERVER = wss://peddlenet-websocket-server-hfttiarlja-uc.a.run.app
 ```
+- Applies to: `peddlenet.app` production domain
 
-**This must match your production Cloud Run server URL.**
+**Preview Deployments** (triggered by branch pushes and PRs):
+```
+NEXT_PUBLIC_SIGNALING_SERVER = wss://peddlenet-websocket-server-staging-hfttiarlja-uc.a.run.app
+```
+- Applies to: All preview URLs (`peddlenet-*.vercel.app`)
+
+**🎯 No manual configuration needed** - Vercel automatically sets the correct server based on deployment type.
+
+**How to verify:**
+1. Go to Vercel Dashboard → Project Settings → Environment Variables
+2. Check that:
+   - Production environment has production server URL
+   - Preview environment has staging server URL
+3. Deploy and check the WebSocket connection in browser console
 
 ---
 
@@ -257,10 +272,12 @@ if (hostname.includes('peddlenet.app') || hostname.includes('.vercel.app')) {
 }
 ```
 
-**Current Setup:**
+**Current Setup (Environment-Based Routing via Vercel):**
 - ✅ Local dev → localhost:3001
-- ✅ Vercel preview → Production server (for now)
-- ✅ Vercel production → Production server
+- ✅ Vercel preview → **Staging server** (via `NEXT_PUBLIC_SIGNALING_SERVER` env var)
+- ✅ Vercel production → **Production server** (via `NEXT_PUBLIC_SIGNALING_SERVER` env var)
+
+**Note:** While hostname detection returns 'production' for all Vercel domains, the actual WebSocket server used is determined by the `NEXT_PUBLIC_SIGNALING_SERVER` environment variable set in Vercel dashboard, which differs between production and preview environments.
 
 ---
 
