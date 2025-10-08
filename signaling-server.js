@@ -24,6 +24,28 @@ try {
 const app = express();
 const server = createServer(app);
 
+// ===== COLD START DETECTION FOR CLOUD RUN =====
+const SERVER_START_TIME = Date.now();
+
+function isColdStart() {
+  return process.uptime() < 30; // First 30 seconds after start
+}
+
+function getConnectionTimeout() {
+  // Give cold start connections more time
+  return isColdStart() ? 45000 : 30000;
+}
+
+function logColdStartInfo() {
+  const uptime = Math.floor(process.uptime());
+  const coldStart = isColdStart();
+  return {
+    uptime,
+    coldStart,
+    uptimeFormatted: `${Math.floor(uptime / 60)}m ${uptime % 60}s`
+  };
+}
+
 // Environment detection
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const buildTarget = process.env.BUILD_TARGET || 'unknown';
@@ -65,10 +87,10 @@ function getCorsOrigins() {
   // Production Vercel domain
   origins.push("https://peddlenet.app");
   origins.push("https://www.peddlenet.app");
-  
-  // Additional Firebase preview channel patterns
-  origins.push("https://festival-chat--*.web.app");
-  origins.push("https://festival-chat-peddlenet--feature-*.web.app");
+
+  // Additional Firebase preview channel patterns (not currently used)
+  // origins.push("https://festival-chat--*.web.app");
+  // origins.push("https://festival-chat-peddlenet--feature-*.web.app");
 
   if (isDevelopment) {
     // Add local network IPs for mobile testing
@@ -82,9 +104,14 @@ function getCorsOrigins() {
       }
     }
   } else {
-    // In production, add wildcard support for Firebase preview channels
-    origins.push(/^https:\/\/festival-chat-peddlenet--.*\.web\.app$/);
-    origins.push(/^https:\/\/festival-chat--.*\.web\.app$/);
+    // In production, add regex patterns for dynamic subdomains
+    // Firebase preview channels (not currently used)
+    // origins.push(/^https:\/\/festival-chat-peddlenet--.*\.web\.app$/);
+    // origins.push(/^https:\/\/festival-chat--.*\.web\.app$/);
+
+    // Vercel preview deployments - must use regex for wildcard support
+    origins.push(/^https:\/\/festival-chat-.*\.vercel\.app$/);
+    origins.push(/^https:\/\/.*\.vercel\.app$/);
   }
 
   console.log('🌐 CORS Origins configured:', origins.length, 'domains');
@@ -94,6 +121,7 @@ function getCorsOrigins() {
 }
 
 // Socket.IO setup with P2P support
+// UPDATED: Increased timeout tolerances for mobile networks and Cloud Run cold starts
 const io = new Server(server, {
   cors: {
     origin: getCorsOrigins(),
@@ -101,8 +129,10 @@ const io = new Server(server, {
     credentials: true
   },
   transports: ['polling', 'websocket'],
-  pingTimeout: 60000,
-  pingInterval: 25000
+  pingTimeout: 90000,        // INCREASED from 60s - more tolerant for mobile/Cloud Run
+  pingInterval: 35000,       // INCREASED from 25s - reduces false disconnects
+  connectTimeout: 60000,     // NEW: More time for initial connection
+  upgradeTimeout: 30000      // NEW: More time for polling → websocket upgrade
 });
 
 // 🌐 PHASE 1: Initialize P2P server if available
@@ -336,9 +366,9 @@ function generateMessageId() {
 app.get('/', (req, res) => {
   res.json({
     service: 'PeddleNet Signaling Server',
-    version: '1.1.0-admin-enhanced',
+    version: '1.2.0-phase1-optimized',
     status: 'running',
-    description: 'Enhanced admin dashboard with unique user counting and super admin features',
+    description: 'Phase 1 WebSocket optimizations: improved timeouts, memory cleanup, cold start detection, health monitoring',
     features: [
       'admin-dashboard-enhanced', 
       'unique-user-counting', 
@@ -387,10 +417,10 @@ app.get('/', (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ 
+  res.json({
     status: 'ok',
     service: 'PeddleNet Signaling Server',
-    version: '1.1.0-admin-enhanced',
+    version: '1.2.0-phase1-optimized',
     timestamp: Date.now()
   });
 });
@@ -641,7 +671,7 @@ app.get('/admin/analytics', requireAdminAuth, (req, res) => {
       server: {
         uptime: process.uptime(),
         uptimeFormatted: formatUptime(process.uptime()),
-        version: '1.1.0-admin-enhanced',
+        version: '1.2.0-phase1-optimized',
         environment: getEnvironment(),
         platform: platform,
         buildTarget: buildTarget,
@@ -1485,8 +1515,18 @@ app.get('/signaling-proxy', (req, res) => {
   res.json({
     signalingAvailable: true,
     endpoint: '/socket.io/',
-    version: '1.1.0-admin-enhanced',
-    features: ['peer-discovery', 'room-management', 'admin-dashboard-enhanced', 'super-admin-security', 'p2p-mesh-signaling'],
+    version: '1.2.0-phase1-optimized',
+    features: [
+      'peer-discovery',
+      'room-management',
+      'admin-dashboard-enhanced',
+      'super-admin-security',
+      'p2p-mesh-signaling',
+      'enhanced-timeouts',
+      'memory-cleanup',
+      'cold-start-detection',
+      'health-monitoring'
+    ],
     timestamp: Date.now()
   });
 });
@@ -1494,14 +1534,88 @@ app.get('/signaling-proxy', (req, res) => {
 // ===== WEBSOCKET HANDLERS =====
 
 io.on('connection', (socket) => {
-  console.log(`🔌 User connected: ${socket.id}`);
+  const coldStartInfo = logColdStartInfo();
+
+  if (coldStartInfo.coldStart) {
+    console.log(`❄️ COLD START connection: uptime ${coldStartInfo.uptimeFormatted}`);
+  }
+
+  console.log(`🔌 User connected: ${socket.id} (cold start: ${coldStartInfo.coldStart})`);
   connectionStats.totalConnections++;
   connectionStats.currentConnections++;
-  
+
+  // ===== NEW: CONNECTION HEALTH MONITORING =====
+  const connectionHealth = {
+    socketId: socket.id,
+    connectedAt: Date.now(),
+    lastPing: Date.now(),
+    lastPong: 0,
+    pingCount: 0,
+    pongCount: 0,
+    missedPongs: 0,
+    isColdStart: coldStartInfo.coldStart
+  };
+
+  // Enhanced ping/pong for connection health
+  const healthCheckInterval = setInterval(() => {
+    if (socket.connected) {
+      connectionHealth.lastPing = Date.now();
+      connectionHealth.pingCount++;
+
+      socket.emit('health-ping', {
+        timestamp: Date.now(),
+        serverUptime: process.uptime()
+      });
+
+      // Check if we're missing too many pongs
+      if (connectionHealth.missedPongs >= 3) {
+        console.log(`💀 Connection ${socket.id} failed 3 consecutive pongs, forcing disconnect`);
+        socket.disconnect(true);
+      }
+
+      connectionHealth.missedPongs++;
+    }
+  }, 35000); // Match new pingInterval
+
+  // Handle health pong responses
+  socket.on('health-pong', (data) => {
+    const latency = Date.now() - (data?.timestamp || connectionHealth.lastPing);
+    connectionHealth.lastPong = Date.now();
+    connectionHealth.pongCount++;
+    connectionHealth.missedPongs = 0; // Reset on successful pong
+
+    if (latency > 2000) {
+      console.log(`⚠️ High latency detected: ${latency}ms for ${socket.id}`);
+    }
+  });
+
+  // ===== END NEW HEALTH MONITORING =====
+
   // Update peak connections
   connectionStats.peakConnections = Math.max(connectionStats.peakConnections, connectionStats.currentConnections);
-  
+
+  // Give cold start connections more time to send join-room
+  const joinTimeout = getConnectionTimeout();
+  let joinTimeoutTimer = null;
+
+  joinTimeoutTimer = setTimeout(() => {
+    if (socket.connected && !Array.from(rooms.values()).some(room => room.has(socket.id))) {
+      console.log(`⏱️ Connection ${socket.id} timeout - no room joined within ${joinTimeout}ms`);
+      socket.emit('connection-timeout', {
+        reason: 'No room joined',
+        timeout: joinTimeout,
+        coldStart: coldStartInfo.coldStart
+      });
+      socket.disconnect(true);
+    }
+  }, joinTimeout);
+
   socket.on('join-room', ({ roomId, peerId, displayName }) => {
+    // Clear timeout when user joins room
+    if (joinTimeoutTimer) {
+      clearTimeout(joinTimeoutTimer);
+      joinTimeoutTimer = null;
+    }
     try {
       console.log(`👤 User joining: ${displayName} (${peerId}) -> Room: ${roomId}`);
       
@@ -1815,7 +1929,22 @@ io.on('connection', (socket) => {
   
   socket.on('disconnect', () => {
     try {
+      // Clean up health monitoring on disconnect
+      clearInterval(healthCheckInterval);
+      if (joinTimeoutTimer) {
+        clearTimeout(joinTimeoutTimer);
+      }
+
+      const connectionDuration = Date.now() - connectionHealth.connectedAt;
+      const durationMinutes = Math.round(connectionDuration / 60000);
+
       console.log(`🔌 User disconnected: ${socket.id}`);
+      console.log(`📊 Connection ${socket.id} statistics:`);
+      console.log(`   - Duration: ${durationMinutes} minutes`);
+      console.log(`   - Pings sent: ${connectionHealth.pingCount}`);
+      console.log(`   - Pongs received: ${connectionHealth.pongCount}`);
+      console.log(`   - Cold start connection: ${connectionHealth.isColdStart}`);
+
       connectionStats.currentConnections--;
       
       // 🌐 PHASE 1: Clean up P2P connections
@@ -1884,6 +2013,124 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('❌ Error in disconnect:', error);
     }
+  });
+});
+
+// ===== AUTOMATIC MEMORY CLEANUP =====
+const CLEANUP_INTERVAL = 3600000; // 1 hour
+const MAX_MESSAGES_PER_ROOM = 100;
+const MAX_ACTIVITY_LOG = 1000;
+const INACTIVE_USER_THRESHOLD = 86400000; // 24 hours
+
+function cleanupOldData() {
+  const now = Date.now();
+  let messagesRemoved = 0;
+  let usersRemoved = 0;
+  let roomsCleaned = 0;
+
+  console.log('\n🧹 ===== STARTING MEMORY CLEANUP =====');
+
+  // 1. Clean message stores - remove messages older than 24 hours for PUBLIC rooms only
+  // Public rooms (pre-defined): age-based deletion + 100 message limit
+  // User-created rooms: only 100 message limit (no age-based deletion)
+  const publicRoomIds = [
+    'main-stage-chat',
+    'food-court-meetup',
+    'lost-found',
+    'ride-share',
+    'after-party-planning',
+    'vip-lounge'
+  ];
+
+  for (const [roomId, messages] of messageStore.entries()) {
+    let filteredMessages = messages;
+    let removedByAge = 0;
+    const isPublicRoom = publicRoomIds.includes(roomId);
+
+    // For PUBLIC rooms only: remove messages older than 24 hours
+    if (isPublicRoom) {
+      const oldLength = filteredMessages.length;
+      filteredMessages = filteredMessages.filter(msg => {
+        const messageAge = now - msg.timestamp;
+        return messageAge < INACTIVE_USER_THRESHOLD; // 24 hours
+      });
+      removedByAge = oldLength - filteredMessages.length;
+    }
+
+    // For ALL rooms: keep only last 100 messages
+    if (filteredMessages.length > MAX_MESSAGES_PER_ROOM) {
+      const removedByCount = filteredMessages.length - MAX_MESSAGES_PER_ROOM;
+      filteredMessages = filteredMessages.slice(-MAX_MESSAGES_PER_ROOM);
+      messagesRemoved += removedByAge + removedByCount;
+      roomsCleaned++;
+    } else if (removedByAge > 0) {
+      messagesRemoved += removedByAge;
+      roomsCleaned++;
+    }
+
+    // Update the message store if anything was removed
+    if (filteredMessages.length !== messages.length) {
+      messageStore.set(roomId, filteredMessages);
+    }
+  }
+
+  // 2. Clean inactive users - remove users offline for > 24 hours
+  for (const [uniqueDisplayName, userData] of allUsersEver.entries()) {
+    if (!userData.isCurrentlyActive &&
+        (now - userData.lastSeen) > INACTIVE_USER_THRESHOLD) {
+      allUsersEver.delete(uniqueDisplayName);
+      connectionStats.totalUniqueUsers.delete(uniqueDisplayName);
+      usersRemoved++;
+    }
+  }
+
+  // 3. Clean activity log - keep only last 1000 entries
+  if (activityLog.length > MAX_ACTIVITY_LOG) {
+    const removed = activityLog.length - MAX_ACTIVITY_LOG;
+    activityLog.splice(0, removed);
+    console.log(`   - Trimmed activity log: removed ${removed} old entries`);
+  }
+
+  // 4. Clean P2P connection tracking for disconnected sockets
+  for (const [socketId, connectionData] of p2pConnections.entries()) {
+    const socket = io.sockets.sockets.get(socketId);
+    if (!socket || !socket.connected) {
+      p2pConnections.delete(socketId);
+    }
+  }
+
+  // 5. Report memory usage
+  const memoryUsage = process.memoryUsage();
+  const heapUsedMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
+  const heapTotalMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
+
+  console.log('🧹 Cleanup Results:');
+  console.log(`   - Messages removed: ${messagesRemoved} from ${roomsCleaned} rooms`);
+  console.log(`   - Inactive users removed: ${usersRemoved}`);
+  console.log(`   - Current memory: ${heapUsedMB}MB / ${heapTotalMB}MB`);
+  console.log(`   - Active rooms: ${rooms.size}`);
+  console.log(`   - Total rooms ever: ${allRoomsEverCreated.size}`);
+  console.log(`   - Active users: ${Array.from(allUsersEver.values()).filter(u => u.isCurrentlyActive).length}`);
+  console.log('🧹 ===== CLEANUP COMPLETE =====\n');
+}
+
+// Run cleanup every hour
+const cleanupTimer = setInterval(cleanupOldData, CLEANUP_INTERVAL);
+
+// Run initial cleanup after 10 minutes of uptime (let server stabilize first)
+setTimeout(() => {
+  console.log('⏰ Running initial cleanup after 10 minutes uptime');
+  cleanupOldData();
+}, 600000);
+
+// Cleanup on shutdown
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM received, cleaning up...');
+  clearInterval(cleanupTimer);
+  cleanupOldData();
+  server.close(() => {
+    console.log('👋 Server closed gracefully');
+    process.exit(0);
   });
 });
 

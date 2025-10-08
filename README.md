@@ -284,10 +284,20 @@ npm run start             # Start production server
 - `NEXT_PUBLIC_SIGNALING_SERVER`: Override server URL (optional)
 - `PORT`: Server port (default: 3001)
 
-### Production
-- `NEXT_PUBLIC_SIGNALING_SERVER`: Production server URL (WSS format)
-  - Example: `wss://peddlenet-websocket-server-hfttiarlja-uc.a.run.app`
-  - ServerUtils automatically converts to HTTPS for API calls
+### Vercel Deployments (Automated)
+Environment variables are configured in Vercel to automatically route to the correct WebSocket server:
+
+- **Production Deployments** → Production WebSocket Server
+  - `NEXT_PUBLIC_SIGNALING_SERVER`: `wss://peddlenet-websocket-server-hfttiarlja-uc.a.run.app`
+  - Triggered by: Merges to `main` branch
+
+- **Preview Deployments** → Staging WebSocket Server
+  - `NEXT_PUBLIC_SIGNALING_SERVER`: `wss://peddlenet-websocket-server-staging-hfttiarlja-uc.a.run.app`
+  - Triggered by: Pull requests and preview branches
+
+**No manual configuration needed** - Vercel automatically sets the correct server URL based on deployment type.
+
+### Other Environment Variables
 - `NODE_ENV`: Next.js environment (`production` for optimized builds)
 - `BUILD_TARGET`: Our custom environment detection (`development`, `staging`, `production`)
 - `PLATFORM`: Auto-detected by universal server (`cloudrun`, `firebase`, `vercel`)

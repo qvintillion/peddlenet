@@ -67,6 +67,7 @@ gcloud run deploy $SERVICE_NAME \
     --cpu 1 \
     --min-instances 0 \
     --max-instances 5 \
+    --timeout 300 \
     --set-env-vars NODE_ENV=production \
     --set-env-vars BUILD_TARGET=staging \
     --set-env-vars PLATFORM=cloudrun \
@@ -125,7 +126,7 @@ fi
 echo ""
 echo "📝 Updating .env.staging with new WebSocket URL..."
 cat > .env.staging << EOF
-# Environment variables for Firebase STAGING deployment  
+# Environment variables for Vercel Preview/Staging deployments
 # Auto-generated on $(date)
 
 # STAGING WebSocket server on Google Cloud Run
@@ -161,11 +162,16 @@ echo ""
 echo "🧪 Test the staging server:"
 echo "   curl $SERVICE_URL/health"
 echo ""
-echo "🚀 Next step - Deploy frontend to staging:"
-echo "   npm run deploy:firebase:complete"
+echo "🚀 Next step - Test with Vercel preview:"
+echo "   1. Set NEXT_PUBLIC_SIGNALING_SERVER in Vercel Preview environment"
+echo "   2. Push any branch to trigger Vercel preview deployment"
+echo "   3. Test the preview URL Vercel provides"
 echo ""
 echo "🔍 Monitor staging deployment:"
 echo "   Cloud Run Console: https://console.cloud.google.com/run/detail/$REGION/$SERVICE_NAME?project=$PROJECT_ID"
 echo ""
-echo "⚡ Once frontend deployed, test messaging at:"
-echo "   https://festival-chat-peddlenet.web.app"
+echo "💡 Or test locally with staging backend:"
+echo "   NEXT_PUBLIC_SIGNALING_SERVER=$WEBSOCKET_URL npm run dev:mobile"
+echo ""
+echo "⚡ View staging logs:"
+echo "   gcloud run logs read $SERVICE_NAME --project=$PROJECT_ID --limit=50"
