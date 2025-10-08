@@ -42,7 +42,7 @@ echo "📋 Using universal server configuration:"
 echo "   🐳 Dockerfile: Dockerfile.minimal"
 echo "   🖥️ Server: signaling-server.js (universal with auto-detection)"
 echo "   📦 Dependencies: Minimal (no SQLite compilation issues)"
-echo "   🔧 Version: 2.0.0-universal"
+echo "   🔧 Version: 1.2.0-phase1-optimized"
 echo ""
 
 # Build specifically for staging
@@ -71,7 +71,7 @@ gcloud run deploy $SERVICE_NAME \
     --set-env-vars NODE_ENV=production \
     --set-env-vars BUILD_TARGET=staging \
     --set-env-vars PLATFORM=cloudrun \
-    --set-env-vars VERSION="2.0.0-universal-staging"
+    --set-env-vars VERSION="1.2.0-phase1-optimized"
 
 # CRITICAL: Ensure environment variables are set properly
 echo "🔧 Verifying staging environment variables..."
@@ -149,15 +149,16 @@ echo "==============================================="
 echo "🎭 Environment: STAGING"
 echo "🔌 WebSocket URL: $WEBSOCKET_URL"
 echo "🌐 Service URL: $SERVICE_URL"
-echo "🛠️ Version: 2.0.0-universal-staging"
+echo "🛠️ Version: 1.2.0-phase1-optimized"
 echo ""
-echo "📋 Key Features Deployed:"
+echo "📋 Phase 1 Features Deployed:"
 echo "   ✅ Universal Server: Auto-detects staging environment"
-echo "   ✅ Messaging Fix: io.to(roomId) includes sender"
-echo "   ✅ Background Notifications: Cross-room system"
-echo "   ✅ Room Codes: Registration and resolution"
-echo "   ✅ Connection Recovery: Mobile-optimized"
-echo "   ✅ Future Ready: Analytics and mesh endpoints"
+echo "   ✅ Increased Timeouts: 90s ping, 35s interval (Cloud Run optimized)"
+echo "   ✅ Automatic Reconnection: Handles scale-to-zero gracefully"
+echo "   ✅ Memory Cleanup: Hourly cleanup, 24h for public rooms"
+echo "   ✅ CORS Fix: Vercel preview domain support"
+echo "   ✅ Cold Start Detection: Adaptive timeouts for Cloud Run"
+echo "   ✅ Connection Health: Ping/pong monitoring"
 echo ""
 echo "🧪 Test the staging server:"
 echo "   curl $SERVICE_URL/health"

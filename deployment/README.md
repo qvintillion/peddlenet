@@ -30,7 +30,7 @@ This directory contains the production-ready deployment configurations for Festi
 #### **package.json** 📦
 **Universal server package configuration**
 - Minimal dependencies (express, socket.io, cors)
-- Version 2.0.0 with universal architecture
+- Version 1.2.0-phase1-optimized with universal architecture
 - Production-ready scripts
 - Node.js 18+ requirement
 
@@ -75,9 +75,9 @@ max-instances: 5
 
 # Environment Variables
 NODE_ENV: production
-BUILD_TARGET: staging|production  
+BUILD_TARGET: staging|production
 PLATFORM: cloudrun
-VERSION: 2.0.0-universal
+VERSION: 1.2.0-phase1-optimized
 ```
 
 ### **Docker Multi-Stage Build**

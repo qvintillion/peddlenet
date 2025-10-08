@@ -57,21 +57,156 @@ Your Computer          GitHub                 Vercel
 
 ## 🔧 Backend: Cloud Run WebSocket Servers
 
-You maintain **TWO separate Cloud Run instances**:
+### Universal Server Architecture
 
-### Production Server
-- **URL:** `wss://peddlenet-websocket-server-hfttiarlja-uc.a.run.app`
-- **Purpose:** Production WebSocket connections
-- **Deploy:** `./scripts/deploy-websocket-cloudbuild.sh`
-- **When:** Only when you modify `signaling-server.js`
+**IMPORTANT:** Both staging and production use the **same server code** (`signaling-server.js`) with a **universal architecture** that auto-detects its environment through environment variables.
 
-### Staging Server
-- **URL:** `wss://peddlenet-websocket-server-staging-hfttiarlja-uc.a.run.app`
-- **Purpose:** Testing WebSocket changes before production
-- **Deploy:** `./scripts/deploy-websocket-staging.sh`
-- **When:** When testing server changes
+- ✅ Single codebase for all environments
+- ✅ Auto-detects: development, staging, or production
+- ✅ Same deployment process, different targets
+- ✅ Environment-specific behavior via `BUILD_TARGET` and `PLATFORM` variables
 
-**Important:** The frontend (Vercel) and backend (Cloud Run) are separate deployments.
+You maintain **TWO separate Cloud Run services** running the same universal server:
+
+---
+
+### 🎭 Staging Server
+
+**Service:** `peddlenet-websocket-server-staging`
+**URL:** `wss://peddlenet-websocket-server-staging-hfttiarlja-uc.a.run.app`
+
+**Purpose:**
+- Test WebSocket server changes **before production**
+- Safe environment for breaking changes
+- Connected to Vercel preview deployments
+- Connected to Firebase staging (if used)
+
+**Connected to:**
+- Vercel preview deployments (`festival-chat-*.vercel.app`)
+- Firebase staging (`festival-chat-peddlenet.web.app`)
+- Your testing and QA
+
+**Deploy command:**
+```bash
+./scripts/deploy-websocket-staging.sh
+```
+
+**When to deploy:**
+1. Testing changes to `signaling-server.js`
+2. Before deploying to production
+3. When you want to test without affecting live users
+
+**Environment variables:**
+- `NODE_ENV=production` (uses production Socket.IO settings)
+- `BUILD_TARGET=staging` (identifies as staging)
+- `PLATFORM=cloudrun`
+- `VERSION=1.2.0-phase1-optimized`
+
+**Cost:** $0 when idle (min-instances=0, scales to zero)
+
+---
+
+### 🚀 Production Server
+
+**Service:** `peddlenet-websocket-server`
+**URL:** `wss://peddlenet-websocket-server-hfttiarlja-uc.a.run.app`
+
+**Purpose:**
+- Serve **live users** on peddlenet.app
+- Must be stable and reliable
+- Only deploy tested changes
+
+**Connected to:**
+- Vercel production (`peddlenet.app` custom domain)
+- Real users in production
+
+**Deploy command:**
+```bash
+./scripts/deploy-websocket-cloudbuild.sh
+```
+
+**When to deploy:**
+1. After testing changes on staging
+2. When merging WebSocket changes to main
+3. Only when confident changes are stable
+
+**Environment variables:**
+- `NODE_ENV=production` (uses production Socket.IO settings)
+- `BUILD_TARGET=production` (identifies as production)
+- `PLATFORM=cloudrun`
+- `VERSION=1.2.0-phase1-optimized`
+
+**Cost:** $0 when idle (min-instances=0, scales to zero)
+
+---
+
+### 🔄 Complete Deployment Workflow
+
+**Safe deployment process:**
+
+```bash
+# 1. Test changes locally
+npm run dev:mobile
+
+# 2. Deploy to STAGING first
+./scripts/deploy-websocket-staging.sh
+
+# 3. Test on Vercel preview (automatically uses staging server)
+git push origin feature/my-changes
+# Vercel creates preview → connects to staging server
+
+# 4. If staging tests pass, deploy to PRODUCTION
+./scripts/deploy-websocket-cloudbuild.sh
+
+# 5. Merge to main (Vercel auto-deploys to peddlenet.app)
+git checkout main
+git merge feature/my-changes
+git push origin main
+```
+
+---
+
+### ⚙️ How Universal Server Works
+
+The same `signaling-server.js` file adapts its behavior based on environment:
+
+```javascript
+// Server auto-detects environment
+const BUILD_TARGET = process.env.BUILD_TARGET || 'development';
+const PLATFORM = process.env.PLATFORM || 'local';
+
+const isStaging = BUILD_TARGET === 'staging';
+const isProduction = BUILD_TARGET === 'production';
+```
+
+**Benefits:**
+- No separate server files to maintain
+- Consistent behavior across environments
+- Easy to add environment-specific features
+- Single source of truth
+
+---
+
+### 🎯 Why Two Servers?
+
+**1. Safety**
+- Test changes on staging without affecting production users
+- Catch bugs before they reach live users
+- Rollback is easier if issues occur
+
+**2. Isolation**
+- Staging crashes don't affect production
+- Can test breaking changes safely
+- Different scaling behavior
+
+**3. Testing**
+- Preview deployments test against staging backend
+- Production deployment tests against production backend
+- Matches real-world production environment
+
+---
+
+**Important:** The frontend (Vercel) and backend (Cloud Run) are separate deployments. Frontend auto-routes to correct backend via `next.config.ts`.
 
 ---
 

@@ -1,16 +1,17 @@
 #!/bin/bash
 
-# Deploy WebSocket server using Google Cloud Build (no local Docker needed)
-# Version: 1.3.0-frontend-error-fix-complete
-# Date: June 14, 2025
-# Includes: All frontend error fixes + production optimizations
+# 🚀 PRODUCTION WebSocket Server Deployment Script
+# Deploy universal WebSocket server to production Cloud Run
+# Version: 1.2.0-phase1-optimized
+# Date: October 8, 2025
+# Includes: Phase 1 WebSocket optimizations for Cloud Run stability
 
-echo "🎪 Production WebSocket Server Deployment - ERROR-FIX COMPLETE"
-echo "================================================================"
+echo "🚀 Production WebSocket Server Deployment - Phase 1 Optimized"
+echo "=============================================================="
 echo "🎯 Target: PRODUCTION Environment"
 echo "🌍 Platform: Google Cloud Run"
-echo "🔧 Features: All frontend error fixes + admin enhancements"
-echo "📈 Version: 1.3.0-frontend-error-fix-complete"
+echo "🔧 Features: Phase 1 WebSocket optimizations"
+echo "📈 Version: 1.2.0-phase1-optimized"
 echo ""
 
 # Check if we're in the right directory
@@ -32,14 +33,21 @@ echo "   Region: $REGION"
 echo "   Method: Google Cloud Build (no local Docker required)"
 echo ""
 
-echo "✅ Production Enhancement Checklist:"
-echo "=====================================" 
-echo "✅ Enhanced room stats API with proper 404 handling"
-echo "✅ Admin mesh-status endpoint with null safety"
-echo "✅ Improved error responses and validation"
-echo "✅ SQLite fallback system for cross-platform compatibility"
-echo "✅ CORS enhancements for all frontend environments"
-echo "✅ Production-hardened admin authentication"
+echo "📋 Using universal server configuration:"
+echo "   🐳 Dockerfile: Dockerfile.cloudrun"
+echo "   🖥️ Server: signaling-server.js (universal with auto-detection)"
+echo "   📦 Build: Google Cloud Build (no local Docker required)"
+echo "   🔧 Version: 1.2.0-phase1-optimized"
+echo ""
+echo "✅ Phase 1 Optimization Checklist:"
+echo "====================================="
+echo "✅ Increased timeouts: 90s ping, 35s interval (Cloud Run optimized)"
+echo "✅ Automatic reconnection enabled on client (handles scale-to-zero)"
+echo "✅ Memory cleanup: Hourly cleanup, 24h message retention for public rooms"
+echo "✅ CORS fix: Vercel preview domain support with regex patterns"
+echo "✅ Cold start detection: Adaptive timeouts for Cloud Run startup"
+echo "✅ Connection health monitoring: Ping/pong statistics tracking"
+echo "✅ Environment detection: Correctly identifies staging vs production"
 echo ""
 
 # Check if gcloud is authenticated
@@ -58,10 +66,10 @@ gcloud config set project $PROJECT_ID
 
 # Submit build to Cloud Build (production configuration)
 echo "☁️  Submitting production build to Google Cloud Build..."
-echo "⚡ Using cache-busting for fresh build with all error fixes..."
+echo "⚡ Using cache-busting for fresh build with Phase 1 optimizations..."
 gcloud builds submit \
   --config deployment/cloudbuild-production.yaml \
-  --substitutions=_SERVICE_NAME=$SERVICE_NAME
+  --substitutions=_SERVICE_NAME=$SERVICE_NAME,_NODE_ENV=production,_BUILD_TARGET=production
 
 if [ $? -ne 0 ]; then
     echo "❌ Cloud Build deployment failed"
@@ -89,37 +97,41 @@ SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --platform managed --re
 echo ""
 echo "🎉 PRODUCTION WEBSOCKET SERVER DEPLOYMENT SUCCESSFUL!"
 echo "====================================================="
+echo "🚀 Environment: PRODUCTION"
 echo "📍 Service URL: $SERVICE_URL"
 echo "🏥 Health check: $SERVICE_URL/health"
-echo "📊 Admin analytics: $SERVICE_URL/admin/analytics"
-echo "🌐 Mesh status: $SERVICE_URL/admin/mesh-status"
-echo "📋 Room stats: $SERVICE_URL/room-stats/[room-id]"
+echo "📊 Admin dashboard: $SERVICE_URL/admin"
+echo "🛠️ Version: 1.2.0-phase1-optimized"
 echo ""
-echo "🎯 Production Features Active:"
-echo "==============================="
-echo "✅ Enhanced error handling for all frontend components"
-echo "✅ Silent 404 handling for non-existent public rooms"
-echo "✅ Null safety for admin dashboard mesh metrics"
-echo "✅ SQLite persistence with automatic fallback"
-echo "✅ Production-grade CORS and security"
-echo "✅ Real-time analytics and monitoring"
-echo "✅ Room-specific broadcasting"
-echo "✅ Admin authentication with session management"
+echo "📋 Phase 1 Features Active:"
+echo "============================"
+echo "✅ Universal Server: Auto-detects production environment"
+echo "✅ Increased Timeouts: 90s ping, 35s interval (Cloud Run optimized)"
+echo "✅ Automatic Reconnection: Client handles scale-to-zero gracefully"
+echo "✅ Memory Cleanup: Hourly cleanup, 24h for public rooms"
+echo "✅ CORS Support: Vercel domains (production + preview)"
+echo "✅ Cold Start Detection: Adaptive timeouts for Cloud Run"
+echo "✅ Connection Health: Ping/pong monitoring and statistics"
 echo ""
-echo "🧪 Production Testing URLs:"
-echo "==========================="
-echo "• Health: $SERVICE_URL/health"
-echo "• Analytics: $SERVICE_URL/admin/analytics"
-echo "• Mesh Status: $SERVICE_URL/admin/mesh-status"
-echo "• Room Stats: $SERVICE_URL/room-stats/test-room (will return 404 - expected)"
+echo "🧪 Test Production Server:"
+echo "=========================="
+echo "curl $SERVICE_URL/health"
 echo ""
-echo "📝 IMPORTANT: Copy this WebSocket URL for .env.production:"
-echo "============================================================"
-echo "NEXT_PUBLIC_SIGNALING_SERVER=$SERVICE_URL"
+echo "💰 Cost:"
+echo "========"
+echo "• min-instances=0 (scales to zero when idle)"
+echo "• Cost when idle: \$0"
+echo "• Cost when active: Pay per use"
 echo ""
-echo "⚠️  REMEMBER: Change 'https://' to 'wss://' in .env.production"
-echo "Correct format: NEXT_PUBLIC_SIGNALING_SERVER=wss://[domain]"
+echo "📝 WebSocket URL (already configured in next.config.ts):"
+echo "========================================================="
+# Convert https to wss
+WEBSOCKET_URL="wss://${SERVICE_URL#https://}"
+echo "$WEBSOCKET_URL"
 echo ""
-echo "⏱️  Version: 1.3.0-frontend-error-fix-complete"
-echo "🛠️  Deployed via: Google Cloud Build"
-echo "🎪 Ready for frontend deployment!"
+echo "🔍 Monitor Deployment:"
+echo "======================"
+echo "Cloud Run Console: https://console.cloud.google.com/run/detail/$REGION/$SERVICE_NAME?project=$PROJECT_ID"
+echo ""
+echo "✅ Ready for production traffic!"
+echo "Vercel production (peddlenet.app) will automatically connect to this server."

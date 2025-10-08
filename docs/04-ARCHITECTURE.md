@@ -545,7 +545,7 @@ CMD ["node", "server.js"]
 // Universal health endpoint response
 interface HealthCheck {
   status: 'ok';
-  version: '2.0.0-universal';
+  version: '1.2.0-phase1-optimized';
   environment: string;
   platform: string;
   mode: 'development' | 'staging' | 'production';
@@ -556,9 +556,9 @@ interface HealthCheck {
     socketIOConnections: number;
   };
   // Environment-specific features
-  ...(isDevelopment && { 
+  ...(isDevelopment && {
     debug: '/debug/rooms',
-    analytics: '/analytics/dashboard' 
+    analytics: '/analytics/dashboard'
   })
 }
 ```
