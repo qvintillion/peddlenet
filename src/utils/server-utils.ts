@@ -43,13 +43,12 @@ export const ServerUtils = {
       return httpUrl;
     }
     
-    // 🚀 VERCEL PRODUCTION: Use current origin for API calls
-    if (environment === 'production' && 
-        (currentHostname.includes('.vercel.app') || currentHostname.includes('peddlenet.app'))) {
-      console.log('🚀 Vercel production detected, using current origin for API:', currentOrigin);
+    // 🚀 VERCEL DEPLOYMENTS: Use current origin for API calls (both production and preview)
+    if (currentHostname.includes('.vercel.app') || currentHostname.includes('peddlenet.app')) {
+      console.log('🚀 Vercel detected, using current origin for API:', currentOrigin);
       return currentOrigin;
     }
-    
+
     // 🎭 STAGING/PREVIEW: Use Cloud Run server from environment variable
     if ((environment === 'staging' || environment === 'development') && envUrl) {
       if (envUrl.startsWith('wss://')) {
@@ -164,9 +163,8 @@ export const ServerUtils = {
     console.log('  - hostname:', currentHostname);
     console.log('  - environment:', environment);
     
-    // For Vercel production deployments, use Vercel API routes
-    if (environment === 'production' && 
-        (currentHostname.includes('.vercel.app') || currentHostname.includes('peddlenet.app'))) {
+    // For all Vercel deployments (production and preview), use Vercel API routes
+    if (currentHostname.includes('.vercel.app') || currentHostname.includes('peddlenet.app')) {
       console.log('🚀 Using Vercel API path: /api/admin');
       return '/api/admin';
     }
@@ -213,14 +211,22 @@ export const ServerUtils = {
       return 'staging';
     }
     
-    // PRODUCTION DETECTION (Vercel domains ONLY)
-    const isProductionDomain = (
-      hostname.includes('peddlenet.app') ||
-      hostname.includes('.vercel.app')
+    // PREVIEW DETECTION (Vercel preview deployments)
+    const isVercelPreview = (
+      /^festival-chat-[\w-]+\.vercel\.app$/.test(hostname) ||
+      (hostname.includes('.vercel.app') && hostname.includes('-'))
     );
-    
+
+    if (isVercelPreview) {
+      console.log('🎭 Detected: preview (Vercel preview deployment)');
+      return 'staging';
+    }
+
+    // PRODUCTION DETECTION (Custom domain only)
+    const isProductionDomain = hostname.includes('peddlenet.app');
+
     if (isProductionDomain) {
-      console.log('🚀 Detected: production (Vercel)');
+      console.log('🚀 Detected: production (Vercel production)');
       return 'production';
     }
     
