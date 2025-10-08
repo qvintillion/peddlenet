@@ -319,9 +319,12 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       forceNew: true,
       autoConnect: true,
 
-      // Enhanced reconnection strategy (disabled for manual control)
-      reconnection: false,
-      reconnectionAttempts: 0,
+      // PHASE 1: Enable automatic reconnection for server disconnects
+      reconnection: true,
+      reconnectionAttempts: 5,           // Try up to 5 times
+      reconnectionDelay: 1000,           // Start with 1s delay
+      reconnectionDelayMax: 5000,        // Max 5s between attempts
+      randomizationFactor: 0.5,          // Add jitter to prevent thundering herd
 
       // Cloud Run optimized transport settings
       upgrade: true,
