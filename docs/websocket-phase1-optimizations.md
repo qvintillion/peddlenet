@@ -1,8 +1,9 @@
 # WebSocket Server Phase 1 Optimizations
 
 **Date:** October 8, 2025
-**Status:** ✅ IMPLEMENTED
-**Version:** 1.2.0-phase1-optimized
+**Status:** ✅ FIXED & STABLE
+**Version:** 1.2.1-disconnect-fix
+**Update:** Oct 8, 2025 - Aggressive health monitoring removed (see PRODUCTION-DISCONNECT-FIX-OCT-2025.md)
 
 ## Summary
 
@@ -209,16 +210,23 @@ io.on('connection', (socket) => {
 
 ---
 
-### 4. Connection Health Monitoring
+### 4. Connection Health Monitoring ⚠️ REMOVED - CAUSED DISCONNECTS
 
-**File:** `signaling-server.js` (lines 1532-1576, 1916-1931)
+**Status:** ❌ REMOVED in version 1.2.1-disconnect-fix
+**Issue:** Caused aggressive force-disconnects every 30-60 seconds
+**Fix:** Removed custom health monitoring, now trusts Socket.IO's built-in ping/pong
 
-**Features:**
+**Original Implementation (REMOVED):**
 - Active health checks every 35 seconds (matching ping interval)
-- Tracks ping/pong statistics per connection
-- Detects high latency (> 2s)
-- Forces disconnect after 3 missed pongs
-- Logs connection duration and statistics on disconnect
+- Tracked ping/pong statistics per connection
+- Detected high latency (> 2s)
+- ⚠️ **BUG:** Forced disconnect after 3 missed pongs
+- Logged connection duration and statistics on disconnect
+
+**Why it was removed:**
+The `missedPongs` counter was incremented immediately after sending ping, not after waiting for pong response. This caused premature disconnects on mobile networks and during cold starts.
+
+**See:** `docs/PRODUCTION-DISCONNECT-FIX-OCT-2025.md` for full details
 
 **Code:**
 ```javascript
@@ -289,11 +297,11 @@ io.on('connection', (socket) => {
 });
 ```
 
-**Impact:**
-- Better visibility into connection health
-- Proactive detection of failing connections
-- Prevents zombie connections
-- Rich diagnostics for debugging
+**Impact (REMOVED):**
+- ⚠️ **NEGATIVE:** Caused false disconnects
+- ⚠️ **NEGATIVE:** Poor mobile experience
+- ⚠️ **NEGATIVE:** Conflicts with Socket.IO's built-in mechanisms
+- **FIX:** Removed entirely, now using Socket.IO's connectionStateRecovery instead
 
 ---
 

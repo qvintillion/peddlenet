@@ -120,8 +120,7 @@ function getCorsOrigins() {
   return origins;
 }
 
-// Socket.IO setup with P2P support
-// UPDATED: Increased timeout tolerances for mobile networks and Cloud Run cold starts
+// Socket.IO setup with P2P support and connection state recovery
 const io = new Server(server, {
   cors: {
     origin: getCorsOrigins(),
@@ -129,10 +128,14 @@ const io = new Server(server, {
     credentials: true
   },
   transports: ['polling', 'websocket'],
-  pingTimeout: 90000,        // INCREASED from 60s - more tolerant for mobile/Cloud Run
-  pingInterval: 35000,       // INCREASED from 25s - reduces false disconnects
-  connectTimeout: 60000,     // NEW: More time for initial connection
-  upgradeTimeout: 30000      // NEW: More time for polling → websocket upgrade
+  pingTimeout: 60000,        // 60s - standard timeout (reduced from 90s)
+  pingInterval: 25000,       // 25s - standard interval (reduced from 35s)
+  upgradeTimeout: 30000,     // 30s for polling → websocket upgrade
+  connectionStateRecovery: {
+    // Allows clients to reconnect and restore their state
+    maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutes
+    skipMiddlewares: true,
+  }
 });
 
 // 🌐 PHASE 1: Initialize P2P server if available
@@ -219,6 +222,12 @@ function formatUptime(seconds) {
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
   return `${hours}h ${minutes}m ${secs}s`;
+}
+
+// Helper function to get actual user count (excluding background notification connections)
+function getActualUserCount(room) {
+  if (!room) return 0;
+  return Array.from(room.values()).filter(peer => !peer.isBackgroundConnection).length;
 }
 
 // 🔧 FIXED: Helper functions for comprehensive tracking with DISPLAY NAME as unique identifier
@@ -595,7 +604,7 @@ app.get('/admin/analytics', requireAdminAuth, (req, res) => {
     const allRoomsData = [];
     for (const [roomId, roomData] of allRoomsEverCreated.entries()) {
       const isActive = rooms.has(roomId);
-      const currentUsers = isActive ? rooms.get(roomId).size : 0;
+      const currentUsers = isActive ? getActualUserCount(rooms.get(roomId)) : 0;
       
       allRoomsData.push({
         roomId,
@@ -844,7 +853,7 @@ app.get('/admin/users/detailed', requireAdminAuth, (req, res) => {
           currentRoomData = {
             roomId: userData.currentRoomId,
             roomCode: roomData.roomCode,
-            userCount: rooms.has(userData.currentRoomId) ? rooms.get(userData.currentRoomId).size : 0
+            userCount: rooms.has(userData.currentRoomId) ? getActualUserCount(rooms.get(userData.currentRoomId)) : 0
           };
         }
       }
@@ -1136,7 +1145,7 @@ app.post('/admin/broadcast/room', requireAdminAuth, (req, res) => {
         successfulRooms.push({
           roomCode: targetCode,
           roomId: targetRoomId,
-          userCount: roomPeers.size,
+          userCount: getActualUserCount(roomPeers),
           searchMethod
         });
         
@@ -1488,14 +1497,16 @@ app.get('/room-stats/:roomId', (req, res) => {
   }
   
   const roomPeers = rooms.get(roomId);
-  const peerList = Array.from(roomPeers.values());
+  // Filter out background notification connections
+  const peerList = Array.from(roomPeers.values()).filter(peer => !peer.isBackgroundConnection);
   const roomData = allRoomsEverCreated.get(roomId);
-  
-  console.log(`✅ Room stats for ${roomId}: ${roomPeers.size} active users`);
-  
+
+  const actualUserCount = getActualUserCount(roomPeers);
+  console.log(`✅ Room stats for ${roomId}: ${actualUserCount} active users (${roomPeers.size} total connections)`);
+
   res.json({
     roomId,
-    userCount: roomPeers.size,
+    userCount: actualUserCount,
     users: peerList.map(peer => ({
       peerId: peer.peerId,
       displayName: peer.displayName,
@@ -1540,82 +1551,26 @@ io.on('connection', (socket) => {
     console.log(`❄️ COLD START connection: uptime ${coldStartInfo.uptimeFormatted}`);
   }
 
-  console.log(`🔌 User connected: ${socket.id} (cold start: ${coldStartInfo.coldStart})`);
+  // Detect if this is a background notification connection (should not be counted as active user)
+  const connectionType = socket.handshake.headers['x-connection-type'] || 'chat';
+  const isBackgroundConnection = connectionType === 'background-notifications';
+
+  console.log(`🔌 User connected: ${socket.id} (cold start: ${coldStartInfo.coldStart}, type: ${connectionType})`);
   connectionStats.totalConnections++;
   connectionStats.currentConnections++;
 
-  // ===== NEW: CONNECTION HEALTH MONITORING =====
+  // Connection health tracking (passive - no forced disconnects)
   const connectionHealth = {
     socketId: socket.id,
     connectedAt: Date.now(),
-    lastPing: Date.now(),
-    lastPong: 0,
-    pingCount: 0,
-    pongCount: 0,
-    missedPongs: 0,
-    isColdStart: coldStartInfo.coldStart
+    isColdStart: coldStartInfo.coldStart,
+    isBackgroundConnection
   };
-
-  // Enhanced ping/pong for connection health
-  const healthCheckInterval = setInterval(() => {
-    if (socket.connected) {
-      connectionHealth.lastPing = Date.now();
-      connectionHealth.pingCount++;
-
-      socket.emit('health-ping', {
-        timestamp: Date.now(),
-        serverUptime: process.uptime()
-      });
-
-      // Check if we're missing too many pongs
-      if (connectionHealth.missedPongs >= 3) {
-        console.log(`💀 Connection ${socket.id} failed 3 consecutive pongs, forcing disconnect`);
-        socket.disconnect(true);
-      }
-
-      connectionHealth.missedPongs++;
-    }
-  }, 35000); // Match new pingInterval
-
-  // Handle health pong responses
-  socket.on('health-pong', (data) => {
-    const latency = Date.now() - (data?.timestamp || connectionHealth.lastPing);
-    connectionHealth.lastPong = Date.now();
-    connectionHealth.pongCount++;
-    connectionHealth.missedPongs = 0; // Reset on successful pong
-
-    if (latency > 2000) {
-      console.log(`⚠️ High latency detected: ${latency}ms for ${socket.id}`);
-    }
-  });
-
-  // ===== END NEW HEALTH MONITORING =====
 
   // Update peak connections
   connectionStats.peakConnections = Math.max(connectionStats.peakConnections, connectionStats.currentConnections);
 
-  // Give cold start connections more time to send join-room
-  const joinTimeout = getConnectionTimeout();
-  let joinTimeoutTimer = null;
-
-  joinTimeoutTimer = setTimeout(() => {
-    if (socket.connected && !Array.from(rooms.values()).some(room => room.has(socket.id))) {
-      console.log(`⏱️ Connection ${socket.id} timeout - no room joined within ${joinTimeout}ms`);
-      socket.emit('connection-timeout', {
-        reason: 'No room joined',
-        timeout: joinTimeout,
-        coldStart: coldStartInfo.coldStart
-      });
-      socket.disconnect(true);
-    }
-  }, joinTimeout);
-
   socket.on('join-room', ({ roomId, peerId, displayName }) => {
-    // Clear timeout when user joins room
-    if (joinTimeoutTimer) {
-      clearTimeout(joinTimeoutTimer);
-      joinTimeoutTimer = null;
-    }
     try {
       console.log(`👤 User joining: ${displayName} (${peerId}) -> Room: ${roomId}`);
       
@@ -1634,62 +1589,73 @@ io.on('connection', (socket) => {
         peerId,
         displayName,
         joinedAt: Date.now(),
-        socketId: socket.id
+        socketId: socket.id,
+        isBackgroundConnection // Mark if this is a background notification connection
       };
-      
+
       room.set(socket.id, peerData);
       socket.join(roomId);
-      
+
+      // Calculate actual user count (excluding background notification connections)
+      const actualUserCount = getActualUserCount(room);
+
       // Update room user count only if this user hasn't been in this room before
       if (allRoomsEverCreated.has(roomId)) {
         const roomData = allRoomsEverCreated.get(roomId);
-        // Only increment if this is a new user to this room
-        const userWasInRoomBefore = allUsersEver.has(peerId) && 
+        // Only increment if this is a new user to this room AND not a background connection
+        const userWasInRoomBefore = allUsersEver.has(peerId) &&
           allUsersEver.get(peerId).currentRoomId === roomId;
-        
-        if (!userWasInRoomBefore) {
+
+        if (!userWasInRoomBefore && !isBackgroundConnection) {
           roomData.totalUsersEver++;
         }
       }
-      
-      // Broadcast to room that user joined
-      socket.to(roomId).emit('user-joined', {
-        peerId,
-        displayName,
-        joinedAt: Date.now(),
-        userCount: room.size
-      });
-      
-      // Send current room info to new user
+
+      // Only broadcast user-joined if this is NOT a background connection
+      if (!isBackgroundConnection) {
+        // Broadcast to room that user joined
+        socket.to(roomId).emit('user-joined', {
+          peerId,
+          displayName,
+          joinedAt: Date.now(),
+          userCount: actualUserCount
+        });
+      }
+
+      // Send current room info to new user (excluding background connections from peer list)
       const otherPeers = Array.from(room.values())
-        .filter(peer => peer.socketId !== socket.id)
+        .filter(peer => peer.socketId !== socket.id && !peer.isBackgroundConnection)
         .map(peer => ({
           peerId: peer.peerId,
           displayName: peer.displayName,
           joinedAt: peer.joinedAt
         }));
-      
+
       socket.emit('room-joined', {
         roomId,
-        userCount: room.size,
+        userCount: actualUserCount,
         otherPeers
       });
-      
-      // Also emit peer-joined for compatibility
-      socket.to(roomId).emit('peer-joined', { peerId, displayName });
-      
-      // Send current peers for compatibility  
+
+      // Also emit peer-joined for compatibility (only for non-background connections)
+      if (!isBackgroundConnection) {
+        socket.to(roomId).emit('peer-joined', { peerId, displayName });
+      }
+
+      // Send current peers for compatibility
       socket.emit('room-peers', otherPeers);
-      
-      // Log activity
-      addActivityLog('user-joined', {
-        peerId,
-        displayName,
-        roomId,
-        userCount: room.size
-      }, '👋');
-      
-      console.log(`✅ User ${displayName} joined room ${roomId}. Room now has ${room.size} users.`);
+
+      // Log activity (only for non-background connections)
+      if (!isBackgroundConnection) {
+        addActivityLog('user-joined', {
+          peerId,
+          displayName,
+          roomId,
+          userCount: actualUserCount
+        }, '👋');
+      }
+
+      console.log(`✅ User ${displayName} joined room ${roomId}. Room now has ${actualUserCount} users (${room.size} total connections).`);
     } catch (error) {
       console.error('❌ Error in join-room:', error);
       socket.emit('error', { message: 'Failed to join room' });
@@ -1978,30 +1944,36 @@ io.on('connection', (socket) => {
           
           // Mark user as inactive
           markUserInactive(peerData.peerId, peerData.displayName);
-          
-          // Broadcast to room that user left
-          socket.to(roomId).emit('user-left', {
-            peerId: peerData.peerId,
-            displayName: peerData.displayName,
-            userCount: room.size
-          });
-          
-          // Also emit peer-left for compatibility
-          socket.to(roomId).emit('peer-left', { 
-            peerId: peerData.peerId, 
-            displayName: peerData.displayName 
-          });
-          
-          // Log activity
-          addActivityLog('user-left', {
-            peerId: peerData.peerId,
-            displayName: peerData.displayName,
-            roomId,
-            userCount: room.size
-          }, '👋');
-          
-          console.log(`👋 User ${peerData.displayName} left room ${roomId}. Room now has ${room.size} users.`);
-          
+
+          // Calculate actual user count after this user left
+          const actualUserCount = getActualUserCount(room);
+
+          // Only broadcast user-left if this was NOT a background connection
+          if (!peerData.isBackgroundConnection) {
+            // Broadcast to room that user left
+            socket.to(roomId).emit('user-left', {
+              peerId: peerData.peerId,
+              displayName: peerData.displayName,
+              userCount: actualUserCount
+            });
+
+            // Also emit peer-left for compatibility
+            socket.to(roomId).emit('peer-left', {
+              peerId: peerData.peerId,
+              displayName: peerData.displayName
+            });
+
+            // Log activity
+            addActivityLog('user-left', {
+              peerId: peerData.peerId,
+              displayName: peerData.displayName,
+              roomId,
+              userCount: actualUserCount
+            }, '👋');
+
+            console.log(`👋 User ${peerData.displayName} left room ${roomId}. Room now has ${actualUserCount} users (${room.size} total connections).`);
+          }
+
           // Clean up empty rooms
           if (room.size === 0) {
             rooms.delete(roomId);

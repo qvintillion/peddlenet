@@ -69,7 +69,7 @@ echo "☁️  Submitting production build to Google Cloud Build..."
 echo "⚡ Using cache-busting for fresh build with Phase 1 optimizations..."
 gcloud builds submit \
   --config deployment/cloudbuild-production.yaml \
-  --substitutions=_SERVICE_NAME=$SERVICE_NAME,_NODE_ENV=production,_BUILD_TARGET=production
+  --substitutions=_SERVICE_NAME=$SERVICE_NAME
 
 if [ $? -ne 0 ]; then
     echo "❌ Cloud Build deployment failed"
