@@ -103,7 +103,16 @@ class BackgroundNotificationManager {
     try {
       // SSR guard
       if (typeof window === 'undefined') return;
-      
+
+      // MIGRATION: Clear old auto-subscription behavior (October 2025)
+      const version = localStorage.getItem('background_notification_version');
+      if (version !== '2.0') {
+        console.log('🔄 Clearing old background notification subscriptions (migration to v2.0)');
+        localStorage.removeItem('background_notification_subscriptions');
+        localStorage.setItem('background_notification_version', '2.0');
+        return; // Don't load old data
+      }
+
       const saved = localStorage.getItem('background_notification_subscriptions');
       if (saved) {
         const data = JSON.parse(saved);
@@ -679,10 +688,11 @@ export function useRoomBackgroundNotifications(roomId: string, displayName: stri
 
     const currentState = manager.getState();
     const existingSubscription = currentState.subscriptions.get(roomId);
-    
-    // More intelligent subscription logic
-    if (!existingSubscription || existingSubscription.subscribed) {
-      console.log('🔔 Auto-subscribing to enhanced background notifications for room:', roomId);
+
+    // FIXED: Only subscribe if explicitly enabled, not automatically for every visited room
+    // This prevents auto-joining previously visited rooms via background notifications
+    if (existingSubscription && existingSubscription.subscribed) {
+      console.log('🔔 Subscribing to enhanced background notifications for room:', roomId, '(explicitly enabled)');
       manager.subscribeToRoom(roomId, displayName);
     } else {
       console.log('🔕 Skipping auto-subscription - notifications disabled for room:', roomId);
