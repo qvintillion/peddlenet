@@ -2,8 +2,8 @@
 
 # 🚀 PRODUCTION WebSocket Server Deployment Script
 # Deploy universal WebSocket server to production Cloud Run
-# Version: 1.2.0-phase1-optimized
-# Date: October 8, 2025
+# Version: 4.0-optimized
+# Date: October 9, 2025
 # Includes: Phase 1 WebSocket optimizations for Cloud Run stability
 
 echo "🚀 Production WebSocket Server Deployment - Phase 1 Optimized"
@@ -11,7 +11,7 @@ echo "=============================================================="
 echo "🎯 Target: PRODUCTION Environment"
 echo "🌍 Platform: Google Cloud Run"
 echo "🔧 Features: Phase 1 WebSocket optimizations"
-echo "📈 Version: 1.2.0-phase1-optimized"
+echo "📈 Version: 4.0-optimized"
 echo ""
 
 # Check if we're in the right directory
@@ -37,7 +37,7 @@ echo "📋 Using universal server configuration:"
 echo "   🐳 Dockerfile: Dockerfile.cloudrun"
 echo "   🖥️ Server: signaling-server.js (universal with auto-detection)"
 echo "   📦 Build: Google Cloud Build (no local Docker required)"
-echo "   🔧 Version: 1.2.0-phase1-optimized"
+echo "   🔧 Version: 4.0-optimized"
 echo ""
 echo "✅ Phase 1 Optimization Checklist:"
 echo "====================================="
@@ -101,7 +101,7 @@ echo "🚀 Environment: PRODUCTION"
 echo "📍 Service URL: $SERVICE_URL"
 echo "🏥 Health check: $SERVICE_URL/health"
 echo "📊 Admin dashboard: $SERVICE_URL/admin"
-echo "🛠️ Version: 1.2.0-phase1-optimized"
+echo "🛠️ Version: 4.0-optimized"
 echo ""
 echo "📋 Phase 1 Features Active:"
 echo "============================"

@@ -159,38 +159,51 @@ app.use(cors({
 
 app.use(express.json());
 
-// 🔧 ENHANCED: Data storage with historical tracking + mesh networking
-const rooms = new Map(); // Active rooms: roomId -> Map<socketId, peerData>
-const allRoomsEverCreated = new Map(); // ALL rooms ever created: roomId -> roomMetadata
-const messageStore = new Map(); // Track messages per room: roomId -> [messages]
-const activityLog = []; // Track all activities for admin dashboard
-const allUsersEver = new Map(); // Track ALL users ever seen: peerId -> userMetadata
+// ===== PHASE 1 OPTIMIZED: Simplified Data Structures (October 9, 2025) =====
 
-// 🌐 PHASE 1: P2P connection tracking
-const p2pConnections = new Map(); // Track P2P connections: socketId -> { peers: Set<socketId>, status: 'connecting'|'connected'|'failed' }
-const meshMetrics = {
-  totalP2PAttempts: 0,
-  successfulP2PConnections: 0,
-  failedP2PConnections: 0,
-  activeP2PConnections: 0,
-  averageConnectionTime: 0
-};
+// Single source of truth for active users
+// Key format: "displayName_socketId" to support multiple connections per user
+const activeUsers = new Map(); // userKey → UserData
 
+// Room membership tracking
+// Key format: roomId → Set<userKey>
+const rooms = new Map(); // roomId → Set<userKey>
+
+// User data structure:
+// UserData = {
+//   displayName: string,
+//   socketId: string,
+//   currentRoom: string,
+//   joinedAt: number,
+//   isBackgroundConnection: boolean,  // CRITICAL for notification system
+//   isActive: boolean
+// }
+
+// Historical tracking (simplified)
+const allRoomsEverCreated = new Map(); // roomId → { created, lastActivity, totalMessages }
+const messageStore = new Map(); // roomId → [messages]
+const activityLog = []; // Recent activities for admin dashboard
+
+// Connection stats
 const connectionStats = {
   totalConnections: 0,
   currentConnections: 0,
   peakConnections: 0,
+  peakRooms: 0,
   totalMessages: 0,
   messagesPerMinute: 0,
-  lastMessageTime: Date.now(),
-  // Enhanced tracking for comprehensive metrics
-  totalUniqueUsers: new Set(), // Track all unique users ever seen
-  totalRoomsCreated: 0, // Track total rooms ever created
-  peakRooms: 0 // Track peak concurrent rooms
+  lastMessageTime: Date.now()
 };
 
-// Room code mapping storage
-const roomCodes = new Map(); // roomCode -> roomId mapping
+// Room code mapping (keep existing)
+const roomCodes = new Map(); // roomCode → roomId
+
+// DEPRECATED (Phase 1 Optimization - will be removed in Phase 2):
+// - allUsersEver Map (replaced by activeUsers)
+// - p2pConnections Map (unused - Android handles mesh)
+// - meshMetrics object (unused - Android handles mesh)
+// - connectionStats.totalUniqueUsers Set (replaced by activeUsers)
+// - Complex dual tracking by peerId AND displayName (now unified)
 
 // 🔐 SIMPLIFIED: Single admin authentication
 function requireAdminAuth(req, res, next) {
@@ -224,94 +237,158 @@ function formatUptime(seconds) {
   return `${hours}h ${minutes}m ${secs}s`;
 }
 
-// Helper function to get actual user count (excluding background notification connections)
-function getActualUserCount(room) {
-  if (!room) return 0;
-  return Array.from(room.values()).filter(peer => !peer.isBackgroundConnection).length;
+// ===== PHASE 1 OPTIMIZED: Helper Functions (October 9, 2025) =====
+
+/**
+ * Generate unique key for user (supports multiple connections per display name)
+ */
+function generateUserKey(displayName, socketId) {
+  return `${displayName}_${socketId}`;
 }
 
-// 🔧 FIXED: Helper functions for comprehensive tracking with DISPLAY NAME as unique identifier
-function trackUser(peerId, displayName, roomId) {
-  // 🔧 CRITICAL FIX: Use trimmed display name as the unique identifier
-  const uniqueDisplayName = displayName.trim();
-  const isNewUser = !allUsersEver.has(uniqueDisplayName);
-  const existingData = isNewUser ? null : allUsersEver.get(uniqueDisplayName);
-  const isNewRoomForUser = isNewUser || existingData.currentRoomId !== roomId;
-  
-  const userData = {
-    uniqueDisplayName, // 🔧 FIXED: Use display name as unique key
-    peerId, // Keep peerId for this session/socket
-    displayName: uniqueDisplayName, // Ensure consistent display name
-    firstSeen: isNewUser ? Date.now() : existingData.firstSeen,
-    lastSeen: Date.now(),
-    currentRoomId: roomId,
-    // Only increment rooms joined if this is a new room for this user
-    totalRoomsJoined: isNewUser ? 1 : (isNewRoomForUser ? existingData.totalRoomsJoined + 1 : existingData.totalRoomsJoined),
-    isCurrentlyActive: true,
-    // Track all peerIds this display name has used
-    allPeerIds: isNewUser ? [peerId] : Array.from(new Set([...existingData.allPeerIds, peerId]))
-  };
-  
-  allUsersEver.set(uniqueDisplayName, userData); // 🔧 FIXED: Key by display name
-  connectionStats.totalUniqueUsers.add(uniqueDisplayName); // 🔧 FIXED: Track by display name
-  
-  console.log(`👤 ${isNewUser ? 'New' : 'Returning'} user: ${uniqueDisplayName} (peerId: ${peerId}) ${isNewRoomForUser ? 'in new room' : 'rejoining same room'} - Total unique users ever: ${connectionStats.totalUniqueUsers.size}`);
-}
-
-function trackRoom(roomId, roomCode = null) {
-  if (!allRoomsEverCreated.has(roomId)) {
-    const roomData = {
-      roomId,
-      roomCode: roomCode || roomId.substring(0, 8),
-      created: Date.now(),
-      isCurrentlyActive: true,
-      totalUsersEver: 0,
-      totalMessages: 0,
-      lastActivity: Date.now()
-    };
-    
-    allRoomsEverCreated.set(roomId, roomData);
-    connectionStats.totalRoomsCreated++;
-    
-    console.log(`🏠 Tracked new room: ${roomId} - Total rooms created: ${connectionStats.totalRoomsCreated}`);
-  } else {
-    // Update existing room
-    const roomData = allRoomsEverCreated.get(roomId);
-    roomData.isCurrentlyActive = true;
-    roomData.lastActivity = Date.now();
+/**
+ * Count active rooms (rooms with non-background users)
+ * CRITICAL: Only count rooms with actual chat users, not just background connections
+ */
+function getActiveRoomCount() {
+  let count = 0;
+  for (const [roomId] of rooms.entries()) {
+    if (getRoomUserCount(roomId) > 0) {
+      count++;
+    }
   }
+  return count;
 }
 
+/**
+ * Get accurate room user count (filters background connections)
+ * CRITICAL: This is the only correct way to count users
+ */
+function getRoomUserCount(roomId) {
+  const room = rooms.get(roomId);
+  if (!room) return 0;
+
+  return Array.from(room)
+    .map(userKey => activeUsers.get(userKey))
+    .filter(user => user && !user.isBackgroundConnection)
+    .length;
+}
+
+/**
+ * Find user data by socket ID
+ */
+function findUserBySocketId(socketId) {
+  for (const [userKey, userData] of activeUsers.entries()) {
+    if (userData.socketId === socketId) {
+      return { userKey, userData };
+    }
+  }
+  return null;
+}
+
+/**
+ * Add user to room (notification-safe)
+ */
+function addUserToRoom(displayName, socketId, roomId, options = {}) {
+  const userKey = generateUserKey(displayName, socketId);
+
+  const userData = {
+    displayName,
+    socketId,
+    currentRoom: roomId,
+    joinedAt: Date.now(),
+    isActive: true,
+    isBackgroundConnection: options.isBackgroundConnection || false  // CRITICAL
+  };
+
+  // Add to active users
+  activeUsers.set(userKey, userData);
+
+  // Add to room
+  if (!rooms.has(roomId)) {
+    rooms.set(roomId, new Set());
+  }
+  rooms.get(roomId).add(userKey);
+
+  // Track room if new
+  if (!allRoomsEverCreated.has(roomId)) {
+    allRoomsEverCreated.set(roomId, {
+      roomId,
+      created: Date.now(),
+      lastActivity: Date.now(),
+      totalMessages: 0
+    });
+  }
+
+  return { userKey, userData };
+}
+
+/**
+ * Remove user from room
+ */
+function removeUserFromRoom(userKey) {
+  const userData = activeUsers.get(userKey);
+  if (!userData) return null;
+
+  const roomId = userData.currentRoom;
+
+  // Remove from active users
+  activeUsers.delete(userKey);
+
+  // Remove from room
+  const room = rooms.get(roomId);
+  if (room) {
+    room.delete(userKey);
+
+    // Clean up empty rooms
+    if (room.size === 0) {
+      rooms.delete(roomId);
+    }
+  }
+
+  return { userData, roomId };
+}
+
+/**
+ * Update room activity timestamp
+ */
 function updateRoomActivity(roomId) {
   if (allRoomsEverCreated.has(roomId)) {
     allRoomsEverCreated.get(roomId).lastActivity = Date.now();
   }
 }
 
-function markRoomInactive(roomId) {
+/**
+ * Store message (simplified)
+ */
+function storeMessage(roomId, messageData) {
+  if (!messageStore.has(roomId)) {
+    messageStore.set(roomId, []);
+  }
+
+  const messages = messageStore.get(roomId);
+  messages.push(messageData);
+
+  // Keep only last 100 messages per room
+  if (messages.length > 100) {
+    messages.splice(0, messages.length - 100);
+  }
+
+  // Update room message count
   if (allRoomsEverCreated.has(roomId)) {
-    allRoomsEverCreated.get(roomId).isCurrentlyActive = false;
+    allRoomsEverCreated.get(roomId).totalMessages++;
   }
+
+  // Update global stats
+  connectionStats.totalMessages++;
+  connectionStats.lastMessageTime = Date.now();
+
+  updateRoomActivity(roomId);
 }
 
-function markUserInactive(peerId, displayName) {
-  // 🔧 CRITICAL FIX: Use display name to find user, not peerId
-  const uniqueDisplayName = displayName ? displayName.trim() : null;
-  
-  if (uniqueDisplayName && allUsersEver.has(uniqueDisplayName)) {
-    const userData = allUsersEver.get(uniqueDisplayName);
-    userData.isCurrentlyActive = false;
-    userData.lastSeen = Date.now();
-    
-    // 🔧 FIX: Keep connectionStats.totalUniqueUsers in sync
-    // Note: We intentionally keep them in the Set for historical tracking
-    // but mark them as inactive in allUsersEver
-    console.log(`👤 User ${uniqueDisplayName} (peerId: ${peerId}) marked as inactive`);
-  } else {
-    console.warn(`⚠️ Could not find user to mark inactive: ${uniqueDisplayName || peerId}`);
-  }
-}
-
+/**
+ * Add activity log entry
+ */
 function addActivityLog(type, data, icon = '📝') {
   const activity = {
     id: Date.now() + Math.random(),
@@ -320,53 +397,18 @@ function addActivityLog(type, data, icon = '📝') {
     timestamp: Date.now(),
     icon
   };
-  
-  activityLog.unshift(activity); // Add to beginning
-  
+
+  activityLog.unshift(activity);
+
   // Keep only last 1000 activities
   if (activityLog.length > 1000) {
     activityLog.length = 1000;
   }
-  
-  console.log(`📋 Activity logged: ${type}`, data);
 }
 
-function updateMessageStats() {
-  connectionStats.totalMessages++;
-  connectionStats.lastMessageTime = Date.now();
-  
-  // Calculate messages per minute (simple approximation)
-  const oneMinuteAgo = Date.now() - 60000;
-  const recentMessages = activityLog.filter(activity => 
-    activity.type === 'message-sent' && activity.timestamp > oneMinuteAgo
-  ).length;
-  
-  connectionStats.messagesPerMinute = recentMessages;
-}
-
-function storeMessage(roomId, messageData) {
-  if (!messageStore.has(roomId)) {
-    messageStore.set(roomId, []);
-  }
-  
-  const messages = messageStore.get(roomId);
-  messages.push(messageData);
-  
-  // Keep only last 100 messages per room
-  if (messages.length > 100) {
-    messages.splice(0, messages.length - 100);
-  }
-  
-  // Update room message count
-  if (allRoomsEverCreated.has(roomId)) {
-    allRoomsEverCreated.get(roomId).totalMessages++;
-  }
-  
-  updateMessageStats();
-  updateRoomActivity(roomId);
-}
-
-// Utility function for message IDs
+/**
+ * Generate message ID
+ */
 function generateMessageId() {
   return Math.random().toString(36).substring(2, 15);
 }
@@ -436,113 +478,123 @@ app.get('/health', (req, res) => {
 
 // ===== ENHANCED ADMIN ENDPOINTS =====
 
-// 🌐 MESH NETWORK: Real-time mesh status endpoint
+// ===== PHASE 1 OPTIMIZED: Mesh Status Endpoint (P2P Deprecated) =====
 app.get('/admin/mesh-status', requireAdminAuth, (req, res) => {
   try {
     console.log(`🌐 Mesh status request from ${req.adminUser}`);
-    
-    // Collect all active connections with mesh info
+
+    // PHASE 1: P2P/Mesh is deprecated, return WebSocket-only status
     const meshConnections = [];
-    const roomTopology = {};
-    
-    for (const [roomId, roomPeers] of rooms.entries()) {
-      const roomConnections = [];
-      
-      for (const [socketId, peerData] of roomPeers.entries()) {
-        // Check if this socket has P2P connections
-        const p2pData = p2pConnections.get(socketId);
-        const isP2PActive = p2pData && p2pData.status === 'connected' && p2pData.peers.size > 0;
-        
-        // Simulate connection quality based on P2P status and time connected
-        const connectionAge = Date.now() - (peerData.joinedAt || Date.now());
-        let connectionQuality = 'none';
-        
-        if (isP2PActive) {
-          // P2P connections typically have better quality
-          connectionQuality = p2pData.peers.size > 2 ? 'excellent' : 'good';
-        } else {
-          // WebSocket quality based on connection age (newer = better)
-          connectionQuality = connectionAge < 30000 ? 'good' : 
-                             connectionAge < 120000 ? 'fair' : 'poor';
-        }
-        
+
+    // Collect all active WebSocket connections
+    for (const [roomId, userKeys] of rooms.entries()) {
+      for (const userKey of userKeys) {
+        const userData = activeUsers.get(userKey);
+        if (!userData) continue;
+
+        // Skip background connections in mesh status
+        if (userData.isBackgroundConnection) continue;
+
+        const connectionAge = Date.now() - userData.joinedAt;
+
+        // WebSocket quality based on connection age
+        const connectionQuality = connectionAge < 30000 ? 'good' :
+                                 connectionAge < 120000 ? 'fair' : 'poor';
+
         const meshConnection = {
-          peerId: peerData.peerId,
-          displayName: peerData.displayName,
-          socketId: socketId.substring(0, 8) + '...', // Truncate for privacy
+          peerId: userData.displayName,
+          displayName: userData.displayName,
+          socketId: userData.socketId.substring(0, 8) + '...', // Truncate for privacy
           roomId,
-          p2pPeers: p2pData ? Array.from(p2pData.peers).map(id => id.substring(0, 8) + '...') : [],
+          p2pPeers: [], // P2P deprecated in Phase 1
           connectionQuality,
-          lastSeen: peerData.joinedAt || Date.now(),
-          isP2PActive,
+          lastSeen: userData.joinedAt,
+          isP2PActive: false, // P2P deprecated
           connectionAge
         };
-        
+
         meshConnections.push(meshConnection);
-        roomConnections.push(meshConnection);
-      }
-      
-      if (roomConnections.length > 0) {
-        roomTopology[roomId] = roomConnections;
       }
     }
-    
-    // 🔧 FIXED: Calculate enhanced mesh metrics with null safety
-    const enhancedMeshMetrics = {
-      ...meshMetrics,
-      meshUpgradeRate: meshMetrics.totalP2PAttempts > 0 
-        ? Math.round((meshMetrics.successfulP2PConnections / meshMetrics.totalP2PAttempts) * 100)
-        : 0,
-      p2pMessageCount: meshConnections.filter(c => c.isP2PActive).length * 10, // Simulate
-      fallbackCount: meshConnections.filter(c => !c.isP2PActive).length * 5, // Simulate
-      averageConnectionTime: Math.round(meshMetrics.averageConnectionTime || 0),
-      currentP2PUsers: meshConnections.filter(c => c.isP2PActive).length,
-      totalActiveUsers: meshConnections.length,
-      roomsWithMesh: Object.values(roomTopology).filter(room => 
-        room.some(conn => conn.isP2PActive)
-      ).length,
-      // 🔧 ENSURE: Never return null metrics
-      totalP2PAttempts: meshMetrics.totalP2PAttempts || 0,
-      successfulP2PConnections: meshMetrics.successfulP2PConnections || 0,
-      failedP2PConnections: meshMetrics.failedP2PConnections || 0,
-      activeP2PConnections: meshMetrics.activeP2PConnections || 0
+
+    // Count unique display names (not socket connections)
+    const uniqueDisplayNames = new Set(meshConnections.map(c => c.displayName));
+
+    // ===== ADMIN DASHBOARD DEDUPLICATION (Phase 1 - Version 4.0-optimized) =====
+    // Deduplicate connections by displayName (show most recent connection per user)
+    // This handles page navigation where user briefly has sockets in multiple rooms
+    //
+    // SCENARIO: User navigates from Room A → Room B
+    //   - Socket 1 in Room A (joinedAt: 1000, waiting for cleanup)
+    //   - Socket 2 in Room B (joinedAt: 2000, newly joined)
+    //   - Admin sees: User in Room B only (most recent)
+    //   - totalConnections: 2 (shows user has multiple sockets)
+    //
+    const uniqueConnectionsMap = new Map();
+    for (const connection of meshConnections) {
+      const existing = uniqueConnectionsMap.get(connection.displayName);
+      // Keep the connection with highest lastSeen (most recently joined room)
+      if (!existing || connection.lastSeen > existing.lastSeen) {
+        uniqueConnectionsMap.set(connection.displayName, {
+          ...connection,
+          // Count total sockets across all rooms for this display name
+          totalConnections: meshConnections.filter(c => c.displayName === connection.displayName).length
+        });
+      }
+    }
+    // ===== END ADMIN DASHBOARD DEDUPLICATION =====
+    const uniqueConnections = Array.from(uniqueConnectionsMap.values());
+
+    // Build room topology with deduplicated users (one entry per unique user per room)
+    const roomTopology = {};
+    for (const connection of uniqueConnections) {
+      if (!roomTopology[connection.roomId]) {
+        roomTopology[connection.roomId] = [];
+      }
+      roomTopology[connection.roomId].push(connection);
+    }
+
+    // Simplified metrics (P2P deprecated)
+    const meshMetrics = {
+      meshUpgradeRate: 0,
+      p2pMessageCount: 0,
+      fallbackCount: meshConnections.length, // Total socket connections
+      averageConnectionTime: 0,
+      currentP2PUsers: 0,
+      totalActiveUsers: uniqueDisplayNames.size, // Count unique users, not connections
+      roomsWithMesh: 0,
+      totalP2PAttempts: 0,
+      successfulP2PConnections: 0,
+      failedP2PConnections: 0,
+      activeP2PConnections: 0
     };
-    
-    // 🔧 FIXED: Ensure meshStatus always has valid metrics object
+
     const meshStatus = {
-      metrics: enhancedMeshMetrics, // This is now guaranteed to be non-null
-      connections: meshConnections.sort((a, b) => b.lastSeen - a.lastSeen),
+      metrics: meshMetrics,
+      connections: uniqueConnections.sort((a, b) => b.lastSeen - a.lastSeen),
       topology: roomTopology,
       summary: {
         totalConnections: meshConnections.length,
-        p2pActiveConnections: meshConnections.filter(c => c.isP2PActive).length,
+        p2pActiveConnections: 0,
         totalRoomsWithUsers: Object.keys(roomTopology).length,
-        roomsWithMesh: Object.values(roomTopology).filter(room => 
-          room.some(conn => conn.isP2PActive)
-        ).length,
+        roomsWithMesh: 0,
         averageLatency: meshConnections.reduce((acc, c) => {
-          const latency = c.connectionQuality === 'excellent' ? 25 : 
-                         c.connectionQuality === 'good' ? 50 : 
-                         c.connectionQuality === 'fair' ? 100 :
-                         c.connectionQuality === 'poor' ? 200 : 300;
+          const latency = c.connectionQuality === 'good' ? 50 :
+                         c.connectionQuality === 'fair' ? 100 : 200;
           return acc + latency;
         }, 0) / Math.max(meshConnections.length, 1)
       },
       timestamp: Date.now(),
-      phase: 'Phase 1 - Hybrid Architecture',
+      phase: 'Phase 1 - WebSocket Only (P2P Deprecated)',
       status: {
-        p2pEnabled: !!global.P2PServer,
+        p2pEnabled: false,
         signalingActive: true,
-        meshUpgradeAvailable: meshConnections.length > 0 && meshConnections.length <= 5
+        meshUpgradeAvailable: false
       }
     };
-    
-    // 🔧 SAFETY CHECK: Log the metrics being returned to debug frontend issues
-    console.log(`🌐 Mesh status metrics type:`, typeof meshStatus.metrics);
-    console.log(`🌐 Mesh status metrics:`, JSON.stringify(meshStatus.metrics, null, 2));
-    
-    console.log(`🌐 Mesh status: ${enhancedMeshMetrics.currentP2PUsers}/${enhancedMeshMetrics.totalActiveUsers} P2P active, ${enhancedMeshMetrics.activeP2PConnections} connections`);
-    
+
+    console.log(`🌐 Mesh status: ${meshMetrics.totalActiveUsers} WebSocket connections`);
+
     res.json(meshStatus);
   } catch (error) {
     console.error('❌ Mesh status error:', error);
@@ -550,204 +602,154 @@ app.get('/admin/mesh-status', requireAdminAuth, (req, res) => {
   }
 });
 
-// 🔧 ENHANCED: Main analytics endpoint with UNIQUE user counting (includes mesh metrics)
+// ===== PHASE 1 OPTIMIZED: Admin Analytics Endpoint =====
 app.get('/admin/analytics', requireAdminAuth, (req, res) => {
   try {
-    console.log(`📊 Admin analytics request from ${req.adminUser} (${req.adminLevel})`);
-    
-    // 🔧 FIX #1: Count UNIQUE active users (no double counting across rooms)
-    // 🔧 CRITICAL FIX: Use display names as unique identifiers, not peerIds
-    const activeUniqueDisplayNames = new Set();
-    const activeSocketConnections = new Set();
-    let totalActiveConnections = 0;
-    
-    for (const [roomId, roomPeers] of rooms.entries()) {
-      for (const [socketId, peerData] of roomPeers.entries()) {
-        activeUniqueDisplayNames.add(peerData.displayName.trim()); // 🔧 FIXED: Use display name
-        activeSocketConnections.add(socketId); // Track socket connections
-        totalActiveConnections++; // Total connections (can be > unique users)
+    console.log(`📊 Admin analytics request from ${req.adminUser}`);
+
+    // Calculate active unique users (filter background connections)
+    const uniqueDisplayNames = new Set();
+    const displayNameToUserData = new Map(); // Track unique users by display name
+
+    for (const [userKey, userData] of activeUsers.entries()) {
+      if (!userData.isBackgroundConnection) {
+        uniqueDisplayNames.add(userData.displayName);
+
+        // Keep the most recent connection for each unique display name
+        const existing = displayNameToUserData.get(userData.displayName);
+        if (!existing || userData.joinedAt > existing.joinedAt) {
+          displayNameToUserData.set(userData.displayName, userData);
+        }
       }
     }
-    
-    console.log(`🔍 DEBUG User Count: Active unique display names: ${activeUniqueDisplayNames.size}, Active sockets: ${activeSocketConnections.size}, Total connections: ${totalActiveConnections}, Total users ever: ${connectionStats.totalUniqueUsers.size}`);
-    
-    // 🔧 DETAILED DEBUG: Show exactly what's in each data structure
-    console.log(`🔍 DEBUG Sets Content:`);
-    console.log(`  - activeUniqueDisplayNames:`, Array.from(activeUniqueDisplayNames));
-    console.log(`  - connectionStats.totalUniqueUsers:`, Array.from(connectionStats.totalUniqueUsers));
-    console.log(`  - allUsersEver keys:`, Array.from(allUsersEver.keys()));
-    console.log(`  - allUsersEver active status:`, Array.from(allUsersEver.entries()).map(([id, data]) => ({ id, active: data.isCurrentlyActive })));
-    
-    // 🔧 ISSUE DETECTION: Find discrepancies
-    const totalUniqueUsersArray = Array.from(connectionStats.totalUniqueUsers);
-    const allUsersEverArray = Array.from(allUsersEver.keys());
-    const activeUsersArray = Array.from(activeUniqueDisplayNames);
-    
-    console.log(`🔍 DEBUG Counts:`);
-    console.log(`  - activeUniqueDisplayNames.size: ${activeUniqueDisplayNames.size}`);
-    console.log(`  - connectionStats.totalUniqueUsers.size: ${connectionStats.totalUniqueUsers.size}`);
-    console.log(`  - allUsersEver.size: ${allUsersEver.size}`);
-    
-    // Check for users in totalUniqueUsers but not in allUsersEver
-    const orphanedInTotal = totalUniqueUsersArray.filter(id => !allUsersEver.has(id));
-    if (orphanedInTotal.length > 0) {
-      console.log(`⚠️  ISSUE: Users in totalUniqueUsers but not in allUsersEver:`, orphanedInTotal);
-    }
-    
-    // Check for users in allUsersEver but not in totalUniqueUsers
-    const orphanedInAllUsers = allUsersEverArray.filter(id => !connectionStats.totalUniqueUsers.has(id));
-    if (orphanedInAllUsers.length > 0) {
-      console.log(`⚠️  ISSUE: Users in allUsersEver but not in totalUniqueUsers:`, orphanedInAllUsers);
-    }
-    
-    // 🔧 FIX #2: ALL rooms data (not just active ones)
+
+    // Build activeUsersList with unique users only (one per display name)
+    const activeUsersList = Array.from(displayNameToUserData.values()).map(userData => ({
+      displayName: userData.displayName,
+      currentRoom: userData.currentRoom,
+      joinedAt: userData.joinedAt,
+      isActive: true
+    }));
+
+    const activeUserCount = uniqueDisplayNames.size;
+
+    // Get all rooms data
     const allRoomsData = [];
     for (const [roomId, roomData] of allRoomsEverCreated.entries()) {
       const isActive = rooms.has(roomId);
-      const currentUsers = isActive ? getActualUserCount(rooms.get(roomId)) : 0;
-      
+      const currentUsers = isActive ? getRoomUserCount(roomId) : 0;
+
       allRoomsData.push({
         roomId,
-        roomCode: roomData.roomCode,
         created: roomData.created,
         isCurrentlyActive: isActive,
         currentUsers,
-        totalUsersEver: roomData.totalUsersEver,
         totalMessages: roomData.totalMessages,
         lastActivity: roomData.lastActivity,
         status: isActive ? 'Active' : 'Inactive'
       });
     }
-    
-    // Sort rooms by last activity (most recent first)
+
+    // Sort rooms by last activity
     allRoomsData.sort((a, b) => b.lastActivity - a.lastActivity);
-    
-    // 🔧 FIX #1: ALL users data (not just active ones)
-    const allUsersData = [];
-    for (const [uniqueDisplayName, userData] of allUsersEver.entries()) {
-      allUsersData.push({
-        uniqueDisplayName, // 🔧 FIXED: Use display name as ID
-        displayName: userData.displayName,
-        firstSeen: userData.firstSeen,
-        lastSeen: userData.lastSeen,
-        currentRoomId: userData.currentRoomId,
-        isCurrentlyActive: userData.isCurrentlyActive,
-        totalRoomsJoined: userData.totalRoomsJoined,
-        status: userData.isCurrentlyActive ? 'Online' : 'Offline',
-        allPeerIds: userData.allPeerIds || [] // Show all peer IDs used by this display name
-      });
-    }
-    
-    // Sort users by last seen (most recent first)
-    allUsersData.sort((a, b) => b.lastSeen - a.lastSeen);
-    
+
+    // Count active rooms (only rooms with non-background users)
+    const activeRoomCount = getActiveRoomCount();
+
     // Update peak stats
-    connectionStats.peakConnections = Math.max(connectionStats.peakConnections, totalActiveConnections);
-    connectionStats.peakRooms = Math.max(connectionStats.peakRooms, rooms.size);
-    
+    connectionStats.peakConnections = Math.max(connectionStats.peakConnections, activeUserCount);
+    connectionStats.peakRooms = Math.max(connectionStats.peakRooms, activeRoomCount);
+
     const analyticsData = {
-      // 🔧 FIXED: Correct user counting with debugging
       users: {
-        totalUniqueActive: activeUniqueDisplayNames.size, // UNIQUE active users by display name
-        totalConnections: totalActiveConnections, // Total active connections  
-        totalUniqueEver: connectionStats.totalUniqueUsers.size, // All unique users ever
+        totalUniqueActive: activeUserCount,
+        currentlyOnline: activeUserCount,
         peakConnections: connectionStats.peakConnections,
-        currentlyOnline: activeUniqueDisplayNames.size,
-        detailed: allUsersData,
-        // 🔍 DEBUG: Add debugging info
-        debug: {
-          activeDisplayNames: Array.from(activeUniqueDisplayNames),
-          activeSocketCount: activeSocketConnections.size,
-          allUsersEverCount: allUsersEver.size,
-          connectionStatsSize: connectionStats.totalUniqueUsers.size
-        }
+        detailed: activeUsersList
       },
-      
-      // 🔧 FIXED: All rooms visible
+
       rooms: {
-        totalActive: rooms.size,
-        totalEverCreated: connectionStats.totalRoomsCreated,
-        peakRooms: connectionStats.peakRooms,
+        totalActive: activeRoomCount,
+        totalEverCreated: allRoomsEverCreated.size,
         detailed: allRoomsData
       },
-      
+
       messages: {
         total: connectionStats.totalMessages,
         perMinute: connectionStats.messagesPerMinute,
         lastMessageTime: connectionStats.lastMessageTime
       },
-      
+
       server: {
         uptime: process.uptime(),
         uptimeFormatted: formatUptime(process.uptime()),
-        version: '1.2.0-phase1-optimized',
+        version: '4.0-optimized',
         environment: getEnvironment(),
-        platform: platform,
-        buildTarget: buildTarget,
         memoryUsage: process.memoryUsage(),
         timestamp: Date.now()
       },
-      
+
       activity: {
-        recentActivities: activityLog.slice(0, 20), // Last 20 activities
+        recentActivities: activityLog.slice(0, 20),
         totalActivities: activityLog.length
       },
-      
-      // Admin level information
-      admin: {
-        requestedBy: req.adminUser,
-        adminLevel: req.adminLevel,
-        availableFeatures: ['view-analytics', 'broadcast-all', 'broadcast-room', 'clear-room', 'wipe-database']
-      },
 
-      // Enhanced dashboard format for frontend compatibility
-      realTimeStats: {
-        activeUsers: activeUniqueDisplayNames.size,
-        // 🔧 CLEAN FIX: Only show currently active unique users for both metrics
-        // This eliminates confusion from inactive/disconnected users
-        totalUsers: activeUniqueDisplayNames.size,
-        activeRooms: rooms.size,
-        totalRooms: connectionStats.totalRoomsCreated,
-        peakUsers: connectionStats.peakConnections,
-        peakRooms: connectionStats.peakRooms,
-        messagesPerMinute: connectionStats.messagesPerMinute,
-        totalMessages: connectionStats.totalMessages,
-        storageUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-        userTrend: activeUniqueDisplayNames.size > 0 ? '⬆️' : '➡️',
-        roomTrend: rooms.size > 0 ? '⬆️' : '➡️',
-        environment: getEnvironment()
-      },
+      // Server health (frontend expects this)
       serverHealth: {
         status: 'healthy',
         uptime: formatUptime(process.uptime()),
         memoryUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
         memoryTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
-        cpuUsage: '0%',
+        cpuUsage: '0%', // Simplified for now
         coldStarts: 0
       },
+
+      // Network status (simplified - frontend expects this)
       networkStatus: {
-        quality: 100,
+        quality: 100, // Default to 100% for now
         avgLatency: 0,
         deliveryRate: 100
       },
-      messageFlow: {
-        messagesPerMinute: connectionStats.messagesPerMinute,
-        trend: '',
-        history: []
-      },
+
+      // Database stats (frontend expects this)
       dbStats: {
         totalMessages: connectionStats.totalMessages,
-        totalRooms: connectionStats.totalRoomsCreated,
-        activeRooms: rooms.size,
+        totalRooms: allRoomsEverCreated.size,
         totalSessions: connectionStats.totalConnections,
         recentActivity: activityLog.length,
-        dbSize: '1KB',
-        oldestMessage: connectionStats.lastMessageTime
+        dbSize: '0 KB', // Simplified - in-memory
+        oldestMessage: 0
       },
+
+      // Message flow (frontend expects this)
+      messageFlow: {
+        messagesPerMinute: connectionStats.messagesPerMinute,
+        trend: 'stable',
+        history: []
+      },
+
+      // Enhanced dashboard format
+      realTimeStats: {
+        activeUsers: activeUserCount,
+        totalUsers: activeUserCount,
+        activeRooms: activeRoomCount,
+        totalRooms: allRoomsEverCreated.size,
+        peakUsers: connectionStats.peakConnections,
+        peakRooms: connectionStats.peakRooms || activeRoomCount,
+        messagesPerMinute: connectionStats.messagesPerMinute,
+        totalMessages: connectionStats.totalMessages,
+        storageUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        userTrend: 'stable',
+        roomTrend: 'stable',
+        environment: getEnvironment()
+      },
+
+      // Top-level fields frontend expects
+      timestamp: Date.now(),
       databaseReady: true
     };
-    
-    console.log(`📈 Analytics generated: ${activeUniqueDisplayNames.size} unique active users, ${rooms.size} active rooms, ${connectionStats.totalRoomsCreated} total rooms ever`);
+
+    console.log(`📈 Analytics: ${activeUserCount} active users, ${activeRoomCount} active rooms`);
     
     res.json(analyticsData);
   } catch (error) {
@@ -763,28 +765,37 @@ app.get('/admin/activity', requireAdminAuth, (req, res) => {
     
     // Start with activity log (already sorted newest first when we add items)
     const activities = [...activityLog]; // Copy activity log
-    
-    // Add current user join states if not already in activity log
-    for (const [roomId, roomPeers] of rooms.entries()) {
-      for (const [socketId, peerData] of roomPeers.entries()) {
+
+    // PHASE 1: Add current user join states if not already in activity log
+    // rooms Map structure: roomId → Set<userKey>
+    // activeUsers Map structure: userKey → UserData
+    for (const [roomId, userKeys] of rooms.entries()) {
+      for (const userKey of userKeys) {
+        const userData = activeUsers.get(userKey);
+
+        // Skip if user data not found or is background connection
+        if (!userData || userData.isBackgroundConnection) {
+          continue;
+        }
+
         // Only add if we don't already have recent join activity for this user
-        const hasRecentJoin = activities.some(activity => 
-          activity.type === 'user-joined' && 
-          activity.data.peerId === peerData.peerId &&
+        const hasRecentJoin = activities.some(activity =>
+          activity.type === 'user-joined' &&
+          activity.data.displayName === userData.displayName &&
           activity.data.roomId === roomId &&
           (Date.now() - activity.timestamp) < 5 * 60 * 1000 // Within 5 minutes
         );
-        
-        if (!hasRecentJoin) {
+
+        if (!hasRecentJoin && userData.displayName) {
           activities.push({
             id: Date.now() + Math.random(),
             type: 'user-joined',
             data: {
               roomId,
-              peerId: peerData.peerId,
-              displayName: peerData.displayName
+              peerId: userData.displayName, // Use displayName as peerId for consistency
+              displayName: userData.displayName
             },
-            timestamp: peerData.joinedAt || Date.now(),
+            timestamp: userData.joinedAt || Date.now(),
             icon: '👥'
           });
         }
@@ -807,121 +818,101 @@ app.get('/admin/activity', requireAdminAuth, (req, res) => {
   }
 });
 
-// 🔧 ENHANCED: Detailed users endpoint with UNIQUE user display
+// ===== PHASE 1 OPTIMIZED: Detailed Users Endpoint =====
 app.get('/admin/users/detailed', requireAdminAuth, (req, res) => {
   try {
-    console.log('\n👥 ===== DETAILED USERS REQUEST =====');
-    console.log(`🔍 allUsersEver size: ${allUsersEver.size}`);
-    console.log(`🔍 Total rooms with users: ${rooms.size}`);
-    
+    console.log('\n👥 ===== DETAILED USERS REQUEST (Phase 1) =====');
+    console.log(`🔍 Active users: ${activeUsers.size}`);
+    console.log(`🔍 Total rooms: ${rooms.size}`);
+
     const allUsersData = [];
-    const uniqueActiveUserIds = new Set();
-    const socketToUserMapping = new Map(); // socketId -> peerId mapping
-    
-    // 🔧 STEP 1: Build socket-to-user mapping for active users (by display name)
-    for (const [roomId, roomPeers] of rooms.entries()) {
-      for (const [socketId, peerData] of roomPeers.entries()) {
-        const uniqueDisplayName = peerData.displayName.trim();
-        socketToUserMapping.set(socketId, uniqueDisplayName); // 🔧 FIXED: Map to display name
-        uniqueActiveUserIds.add(uniqueDisplayName); // 🔧 FIXED: Use display name
+    const uniqueDisplayNames = new Set();
+    const displayNameToUsers = new Map(); // displayName -> array of userKeys
+
+    // Group users by display name to handle multiple connections
+    for (const [userKey, userData] of activeUsers.entries()) {
+      const displayName = userData.displayName;
+      if (!displayNameToUsers.has(displayName)) {
+        displayNameToUsers.set(displayName, []);
       }
+      displayNameToUsers.get(displayName).push({ userKey, userData });
     }
-    
-    console.log(`🔍 Active unique user IDs: ${uniqueActiveUserIds.size}`);
-    console.log(`🔍 Active unique users:`, Array.from(uniqueActiveUserIds));
-    
-    // 🔧 STEP 2: Get ALL users (active and inactive) - ENSURE UNIQUE DISPLAY
-    for (const [uniqueDisplayName, userData] of allUsersEver.entries()) {
-      // Check if this user is currently active (has at least one socket connection)
-      const isCurrentlyActive = uniqueActiveUserIds.has(uniqueDisplayName);
-      
-      // Find current room if user is active
+
+    // Create one entry per unique display name
+    for (const [displayName, userEntries] of displayNameToUsers.entries()) {
+      uniqueDisplayNames.add(displayName);
+
+      // Pick the first user entry as representative
+      const firstEntry = userEntries[0];
+      const userData = firstEntry.userData;
+
+      // Find current room
       let currentRoomData = null;
-      let currentSocketId = null;
-      
-      if (isCurrentlyActive && userData.currentRoomId) {
-        // Find the socket for this user (pick the first one if multiple)
-        for (const [socketId, userDisplayName] of socketToUserMapping.entries()) {
-          if (userDisplayName === uniqueDisplayName) {
-            currentSocketId = socketId;
-            break;
-          }
-        }
-        
-        if (allRoomsEverCreated.has(userData.currentRoomId)) {
-          const roomData = allRoomsEverCreated.get(userData.currentRoomId);
-          currentRoomData = {
-            roomId: userData.currentRoomId,
-            roomCode: roomData.roomCode,
-            userCount: rooms.has(userData.currentRoomId) ? getActualUserCount(rooms.get(userData.currentRoomId)) : 0
-          };
-        }
+      if (userData.currentRoom && allRoomsEverCreated.has(userData.currentRoom)) {
+        const roomData = allRoomsEverCreated.get(userData.currentRoom);
+        currentRoomData = {
+          roomId: userData.currentRoom,
+          roomCode: roomData.roomCode || null,
+          userCount: getRoomUserCount(userData.currentRoom)
+        };
       }
-      
+
       allUsersData.push({
-        uniqueDisplayName, // 🔧 FIXED: Use display name as unique ID
-        peerId: userData.peerId || 'multiple', // Show current or indicate multiple
-        displayName: userData.displayName,
-        firstSeen: userData.firstSeen,
-        lastSeen: userData.lastSeen,
-        isCurrentlyActive,
-        totalRoomsJoined: userData.totalRoomsJoined,
+        uniqueDisplayName: displayName,
+        peerId: displayName,
+        displayName: displayName,
+        firstSeen: userData.joinedAt,
+        lastSeen: Date.now(),
+        isCurrentlyActive: true,
+        totalRoomsJoined: 1,
         currentRoom: currentRoomData,
-        status: isCurrentlyActive ? 'Online' : 'Offline',
-        sessionDuration: isCurrentlyActive ? Date.now() - userData.lastSeen : null,
-        // Include socket info for admin debugging (only one socket per user for UI)
-        socketId: currentSocketId ? currentSocketId.substring(0, 8) + '...' : null,
-        allPeerIds: userData.allPeerIds || [] // Show all peer IDs used
+        status: 'Online',
+        sessionDuration: Date.now() - userData.joinedAt,
+        socketId: userData.socketId.substring(0, 8) + '...',
+        allPeerIds: userEntries.map(e => e.userData.socketId.substring(0, 8)),
+        totalConnections: userEntries.length // Show if user has multiple connections
       });
     }
-    
-    // 🔧 STEP 3: Create UNIQUE activeUsers array (no duplicates per user)
-    const activeUsers = [];
-    const processedActiveUsers = new Set();
-    
-    for (const [roomId, roomPeers] of rooms.entries()) {
-      for (const [socketId, peerData] of roomPeers.entries()) {
-        const uniqueDisplayName = peerData.displayName.trim();
-        // Only add each unique user ONCE (even if they have multiple socket connections)
-        if (!processedActiveUsers.has(uniqueDisplayName)) {
-          activeUsers.push({
-            socketId,
-            peerId: peerData.peerId,
-            displayName: peerData.displayName,
-            uniqueDisplayName, // 🔧 FIXED: Add unique identifier
-            roomId,
-            joinedAt: peerData.joinedAt || Date.now(),
-            duration: Date.now() - (peerData.joinedAt || Date.now()),
-            isActive: true
-          });
-          processedActiveUsers.add(uniqueDisplayName); // 🔧 FIXED: Track by display name
-        }
-      }
-    }
-    
-    // Sort by last seen (most recent first)
+
+    // Create active users list (unique by display name)
+    const activeUsersList = Array.from(displayNameToUsers.entries()).map(([displayName, userEntries]) => {
+      const firstEntry = userEntries[0];
+      const userData = firstEntry.userData;
+
+      return {
+        socketId: userData.socketId,
+        peerId: displayName,
+        displayName: displayName,
+        uniqueDisplayName: displayName,
+        roomId: userData.currentRoom,
+        joinedAt: userData.joinedAt,
+        duration: Date.now() - userData.joinedAt,
+        isActive: true,
+        totalConnections: userEntries.length
+      };
+    });
+
+    // Sort by joined time (most recent first)
     allUsersData.sort((a, b) => b.lastSeen - a.lastSeen);
-    
-    console.log(`✅ Detailed users response:`);
-    console.log(`   - Total users ever: ${allUsersData.length}`);
-    console.log(`   - Currently active: ${allUsersData.filter(u => u.isCurrentlyActive).length}`);
-    console.log(`   - Currently inactive: ${allUsersData.filter(u => !u.isCurrentlyActive).length}`);
-    console.log(`   - Unique active users: ${activeUsers.length}`);
-    console.log(`   - Raw socket connections: ${socketToUserMapping.size}`);
+
+    console.log(`✅ Detailed users response (Phase 1):`);
+    console.log(`   - Unique display names: ${uniqueDisplayNames.size}`);
+    console.log(`   - Total active connections: ${activeUsers.size}`);
+    console.log(`   - Active users list: ${activeUsersList.length}`);
     console.log('👥 ===== END DETAILED USERS =====\n');
-    
+
     res.json({
       users: allUsersData,
-      activeUsers, // FIXED: Now contains unique users only
+      activeUsers: activeUsersList,
       recentSessions: [],
       summary: {
         totalUsers: allUsersData.length,
-        activeUsers: allUsersData.filter(u => u.isCurrentlyActive).length,
-        inactiveUsers: allUsersData.filter(u => !u.isCurrentlyActive).length,
-        totalActive: activeUsers.length, // FIXED: Unique active users
-        uniqueUsers: uniqueActiveUserIds.size, // FIXED: Guaranteed unique
+        activeUsers: allUsersData.length,
+        inactiveUsers: 0, // Phase 1: Only tracking active users
+        totalActive: activeUsersList.length,
+        uniqueUsers: uniqueDisplayNames.size,
         totalRooms: rooms.size,
-        totalSocketConnections: socketToUserMapping.size, // DEBUG: Show raw connections
+        totalSocketConnections: activeUsers.size,
         timestamp: Date.now()
       }
     });
@@ -931,44 +922,54 @@ app.get('/admin/users/detailed', requireAdminAuth, (req, res) => {
   }
 });
 
-// 🔧 ENHANCED: Detailed rooms endpoint  
+// ===== PHASE 1 OPTIMIZED: Detailed Rooms Endpoint =====
 app.get('/admin/rooms/detailed', requireAdminAuth, (req, res) => {
   try {
     const allRoomsData = [];
-    
+
     // Get ALL rooms (active and inactive)
     for (const [roomId, roomData] of allRoomsEverCreated.entries()) {
       const isActive = rooms.has(roomId);
       let currentUsers = [];
       let currentUserCount = 0;
-      
+
       if (isActive) {
-        const roomPeers = rooms.get(roomId);
-        currentUserCount = roomPeers.size;
-        
-        // Get current user list
-        for (const [socketId, peerData] of roomPeers.entries()) {
-          currentUsers.push({
-            peerId: peerData.peerId,
-            displayName: peerData.displayName,
-            joinedAt: peerData.joinedAt,
-            socketId: socketId.substring(0, 8) + '...' // Truncated for privacy
-          });
+        const roomUserKeys = rooms.get(roomId); // Phase 1: Set of userKeys
+
+        // Deduplicate users by displayName (one entry per unique user)
+        const uniqueUsersMap = new Map();
+        for (const userKey of roomUserKeys) {
+          const userData = activeUsers.get(userKey);
+          if (userData && !userData.isBackgroundConnection) {
+            // Keep the most recent connection for each unique display name
+            const existing = uniqueUsersMap.get(userData.displayName);
+            if (!existing || userData.joinedAt > existing.joinedAt) {
+              uniqueUsersMap.set(userData.displayName, {
+                peerId: userData.displayName,
+                displayName: userData.displayName,
+                joinedAt: userData.joinedAt,
+                socketId: userData.socketId.substring(0, 8) + '...' // Truncated for privacy
+              });
+            }
+          }
         }
+
+        currentUsers = Array.from(uniqueUsersMap.values());
+        currentUserCount = currentUsers.length;
       }
-      
+
       // Get recent messages
-      const recentMessages = messageStore.has(roomId) ? 
+      const recentMessages = messageStore.has(roomId) ?
         messageStore.get(roomId).slice(-5) : []; // Last 5 messages
-      
+
       allRoomsData.push({
         roomId,
-        roomCode: roomData.roomCode,
+        roomCode: roomData.roomCode || null,
         created: roomData.created,
         isCurrentlyActive: isActive,
         currentUserCount,
         currentUsers,
-        totalUsersEver: roomData.totalUsersEver,
+        totalUsersEver: roomData.totalUsersEver || 0,
         totalMessages: roomData.totalMessages,
         lastActivity: roomData.lastActivity,
         recentMessages: recentMessages.map(msg => ({
@@ -984,14 +985,14 @@ app.get('/admin/rooms/detailed', requireAdminAuth, (req, res) => {
         userList: currentUsers // For compatibility
       });
     }
-    
+
     // Sort by last activity (most recent first)
     allRoomsData.sort((a, b) => b.lastActivity - a.lastActivity);
-    
+
     // Calculate total messages for compatibility
     const totalMessages = Array.from(messageStore.values())
       .reduce((sum, messages) => sum + messages.length, 0);
-    
+
     res.json({
       rooms: allRoomsData,
       activeRooms: allRoomsData, // For compatibility with existing frontend
@@ -1460,20 +1461,19 @@ app.get('/resolve-room-code/:code', (req, res) => {
   });
 });
 
-// 🔧 FIXED: Room stats with enhanced error handling
+// ===== PHASE 1 OPTIMIZED: Room Stats Endpoint =====
 app.get('/room-stats/:roomId', (req, res) => {
   const roomId = req.params.roomId;
-  
+
   console.log(`📊 Room stats request for: ${roomId}`);
-  console.log(`📊 Available rooms:`, Array.from(rooms.keys()));
-  
+
   // Check if room exists in current active rooms
   if (!rooms.has(roomId)) {
     // Check if room exists in historical data
     if (allRoomsEverCreated.has(roomId)) {
       const roomData = allRoomsEverCreated.get(roomId);
       console.log(`📊 Found inactive room: ${roomId}`);
-      
+
       return res.json({
         roomId,
         userCount: 0,
@@ -1482,41 +1482,43 @@ app.get('/room-stats/:roomId', (req, res) => {
         created: roomData.created,
         lastActivity: roomData.lastActivity,
         totalMessagesEver: roomData.totalMessages,
-        totalUsersEver: roomData.totalUsersEver,
         timestamp: Date.now()
       });
     }
-    
-    console.log(`❌ Room ${roomId} not found in active or historical rooms`);
-    return res.status(404).json({ 
+
+    console.log(`❌ Room ${roomId} not found`);
+    return res.status(404).json({
       error: 'Room not found',
       roomId,
-      availableRooms: Array.from(rooms.keys()),
       timestamp: Date.now()
     });
   }
-  
-  const roomPeers = rooms.get(roomId);
-  // Filter out background notification connections
-  const peerList = Array.from(roomPeers.values()).filter(peer => !peer.isBackgroundConnection);
+
+  const room = rooms.get(roomId);
   const roomData = allRoomsEverCreated.get(roomId);
 
-  const actualUserCount = getActualUserCount(roomPeers);
-  console.log(`✅ Room stats for ${roomId}: ${actualUserCount} active users (${roomPeers.size} total connections)`);
+  // Get user list (filter background connections)
+  const peerList = Array.from(room)
+    .map(userKey => activeUsers.get(userKey))
+    .filter(user => user && !user.isBackgroundConnection)
+    .map(user => ({
+      peerId: user.displayName,
+      displayName: user.displayName,
+      joinedAt: user.joinedAt
+    }));
+
+  const userCount = getRoomUserCount(roomId);
+
+  console.log(`✅ Room stats for ${roomId}: ${userCount} active users (${room.size} total connections)`);
 
   res.json({
     roomId,
-    userCount: actualUserCount,
-    users: peerList.map(peer => ({
-      peerId: peer.peerId,
-      displayName: peer.displayName,
-      joinedAt: peer.joinedAt
-    })),
+    userCount,
+    users: peerList,
     status: 'active',
     created: roomData ? roomData.created : Date.now(),
     lastActivity: roomData ? roomData.lastActivity : Date.now(),
     totalMessagesEver: roomData ? roomData.totalMessages : 0,
-    totalUsersEver: roomData ? roomData.totalUsersEver : roomPeers.size,
     timestamp: Date.now()
   });
 });
@@ -1570,92 +1572,187 @@ io.on('connection', (socket) => {
   // Update peak connections
   connectionStats.peakConnections = Math.max(connectionStats.peakConnections, connectionStats.currentConnections);
 
-  socket.on('join-room', ({ roomId, peerId, displayName }) => {
+  socket.on('join-room', (data) => {
     try {
-      console.log(`👤 User joining: ${displayName} (${peerId}) -> Room: ${roomId}`);
-      
-      // Initialize room if it doesn't exist
-      if (!rooms.has(roomId)) {
-        rooms.set(roomId, new Map());
-        console.log(`🏠 Created new room: ${roomId}`);
+      const { roomId, peerId, displayName } = data;
+      console.log(`🔍 join-room received data:`, JSON.stringify(data));
+
+      // Detect connection type
+      const connectionType = socket.handshake.headers['x-connection-type'] || 'chat';
+      const isBackground = connectionType === 'background-notifications';
+
+      console.log(`👤 User joining: ${displayName} (${peerId}) -> Room: ${roomId} [${connectionType}]`);
+
+      // ===== DUPLICATE SOCKET PREVENTION (Phase 1 - Version 4.0-optimized) =====
+      // Handles edge cases where multiple sockets exist for the same user
+      //
+      // SCENARIO 1: Page Refresh in Same Room
+      //   - User refreshes page while in Room A
+      //   - New page creates new socket, joins Room A
+      //   - Old socket still connected briefly until browser cleans up
+      //   - Solution: Disconnect old socket in same room
+      //
+      // SCENARIO 2: Multi-tab Same Room
+      //   - User opens Room A in two browser tabs
+      //   - Both tabs create sockets to same room
+      //   - Solution: Keep newest socket, disconnect older ones
+      //
+      // SCENARIO 3: Page Navigation (ALLOWED)
+      //   - User navigates from Room A → Room B
+      //   - Old page socket still in Room A (cleanup pending)
+      //   - New page socket joins Room B
+      //   - Solution: DON'T disconnect - different rooms, legitimate behavior
+      //   - Admin dashboard deduplication shows most recent room only
+      //
+      if (!isBackground) {
+        const duplicateSocketsInSameRoom = [];
+        for (const [userKey, userData] of activeUsers.entries()) {
+          // Find other sockets with same displayName in the SAME room (duplicate tabs/connections)
+          if (userData.displayName === displayName &&
+              userData.socketId !== socket.id &&
+              userData.currentRoom === roomId &&  // CRITICAL: Only same room
+              !userData.isBackgroundConnection) {
+            duplicateSocketsInSameRoom.push({ userKey, userData });
+          }
+        }
+
+        if (duplicateSocketsInSameRoom.length > 0) {
+          console.log(`🧹 Cleaning up ${duplicateSocketsInSameRoom.length} duplicate socket(s) in room "${roomId}" for user "${displayName}"`);
+          for (const { userKey, userData } of duplicateSocketsInSameRoom) {
+            console.log(`   Disconnecting duplicate socket: ${userData.socketId}`);
+
+            // Find and disconnect the old socket
+            const oldSocket = io.sockets.sockets.get(userData.socketId);
+            if (oldSocket) {
+              oldSocket.disconnect(true);
+            }
+
+            // Clean up from data structures (in case disconnect didn't trigger)
+            removeUserFromRoom(userKey);
+          }
+        }
       }
-      
-      // Track the room and user
-      trackRoom(roomId);
-      trackUser(peerId, displayName, roomId);
-      
-      const room = rooms.get(roomId);
-      const peerData = {
-        peerId,
-        displayName,
-        joinedAt: Date.now(),
-        socketId: socket.id,
-        isBackgroundConnection // Mark if this is a background notification connection
-      };
+      // ===== END DUPLICATE SOCKET PREVENTION =====
 
-      room.set(socket.id, peerData);
-      socket.join(roomId);
+      // Check if user already exists
+      const existingUser = findUserBySocketId(socket.id);
 
-      // Calculate actual user count (excluding background notification connections)
-      const actualUserCount = getActualUserCount(room);
+      // If already in the same room, skip duplicate join
+      if (existingUser && existingUser.userData.currentRoom === roomId) {
+        console.log(`⏭️ User ${displayName} already in room ${roomId}, skipping duplicate join`);
+        // Still send room-peers to handle client reconnection
+        const roomUserKeys = rooms.get(roomId) || new Set();
+        const otherPeers = Array.from(roomUserKeys)
+          .map(key => activeUsers.get(key))
+          .filter(user => user && user.socketId !== socket.id && !user.isBackgroundConnection)
+          .map(user => ({
+            peerId: peerId,
+            displayName: user.displayName,
+            joinedAt: user.joinedAt
+          }));
+        socket.emit('room-peers', otherPeers);
+        return;
+      }
 
-      // Update room user count only if this user hasn't been in this room before
-      if (allRoomsEverCreated.has(roomId)) {
-        const roomData = allRoomsEverCreated.get(roomId);
-        // Only increment if this is a new user to this room AND not a background connection
-        const userWasInRoomBefore = allUsersEver.has(peerId) &&
-          allUsersEver.get(peerId).currentRoomId === roomId;
+      // Check if user is switching rooms
+      if (existingUser && existingUser.userData.currentRoom !== roomId) {
+        const oldRoomId = existingUser.userData.currentRoom;
 
-        if (!userWasInRoomBefore && !isBackgroundConnection) {
-          roomData.totalUsersEver++;
+        console.log(`🔄 Room switch detected: ${displayName} moving from ${oldRoomId} to ${roomId}`);
+        console.log(`   Old userKey: ${existingUser.userKey}`);
+        console.log(`   Socket ID: ${socket.id}`);
+
+        // Remove from old room
+        removeUserFromRoom(existingUser.userKey);
+
+        // Leave old socket.io room
+        socket.leave(oldRoomId);
+
+        // Notify old room (only for non-background)
+        if (!existingUser.userData.isBackgroundConnection) {
+          socket.to(oldRoomId).emit('user-left', {
+            peerId,
+            displayName,
+            userCount: getRoomUserCount(oldRoomId)
+          });
+
+          console.log(`👋 User ${displayName} left room ${oldRoomId} (remaining: ${getRoomUserCount(oldRoomId)} users)`);
         }
       }
 
-      // Only broadcast user-joined if this is NOT a background connection
-      if (!isBackgroundConnection) {
-        // Broadcast to room that user joined
+      // Add to new room
+      const { userKey, userData } = addUserToRoom(displayName, socket.id, roomId, {
+        isBackgroundConnection: isBackground
+      });
+
+      console.log(`✅ Added to room ${roomId}: userKey=${userKey}, socketId=${socket.id}`);
+
+      // Join socket.io room
+      socket.join(roomId);
+
+      // Calculate accurate user count
+      const userCount = getRoomUserCount(roomId);
+
+      // Debug: Show all active rooms for this display name
+      let userRooms = [];
+      for (const [rid, userKeys] of rooms.entries()) {
+        for (const uk of userKeys) {
+          const ud = activeUsers.get(uk);
+          if (ud && ud.displayName === displayName && !ud.isBackgroundConnection) {
+            userRooms.push({ roomId: rid, socketId: ud.socketId });
+          }
+        }
+      }
+      console.log(`🔍 User "${displayName}" is now in ${userRooms.length} room(s):`, JSON.stringify(userRooms));
+
+      // Only broadcast user-joined for non-background connections
+      if (!isBackground) {
         socket.to(roomId).emit('user-joined', {
           peerId,
           displayName,
-          joinedAt: Date.now(),
-          userCount: actualUserCount
+          joinedAt: userData.joinedAt,
+          userCount
         });
+
+        // Log activity (only if we have a valid displayName)
+        console.log(`📊 Logging activity: displayName="${displayName}", peerId="${peerId}", roomId="${roomId}"`);
+        if (displayName && displayName.trim()) {
+          addActivityLog('user-joined', {
+            peerId,
+            displayName: displayName.trim(),
+            roomId,
+            userCount
+          }, '👋');
+        } else {
+          console.warn(`⚠️ Skipped activity log - missing displayName for ${socket.id}`);
+        }
       }
 
-      // Send current room info to new user (excluding background connections from peer list)
-      const otherPeers = Array.from(room.values())
-        .filter(peer => peer.socketId !== socket.id && !peer.isBackgroundConnection)
-        .map(peer => ({
-          peerId: peer.peerId,
-          displayName: peer.displayName,
-          joinedAt: peer.joinedAt
+      // Send current room info to new user
+      const otherPeers = Array.from(rooms.get(roomId) || [])
+        .map(key => activeUsers.get(key))
+        .filter(user => user && user.socketId !== socket.id && !user.isBackgroundConnection)
+        .map(user => ({
+          peerId: peerId, // Use same peerId for compatibility
+          displayName: user.displayName,
+          joinedAt: user.joinedAt
         }));
 
       socket.emit('room-joined', {
         roomId,
-        userCount: actualUserCount,
+        userCount,
         otherPeers
       });
 
-      // Also emit peer-joined for compatibility (only for non-background connections)
-      if (!isBackgroundConnection) {
+      // Emit peer-joined for compatibility
+      if (!isBackground) {
         socket.to(roomId).emit('peer-joined', { peerId, displayName });
       }
 
       // Send current peers for compatibility
       socket.emit('room-peers', otherPeers);
 
-      // Log activity (only for non-background connections)
-      if (!isBackgroundConnection) {
-        addActivityLog('user-joined', {
-          peerId,
-          displayName,
-          roomId,
-          userCount: actualUserCount
-        }, '👋');
-      }
-
-      console.log(`✅ User ${displayName} joined room ${roomId}. Room now has ${actualUserCount} users (${room.size} total connections).`);
+      console.log(`✅ User ${displayName} joined room ${roomId}. Room now has ${userCount} users (${rooms.get(roomId).size} total connections)`);
     } catch (error) {
       console.error('❌ Error in join-room:', error);
       socket.emit('error', { message: 'Failed to join room' });
@@ -1668,48 +1765,46 @@ io.on('connection', (socket) => {
         console.log(`❌ Message sent to non-existent room: ${roomId}`);
         return;
       }
-      
-      const room = rooms.get(roomId);
-      const peerData = room.get(socket.id);
-      
-      if (!peerData) {
-        console.log(`❌ Message from user not in room: ${socket.id}`);
+
+      // Find sender
+      const sender = findUserBySocketId(socket.id);
+      if (!sender) {
+        console.log(`❌ Message from unknown user: ${socket.id}`);
         return;
       }
-      
+
       const enhancedMessage = {
         id: message.id || generateMessageId(),
         content: message.content || message,
-        sender: peerData.displayName,
-        senderId: peerData.peerId,
+        sender: sender.userData.displayName,
+        senderId: sender.userData.displayName, // Use displayName as consistent ID
         timestamp: Date.now(),
         type,
         roomId,
         fromSocket: socket.id
       };
-      
+
       // Store the message
       storeMessage(roomId, enhancedMessage);
-      
-      // Broadcast to ALL users in room (including sender for consistency)
+
+      // CRITICAL: Broadcast to ALL connections in room (including background)
       io.to(roomId).emit('chat-message', enhancedMessage);
-      
+
       // Send delivery confirmation
       socket.emit('message-delivered', {
         messageId: enhancedMessage.id,
         timestamp: Date.now()
       });
-      
+
       // Log activity
       addActivityLog('message-sent', {
-        peerId: peerData.peerId,
-        displayName: peerData.displayName,
+        displayName: sender.userData.displayName,
         roomId,
         content: enhancedMessage.content.substring(0, 50) + (enhancedMessage.content.length > 50 ? '...' : ''),
         messageLength: enhancedMessage.content.length
       }, '💬');
-      
-      console.log(`💬 Message from ${peerData.displayName} in room ${roomId}: ${enhancedMessage.content.substring(0, 50)}${enhancedMessage.content.length > 50 ? '...' : ''}`);
+
+      console.log(`💬 Message from ${sender.userData.displayName} in room ${roomId}`);
     } catch (error) {
       console.error('❌ Error in chat-message:', error);
       socket.emit('error', { message: 'Failed to send message' });
@@ -1895,91 +1990,52 @@ io.on('connection', (socket) => {
   
   socket.on('disconnect', () => {
     try {
-      // Clean up health monitoring on disconnect
-      clearInterval(healthCheckInterval);
-      if (joinTimeoutTimer) {
-        clearTimeout(joinTimeoutTimer);
-      }
-
       const connectionDuration = Date.now() - connectionHealth.connectedAt;
       const durationMinutes = Math.round(connectionDuration / 60000);
 
       console.log(`🔌 User disconnected: ${socket.id}`);
-      console.log(`📊 Connection ${socket.id} statistics:`);
-      console.log(`   - Duration: ${durationMinutes} minutes`);
-      console.log(`   - Pings sent: ${connectionHealth.pingCount}`);
-      console.log(`   - Pongs received: ${connectionHealth.pongCount}`);
-      console.log(`   - Cold start connection: ${connectionHealth.isColdStart}`);
+      console.log(`📊 Connection statistics: ${durationMinutes}m, cold start: ${connectionHealth.isColdStart}`);
 
       connectionStats.currentConnections--;
-      
-      // 🌐 PHASE 1: Clean up P2P connections
-      if (p2pConnections.has(socket.id)) {
-        const connectionData = p2pConnections.get(socket.id);
-        
-        // Notify all connected peers about disconnection
-        connectionData.peers.forEach(peerId => {
-          socket.to(peerId).emit('p2p-peer-disconnected', {
-            peer: socket.id,
-            timestamp: Date.now()
+
+      // Find user by socket ID
+      const user = findUserBySocketId(socket.id);
+
+      if (user) {
+        const { userKey, userData } = user;
+        const roomId = userData.currentRoom;
+
+        // Remove from room
+        removeUserFromRoom(userKey);
+
+        // Only broadcast and update for non-background disconnections
+        if (!userData.isBackgroundConnection) {
+          // Calculate new user count
+          const userCount = getRoomUserCount(roomId);
+
+          // Notify room
+          socket.to(roomId).emit('user-left', {
+            peerId: userData.displayName,
+            displayName: userData.displayName,
+            userCount
           });
-        });
-        
-        // Update metrics
-        if (connectionData.status === 'connected') {
-          meshMetrics.activeP2PConnections = Math.max(0, meshMetrics.activeP2PConnections - connectionData.peers.size);
-        }
-        
-        // Remove from tracking
-        p2pConnections.delete(socket.id);
-        
-        console.log(`🌐 Cleaned up P2P connections for ${socket.id}`);
-      }
-      
-      // Find and remove user from all rooms
-      for (const [roomId, room] of rooms.entries()) {
-        if (room.has(socket.id)) {
-          const peerData = room.get(socket.id);
-          room.delete(socket.id);
-          
-          // Mark user as inactive
-          markUserInactive(peerData.peerId, peerData.displayName);
 
-          // Calculate actual user count after this user left
-          const actualUserCount = getActualUserCount(room);
+          // Also emit peer-left for compatibility
+          socket.to(roomId).emit('peer-left', {
+            peerId: userData.displayName,
+            displayName: userData.displayName
+          });
 
-          // Only broadcast user-left if this was NOT a background connection
-          if (!peerData.isBackgroundConnection) {
-            // Broadcast to room that user left
-            socket.to(roomId).emit('user-left', {
-              peerId: peerData.peerId,
-              displayName: peerData.displayName,
-              userCount: actualUserCount
-            });
+          // Log activity
+          addActivityLog('user-left', {
+            displayName: userData.displayName,
+            roomId,
+            userCount
+          }, '👋');
 
-            // Also emit peer-left for compatibility
-            socket.to(roomId).emit('peer-left', {
-              peerId: peerData.peerId,
-              displayName: peerData.displayName
-            });
-
-            // Log activity
-            addActivityLog('user-left', {
-              peerId: peerData.peerId,
-              displayName: peerData.displayName,
-              roomId,
-              userCount: actualUserCount
-            }, '👋');
-
-            console.log(`👋 User ${peerData.displayName} left room ${roomId}. Room now has ${actualUserCount} users (${room.size} total connections).`);
-          }
-
-          // Clean up empty rooms
-          if (room.size === 0) {
-            rooms.delete(roomId);
-            markRoomInactive(roomId);
-            console.log(`🏠 Cleaned up empty room: ${roomId}`);
-          }
+          console.log(`👋 User ${userData.displayName} left room ${roomId}. Room now has ${userCount} users`);
+        } else {
+          console.log(`🔔 Background notification connection disconnected: ${userData.displayName}`);
         }
       }
     } catch (error) {

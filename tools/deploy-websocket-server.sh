@@ -35,7 +35,7 @@ cd deployment/websocket-server
 cat > package.json << EOF
 {
   "name": "festival-chat-websocket-server",
-  "version": "1.0.0",
+  "version": "4.0-optimized",
   "main": "signaling-server.js",
   "scripts": {
     "start": "node signaling-server.js"

@@ -266,23 +266,55 @@ if (isDevelopment) {
 ### **Room Management**
 
 ```javascript
-// In-Memory Room State
-const rooms = new Map(); // roomId -> { peers: Map, created: timestamp }
+// Phase 1 Data Structures (Simplified)
+const activeUsers = new Map(); // userKey → UserData
+const rooms = new Map();       // roomId → Set<userKey>
 
-// Room Structure
-interface Room {
-  peers: Map<socketId, PeerInfo>;
-  created: number;
-  lastActivity: number;
-}
+// User Key Format: "displayName_socketId"
+// Allows multiple connections per user (multi-tab support)
 
-interface PeerInfo {
-  peerId: string;
+interface UserData {
   displayName: string;
-  joinedAt: number;
   socketId: string;
+  currentRoom: string;
+  joinedAt: number;
+  isBackgroundConnection: boolean;
 }
 ```
+
+### **Duplicate Socket Prevention**
+
+The server implements intelligent duplicate detection to handle page navigation scenarios:
+
+```javascript
+// Prevents duplicate sockets in the SAME room (page refresh, multi-tab)
+// Allows sockets in DIFFERENT rooms (page navigation)
+socket.on('join-room', ({ roomId, displayName }) => {
+  // Find duplicate sockets with same displayName in the SAME room
+  const duplicateSocketsInSameRoom = [];
+  for (const [userKey, userData] of activeUsers.entries()) {
+    if (userData.displayName === displayName &&
+        userData.socketId !== socket.id &&
+        userData.currentRoom === roomId) {
+      duplicateSocketsInSameRoom.push({ userKey, userData });
+    }
+  }
+
+  // Disconnect duplicates (older sockets)
+  if (duplicateSocketsInSameRoom.length > 0) {
+    for (const { userData } of duplicateSocketsInSameRoom) {
+      const oldSocket = io.sockets.sockets.get(userData.socketId);
+      if (oldSocket) oldSocket.disconnect(true);
+    }
+  }
+});
+```
+
+**Behavior**:
+- ✅ **Room Navigation**: User navigates from Room A → Room B. Both sockets exist briefly until old page unmounts. Admin dashboard shows most recent room only.
+- ✅ **Page Refresh**: User refreshes page while in Room A. New socket disconnects old socket in same room.
+- ✅ **Multi-tab**: User opens same room in 2 tabs. Newest tab disconnects older tab's socket.
+- ✅ **Admin Deduplication**: `/admin/mesh-status` shows only the most recently joined room per user (highest `lastSeen` timestamp).
 
 ### **Message Flow (Universal)**
 

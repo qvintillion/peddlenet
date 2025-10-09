@@ -42,7 +42,7 @@ echo "📋 Using universal server configuration:"
 echo "   🐳 Dockerfile: Dockerfile.minimal"
 echo "   🖥️ Server: signaling-server.js (universal with auto-detection)"
 echo "   📦 Dependencies: Minimal (no SQLite compilation issues)"
-echo "   🔧 Version: 1.2.0-phase1-optimized"
+echo "   🔧 Version: 4.0-optimized"
 echo ""
 
 # Build specifically for staging
@@ -71,7 +71,7 @@ gcloud run deploy $SERVICE_NAME \
     --set-env-vars NODE_ENV=production \
     --set-env-vars BUILD_TARGET=staging \
     --set-env-vars PLATFORM=cloudrun \
-    --set-env-vars VERSION="1.2.0-phase1-optimized"
+    --set-env-vars VERSION="4.0-optimized"
 
 # CRITICAL: Ensure environment variables are set properly
 echo "🔧 Verifying staging environment variables..."
@@ -149,7 +149,7 @@ echo "==============================================="
 echo "🎭 Environment: STAGING"
 echo "🔌 WebSocket URL: $WEBSOCKET_URL"
 echo "🌐 Service URL: $SERVICE_URL"
-echo "🛠️ Version: 1.2.0-phase1-optimized"
+echo "🛠️ Version: 4.0-optimized"
 echo ""
 echo "📋 Phase 1 Features Deployed:"
 echo "   ✅ Universal Server: Auto-detects staging environment"

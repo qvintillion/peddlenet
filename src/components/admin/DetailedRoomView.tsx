@@ -107,8 +107,8 @@ export function DetailedRoomView({ isOpen, onClose, fetchDetailedRooms, deleteRo
   });
 
   const filteredRooms = sortedRooms.filter(room =>
-    room.roomCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    room.roomId.toLowerCase().includes(searchTerm.toLowerCase())
+    (room.roomCode || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (room.roomId || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getTimeAgo = (timestamp: number) => {
@@ -247,9 +247,9 @@ export function DetailedRoomView({ isOpen, onClose, fetchDetailedRooms, deleteRo
                                 <div
                                   key={i}
                                   className="w-5 h-5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full border border-gray-800 flex items-center justify-center text-xs font-bold"
-                                  title={user.displayName}
+                                  title={user.displayName || 'Unknown'}
                                 >
-                                  {user.displayName.charAt(0).toUpperCase()}
+                                  {(user.displayName || '?').charAt(0).toUpperCase()}
                                 </div>
                               ))}
                               {room.userList.length > 2 && (
@@ -347,9 +347,9 @@ export function DetailedRoomView({ isOpen, onClose, fetchDetailedRooms, deleteRo
                                     <div
                                       key={i}
                                       className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full border-2 border-gray-800 flex items-center justify-center text-xs font-bold"
-                                      title={user.displayName}
+                                      title={user.displayName || 'Unknown'}
                                     >
-                                      {user.displayName.charAt(0).toUpperCase()}
+                                      {(user.displayName || '?').charAt(0).toUpperCase()}
                                     </div>
                                   ))}
                                   {room.userList.length > 3 && (

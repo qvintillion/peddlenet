@@ -755,8 +755,8 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
         setMessages(persistedMessages);
       }
     }
-    
-    if (roomId && effectiveDisplayName && !isConnectingRef.current && 
+
+    if (roomId && effectiveDisplayName && !isConnectingRef.current &&
         !(socketRef.current?.connected && roomConnectionRef.current === roomId)) {
       console.log(`🚀 [${connectionId.current}] Enhanced Cloud Run initialization for:`, effectiveDisplayName);
       connectToServer();
@@ -765,19 +765,19 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
     return () => {
       setShouldAutoReconnect(false);
       stopHealthMonitoring();
-      
+
       if (autoReconnectTimer.current) {
         clearTimeout(autoReconnectTimer.current);
         autoReconnectTimer.current = null;
       }
-      
+
       if (socketRef.current) {
         console.log(`🛑 [${connectionId.current}] Enhanced cleanup - disconnecting`);
         const socket = socketRef.current;
         socketRef.current = null;
         isConnectingRef.current = false;
         roomConnectionRef.current = '';
-        
+
         if (socket.connected || socket.disconnected === false) {
           socket.disconnect();
         }
