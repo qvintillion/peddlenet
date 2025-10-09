@@ -353,14 +353,26 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
 
     // Enhanced connection event handlers with Cloud Run awareness
     socket.on('connect', () => {
-      // CRITICAL: Prevent stale socket auto-reconnections from rejoining old rooms
-      // Check if this is still the active socket AND we're still meant to be in this room
+      // ===== CRITICAL FIX: Stale Socket Prevention =====
+      // Problem: During navigation (Room A → B), the old socket can auto-reconnect
+      // and emit 'join-room' with the OLD roomId, causing users to "rejoin" previous rooms.
+      //
+      // Solution: Check if this socket is still the active one. When navigating:
+      // 1. New page mounts → creates new socket → socketRef.current = new socket
+      // 2. Old page cleanup → old socket's handlers still attached
+      // 3. Old socket reconnects → this handler fires
+      // 4. Check fails: socketRef.current !== old socket
+      // 5. Disconnect old socket immediately, remove all listeners
+      //
+      // This prevents auto-rejoin while maintaining legitimate reconnections
+      // (legitimate reconnections pass the check: socketRef.current === socket)
       if (socketRef.current !== socket) {
         console.log(`⚠️ [${connectionId.current}] Stale socket reconnected - disconnecting (component unmounted)`);
-        socket.off(); // Remove all listeners
+        socket.off(); // Remove ALL event listeners to prevent any handlers from firing
         socket.disconnect();
         return;
       }
+      // ===== END STALE SOCKET PREVENTION =====
 
       const now = Date.now();
       console.log(`🚀 [${connectionId.current}] Cloud Run connection established as:`, effectiveDisplayName);
@@ -791,8 +803,16 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
         isConnectingRef.current = false;
         roomConnectionRef.current = '';
 
-        // Remove all event listeners to prevent reconnection handlers from firing
+        // ===== CRITICAL: Complete Event Listener Cleanup =====
+        // Remove ALL event listeners from the socket to prevent:
+        // 1. Stale reconnection handlers from firing after component unmounts
+        // 2. Old disconnect handlers from running on navigation
+        // 3. Any other handlers (message, error, etc.) from interfering with new socket
+        //
+        // This is the second part of the stale socket fix - even if a stale socket
+        // tries to reconnect, no handlers will run because they've been removed.
         socket.off();
+        // ===== END EVENT LISTENER CLEANUP =====
 
         if (socket.connected || socket.disconnected === false) {
           socket.disconnect();

@@ -104,7 +104,21 @@ class BackgroundNotificationManager {
       // SSR guard
       if (typeof window === 'undefined') return;
 
-      // MIGRATION: Clear old auto-subscription behavior (October 2025)
+      // ===== MIGRATION v2.0: Clear Old Auto-Subscription Data =====
+      // Date: October 2025
+      // Purpose: Clear localStorage subscriptions from the old auto-subscribe behavior
+      //
+      // Background: Version 1.0 auto-subscribed users to every room they visited,
+      // storing these subscriptions in localStorage. This caused:
+      // 1. Users appearing in multiple rooms in admin dashboard
+      // 2. Background connections persisting across sessions
+      // 3. Confusion about which rooms users were actually in
+      //
+      // Migration Strategy:
+      // - Check for version marker in localStorage
+      // - If version !== '2.0', clear all old subscription data
+      // - Set version to '2.0' to prevent re-migration
+      // - Users will need to opt-in again for notifications (desired behavior)
       const version = localStorage.getItem('background_notification_version');
       if (version !== '2.0') {
         console.log('🔄 Clearing old background notification subscriptions (migration to v2.0)');
@@ -112,6 +126,7 @@ class BackgroundNotificationManager {
         localStorage.setItem('background_notification_version', '2.0');
         return; // Don't load old data
       }
+      // ===== END MIGRATION v2.0 =====
 
       const saved = localStorage.getItem('background_notification_subscriptions');
       if (saved) {
@@ -689,14 +704,27 @@ export function useRoomBackgroundNotifications(roomId: string, displayName: stri
     const currentState = manager.getState();
     const existingSubscription = currentState.subscriptions.get(roomId);
 
-    // FIXED: Only subscribe if explicitly enabled, not automatically for every visited room
-    // This prevents auto-joining previously visited rooms via background notifications
+    // ===== CRITICAL FIX: Disable Auto-Subscription to All Visited Rooms =====
+    // Problem: Previously, this hook would auto-subscribe to EVERY room a user visited,
+    // creating background notification connections that persisted in localStorage.
+    // This caused users to appear as "rejoining" old rooms in the admin dashboard.
+    //
+    // Old logic: if (!existingSubscription || existingSubscription.subscribed)
+    // This meant: subscribe if no record exists OR if subscription is active
+    // Result: Auto-subscribe to every new room visited
+    //
+    // New logic: if (existingSubscription && existingSubscription.subscribed)
+    // This means: ONLY subscribe if explicitly enabled by user
+    // Result: Opt-in only, no automatic subscriptions
+    //
+    // See also: Migration v2.0 below that clears old localStorage subscriptions
     if (existingSubscription && existingSubscription.subscribed) {
       console.log('🔔 Subscribing to enhanced background notifications for room:', roomId, '(explicitly enabled)');
       manager.subscribeToRoom(roomId, displayName);
     } else {
       console.log('🔕 Skipping auto-subscription - notifications disabled for room:', roomId);
     }
+    // ===== END AUTO-SUBSCRIPTION FIX =====
 
     const messageHandler = (message: Message) => {
       console.log('🔔 Enhanced background notification handler triggered for room:', roomId, message);
