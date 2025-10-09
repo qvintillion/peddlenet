@@ -353,23 +353,31 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
 
     // Enhanced connection event handlers with Cloud Run awareness
     socket.on('connect', () => {
+      // CRITICAL: Check if this socket is still the active one before joining
+      // Prevents auto-reconnections from old sockets rejoining previous rooms
+      if (socketRef.current !== socket) {
+        console.log(`⚠️ [${connectionId.current}] Stale socket reconnected - ignoring (not current socket)`);
+        socket.disconnect();
+        return;
+      }
+
       const now = Date.now();
       console.log(`🚀 [${connectionId.current}] Cloud Run connection established as:`, effectiveDisplayName);
       console.log(`   Transport: ${socket.io.engine.transport.name}, Upgraded: ${socket.io.engine.upgraded}`);
-      
+
       setIsConnected(true);
       setIsRetrying(false);
       setRetryCount(0);
       isConnectingRef.current = false;
       roomConnectionRef.current = roomId;
       lastSuccessfulConnection.current = now;
-      
+
       // Record successful connection
       EnhancedConnectionResilience.recordSuccess();
-      
+
       // Start enhanced health monitoring
       startHealthMonitoring(socket);
-      
+
       socket.emit('join-room', {
         roomId,
         peerId: myPeerId.current,
