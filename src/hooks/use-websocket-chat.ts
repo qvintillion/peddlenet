@@ -401,14 +401,18 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
                                   reason === 'ping timeout' ||
                                   reason === 'transport error';
       
-      const isUnexpected = reason !== 'client namespace disconnect' && 
-                          reason !== 'io client disconnect';
-      
+      // Expected disconnects: client-initiated or server cleanup during room navigation
+      const isExpected = reason === 'client namespace disconnect' ||
+                        reason === 'io client disconnect' ||
+                        reason === 'io server disconnect'; // Server cleaning up old socket during room switch
+
       if (isCloudRunColdStart) {
         console.log(`❄️ [${connectionId.current}] Cloud Run cold start detected - rapid reconnection`);
-      } else if (isUnexpected) {
+      } else if (!isExpected) {
         console.log(`⚠️ [${connectionId.current}] Unexpected disconnect:`, reason);
         EnhancedConnectionResilience.recordFailure();
+      } else if (reason === 'io server disconnect') {
+        console.log(`🧹 [${connectionId.current}] Server cleanup disconnect (room navigation) - not a failure`);
       }
       
       // Enhanced auto-reconnect with Cloud Run awareness
