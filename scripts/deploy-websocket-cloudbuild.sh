@@ -2,16 +2,16 @@
 
 # 🚀 PRODUCTION WebSocket Server Deployment Script
 # Deploy universal WebSocket server to production Cloud Run
-# Version: 4.0-optimized
+# Version: 4.1-websocket-only
 # Date: October 9, 2025
-# Includes: Phase 1 WebSocket optimizations for Cloud Run stability
+# Includes: Phase 1 + Phase 2 optimizations (P2P removed, WebSocket-only)
 
-echo "🚀 Production WebSocket Server Deployment - Phase 1 Optimized"
+echo "🚀 Production WebSocket Server Deployment - Phase 2 Complete"
 echo "=============================================================="
 echo "🎯 Target: PRODUCTION Environment"
 echo "🌍 Platform: Google Cloud Run"
-echo "🔧 Features: Phase 1 WebSocket optimizations"
-echo "📈 Version: 4.0-optimized"
+echo "🔧 Features: Phase 2 - WebSocket-only (P2P removed)"
+echo "📈 Version: 4.1-websocket-only"
 echo ""
 
 # Check if we're in the right directory
@@ -37,11 +37,13 @@ echo "📋 Using universal server configuration:"
 echo "   🐳 Dockerfile: Dockerfile.cloudrun"
 echo "   🖥️ Server: signaling-server.js (universal with auto-detection)"
 echo "   📦 Build: Google Cloud Build (no local Docker required)"
-echo "   🔧 Version: 4.0-optimized"
+echo "   🔧 Version: 4.1-websocket-only"
 echo ""
-echo "✅ Phase 1 Optimization Checklist:"
+echo "✅ Phase 2 Optimization Checklist:"
 echo "====================================="
-echo "✅ Increased timeouts: 90s ping, 35s interval (Cloud Run optimized)"
+echo "✅ WebSocket-Only Architecture: All P2P code removed (~200 lines)"
+echo "✅ Simplified Data Structures: Phase 1 optimizations (activeUsers Map)"
+echo "✅ Duplicate Socket Prevention: Phase 1 fix for admin dashboard accuracy"
 echo "✅ Automatic reconnection enabled on client (handles scale-to-zero)"
 echo "✅ Memory cleanup: Hourly cleanup, 24h message retention for public rooms"
 echo "✅ CORS fix: Vercel preview domain support with regex patterns"
@@ -101,12 +103,13 @@ echo "🚀 Environment: PRODUCTION"
 echo "📍 Service URL: $SERVICE_URL"
 echo "🏥 Health check: $SERVICE_URL/health"
 echo "📊 Admin dashboard: $SERVICE_URL/admin"
-echo "🛠️ Version: 4.0-optimized"
+echo "🛠️ Version: 4.1-websocket-only"
 echo ""
-echo "📋 Phase 1 Features Active:"
+echo "📋 Phase 2 Features Active:"
 echo "============================"
-echo "✅ Universal Server: Auto-detects production environment"
-echo "✅ Increased Timeouts: 90s ping, 35s interval (Cloud Run optimized)"
+echo "✅ WebSocket-Only Architecture: P2P code removed, clean design"
+echo "✅ Simplified Data Structures: activeUsers Map (Phase 1)"
+echo "✅ Duplicate Socket Prevention: Admin dashboard accuracy (Phase 1)"
 echo "✅ Automatic Reconnection: Client handles scale-to-zero gracefully"
 echo "✅ Memory Cleanup: Hourly cleanup, 24h for public rooms"
 echo "✅ CORS Support: Vercel domains (production + preview)"
