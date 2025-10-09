@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useHybridChat } from '@/hooks/use-hybrid-chat';
+import { useWebSocketChat } from '@/hooks/use-websocket-chat';
 import { useMessageNotifications } from '@/hooks/use-push-notifications';
 import { useRoomBackgroundNotifications } from '@/hooks/use-background-notifications';
 import { useBackgroundNotifications } from '@/hooks/use-background-notifications';
@@ -92,33 +92,38 @@ export default function ChatRoomPage() {
 
   const [connectionError, setConnectionError] = useState<{type: string, message: string} | null>(null);
 
-  // Use Hybrid Chat with mesh networking capabilities
+  // ===== PHASE 2: WebSocket-Only Chat (P2P removed) =====
   const {
     peerId,
-    status,
-    messages: hybridMessages,
+    status: wsStatus,
+    isSignalingConnected,
+    isRetrying,
+    retryCount,
+    messages: chatMessages,
     sendMessage,
     onMessage,
     forceReconnect,
-    meshEnabled,
-    setMeshEnabled,
-    attemptP2PUpgrade,
-    preferredRoute,
-    setPreferredRoute,
-    currentRoute,
-    connectionQuality,
-    hybridStats,
-    webSocket,
-    p2p,
-    getConnectionDiagnostics
-  } = useHybridChat(roomId, displayName);
+    connectToPeer,
+    getConnectedPeers,
+    connectionQuality: wsConnectionQuality
+  } = useWebSocketChat(roomId, displayName);
 
-  // Backwards compatibility with WebSocket-only interface
-  const isSignalingConnected = webSocket?.connected || false;
-  const isRetrying = !status.isConnected && status.signalStrength !== 'none';
-  const retryCount = 0; // Not exposed in hybrid hook
-  const connectToPeer = () => attemptP2PUpgrade();
-  const getConnectedPeers = () => [...(webSocket?.peers || []), ...(p2p?.peers || [])];
+  // Map WebSocket interface to expected interface
+  const hybridMessages = chatMessages;
+  const isConnected = wsStatus.isConnected;
+  const status = wsStatus;
+  const connectionQuality = wsConnectionQuality;
+  const currentRoute = 'websocket';
+  const meshEnabled = false;
+  const setMeshEnabled = () => {}; // No-op
+  const attemptP2PUpgrade = () => {}; // No-op
+  const preferredRoute = 'websocket';
+  const setPreferredRoute = () => {}; // No-op
+  const hybridStats = { route: 'websocket', p2pAttempts: 0, p2pSuccesses: 0 };
+  const getConnectionDiagnostics = () => ({ status: isConnected ? 'connected' : 'disconnected' });
+  // Dummy objects for components that still expect them
+  const webSocket = { connected: isConnected, peers: getConnectedPeers() };
+  const p2p = { connected: false, peers: [] };
 
   // Set up message notifications
   const { triggerNotification } = useMessageNotifications(roomId, displayName);
@@ -594,10 +599,10 @@ export default function ChatRoomPage() {
                       <span>Server: {isSignalingConnected ? 'Connected' : 'Disconnected'}</span>
                     </div>
                     <div className="text-gray-400">
-                    Mode: Hybrid ({currentRoute === 'websocket' ? 'Server' : 'P2P'} + {meshEnabled ? 'Mesh' : 'Fallback'})
+                    Mode: WebSocket-Only (Server-Relayed)
                     </div>
             <div className="text-gray-400">
-              P2P Active: {p2p?.connected ? 'Yes' : 'No'} | Mesh: {meshEnabled ? 'Enabled' : 'Disabled'}
+              Status: {isConnected ? 'Connected' : 'Disconnected'}
             </div>
                     <NetworkStatus />
                     <MobileNetworkInfo />
@@ -826,12 +831,11 @@ export default function ChatRoomPage() {
                 })()} {isClient && window.location.port === '3000' ? '(localhost:3000)' : ''}</div>
                 <div>Server Connected: {isSignalingConnected ? 'Yes' : 'No'}</div>
                 <div>Message Count: {messages.length}</div>
-                <div>Online Users: {status.connectedPeers}</div>
-                <div>Connection Mode: Hybrid Chat (WS + P2P)</div>
-                <div>Current Route: {currentRoute}</div>
-                <div>Mesh Enabled: {meshEnabled ? 'Yes' : 'No'}</div>
-                <div>P2P Connected: {p2p?.connected ? 'Yes' : 'No'}</div>
-                <div>WebSocket Connected: {webSocket?.connected ? 'Yes' : 'No'}</div>
+                <div>Online Users: {getConnectedPeers().length}</div>
+                <div>Connection Mode: WebSocket-Only</div>
+                <div>Current Route: WebSocket (Server-Relayed)</div>
+                <div>WebSocket Connected: {isConnected ? 'Yes' : 'No'}</div>
+                <div>Server Connected: {isSignalingConnected ? 'Yes' : 'No'}</div>
                 <div>Room Persistence: ✅ Yes (survives refreshes)</div>
                 <div>Peer ID: {peerId ? `${peerId.substring(0, 12)}...` : 'None'}</div>
                 <div>Room ID: {roomId}</div>

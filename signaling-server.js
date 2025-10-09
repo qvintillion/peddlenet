@@ -1,7 +1,7 @@
-// 🔧 ENHANCED: Admin dashboard improvements + MESH NETWORKING - June 14, 2025
-// Phase 1: Added socket.io-p2p support for hybrid mesh architecture
+// 🔧 ENHANCED: Admin dashboard improvements + WebSocket Optimizations
+// Phase 1: Simplified data structures for user tracking
+// Phase 2: Removed unused P2P signaling code (Android handles mesh independently)
 // Fixes: 1) Unique user counting 2) All rooms visible 3) Admin password for clear/wipe 4) Broadcast to specific rooms
-// NEW: 5) P2P signaling coordination for desktop-mobile messaging
 // Cross-referenced with complete backup to ensure all WebSocket handlers and endpoints are included
 
 const express = require('express');
@@ -10,16 +10,8 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const os = require('os');
 
-// 🌐 PHASE 1: Mesh networking imports
-try {
-  // Import socket.io-p2p-server for P2P coordination
-  const P2PServer = require('socket.io-p2p-server').Server;
-  global.P2PServer = P2PServer;
-  console.log('✅ Mesh networking P2P server loaded successfully');
-} catch (error) {
-  console.warn('⚠️ socket.io-p2p-server not found - P2P features disabled:', error.message);
-  global.P2PServer = null;
-}
+// ===== PHASE 2: P2P imports removed =====
+// socket.io-p2p-server import removed (unused - Android handles mesh)
 
 const app = express();
 const server = createServer(app);
@@ -120,7 +112,7 @@ function getCorsOrigins() {
   return origins;
 }
 
-// Socket.IO setup with P2P support and connection state recovery
+// Socket.IO setup with connection state recovery
 const io = new Server(server, {
   cors: {
     origin: getCorsOrigins(),
@@ -128,8 +120,8 @@ const io = new Server(server, {
     credentials: true
   },
   transports: ['polling', 'websocket'],
-  pingTimeout: 60000,        // 60s - standard timeout (reduced from 90s)
-  pingInterval: 25000,       // 25s - standard interval (reduced from 35s)
+  pingTimeout: 60000,        // 60s - standard timeout
+  pingInterval: 25000,       // 25s - standard interval
   upgradeTimeout: 30000,     // 30s for polling → websocket upgrade
   connectionStateRecovery: {
     // Allows clients to reconnect and restore their state
@@ -138,17 +130,8 @@ const io = new Server(server, {
   }
 });
 
-// 🌐 PHASE 1: Initialize P2P server if available
-if (global.P2PServer) {
-  try {
-    io.use(global.P2PServer);
-    console.log('🌐 P2P signaling server initialized successfully');
-  } catch (error) {
-    console.warn('⚠️ Failed to initialize P2P server:', error.message);
-  }
-} else {
-  console.log('ℹ️ P2P features disabled - running in WebSocket-only mode');
-}
+// ===== PHASE 2: P2P server initialization removed =====
+// socket.io-p2p-server middleware removed (unused)
 
 // Middleware
 app.use(cors({
@@ -198,10 +181,15 @@ const connectionStats = {
 // Room code mapping (keep existing)
 const roomCodes = new Map(); // roomCode → roomId
 
-// DEPRECATED (Phase 1 Optimization - will be removed in Phase 2):
+// ===== PHASE 2 COMPLETE: P2P Code Removed =====
+// Removed in Phase 2 (unused - Android handles mesh independently):
+// - p2pConnections Map
+// - meshMetrics object
+// - 5 P2P event handlers (request-connection, request-p2p-upgrade, etc.)
+// - P2P cleanup logic
+//
+// Phase 1 removals (replaced by simplified data structures):
 // - allUsersEver Map (replaced by activeUsers)
-// - p2pConnections Map (unused - Android handles mesh)
-// - meshMetrics object (unused - Android handles mesh)
 // - connectionStats.totalUniqueUsers Set (replaced by activeUsers)
 // - Complex dual tracking by peerId AND displayName (now unified)
 
@@ -417,7 +405,7 @@ function generateMessageId() {
 app.get('/', (req, res) => {
   res.json({
     service: 'PeddleNet Signaling Server',
-    version: '4.0-optimized',
+    version: '4.1-websocket-only',
     status: 'running',
     description: 'Phase 1 WebSocket optimizations: improved timeouts, memory cleanup, cold start detection, health monitoring',
     features: [
@@ -426,10 +414,9 @@ app.get('/', (req, res) => {
       'all-rooms-visible', 
       'super-admin-security',
       'room-specific-broadcast',
-      'room-codes', 
+      'room-codes',
       'websocket-signaling',
-      'mesh-networking-p2p',
-      'hybrid-architecture'
+      'optimized-data-structures'
     ],
     environment: {
       NODE_ENV: process.env.NODE_ENV,
@@ -471,7 +458,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'PeddleNet Signaling Server',
-    version: '4.0-optimized',
+    version: '4.1-websocket-only',
     timestamp: Date.now()
   });
 });
@@ -596,30 +583,22 @@ app.get('/admin/mesh-status', requireAdminAuth, (req, res) => {
       roomTopology[connection.roomId].push(connection);
     }
 
-    // Simplified metrics (P2P deprecated)
-    const meshMetrics = {
-      meshUpgradeRate: 0,
-      p2pMessageCount: 0,
-      fallbackCount: meshConnections.length, // Total socket connections
-      averageConnectionTime: 0,
-      currentP2PUsers: 0,
+    // ===== PHASE 2: Simplified WebSocket-only metrics =====
+    // P2P metrics removed as unused (Android handles mesh independently)
+    const connectionMetrics = {
       totalActiveUsers: uniqueDisplayNames.size, // Count unique users, not connections
-      roomsWithMesh: 0,
-      totalP2PAttempts: 0,
-      successfulP2PConnections: 0,
-      failedP2PConnections: 0,
-      activeP2PConnections: 0
+      totalWebSocketConnections: meshConnections.length,
+      averageConnectionTime: 0,
+      totalRoomsWithUsers: Object.keys(roomTopology).length
     };
 
     const meshStatus = {
-      metrics: meshMetrics,
+      metrics: connectionMetrics,
       connections: uniqueConnections.sort((a, b) => b.lastSeen - a.lastSeen),
       topology: roomTopology,
       summary: {
         totalConnections: meshConnections.length,
-        p2pActiveConnections: 0,
         totalRoomsWithUsers: Object.keys(roomTopology).length,
-        roomsWithMesh: 0,
         averageLatency: meshConnections.reduce((acc, c) => {
           const latency = c.connectionQuality === 'good' ? 50 :
                          c.connectionQuality === 'fair' ? 100 : 200;
@@ -627,15 +606,14 @@ app.get('/admin/mesh-status', requireAdminAuth, (req, res) => {
         }, 0) / Math.max(meshConnections.length, 1)
       },
       timestamp: Date.now(),
-      phase: 'Phase 1 - WebSocket Only (P2P Deprecated)',
+      phase: 'Phase 2 - WebSocket Only',
       status: {
-        p2pEnabled: false,
         signalingActive: true,
-        meshUpgradeAvailable: false
+        webSocketEnabled: true
       }
     };
 
-    console.log(`🌐 Mesh status: ${meshMetrics.totalActiveUsers} WebSocket connections`);
+    console.log(`🌐 Connection status: ${connectionMetrics.totalActiveUsers} active users, ${connectionMetrics.totalWebSocketConnections} WebSocket connections`);
 
     res.json(meshStatus);
   } catch (error) {
@@ -725,7 +703,7 @@ app.get('/admin/analytics', requireAdminAuth, (req, res) => {
       server: {
         uptime: process.uptime(),
         uptimeFormatted: formatUptime(process.uptime()),
-        version: '4.0-optimized',
+        version: '4.1-websocket-only',
         environment: getEnvironment(),
         memoryUsage: process.memoryUsage(),
         timestamp: Date.now()
@@ -1570,17 +1548,18 @@ app.get('/signaling-proxy', (req, res) => {
   res.json({
     signalingAvailable: true,
     endpoint: '/socket.io/',
-    version: '4.0-optimized',
+    version: '4.1-websocket-only',
     features: [
       'peer-discovery',
       'room-management',
       'admin-dashboard-enhanced',
       'super-admin-security',
-      'p2p-mesh-signaling',
+      'websocket-only',
       'enhanced-timeouts',
       'memory-cleanup',
       'cold-start-detection',
-      'health-monitoring'
+      'health-monitoring',
+      'optimized-data-structures'
     ],
     timestamp: Date.now()
   });
@@ -1857,179 +1836,18 @@ io.on('connection', (socket) => {
   socket.on('health-ping', (data) => {
     socket.emit('health-pong', { timestamp: Date.now(), received: data.timestamp });
   });
+  // ===== PHASE 2: P2P handlers removed =====
+  // Legacy P2P connection handlers have been removed as they are unused.
+  // The Android app handles mesh networking independently.
+  // Removed handlers:
+  // - request-connection
+  // - connection-response
+  // - request-p2p-upgrade
+  // - p2p-connection-established
+  // - p2p-connection-failed
+  // - request-mesh-stats
+  // ===== END PHASE 2 =====
 
-  // Legacy P2P connection handlers (maintained for compatibility)
-  socket.on('request-connection', ({ targetSocketId, fromPeerId }) => {
-    socket.to(targetSocketId).emit('connection-request', {
-      fromPeerId,
-      fromSocketId: socket.id
-    });
-  });
-
-  socket.on('connection-response', ({ targetSocketId, accepted, toPeerId }) => {
-    socket.to(targetSocketId).emit('connection-response', {
-      accepted,
-      toPeerId,
-      fromSocketId: socket.id
-    });
-  });
-  
-  // 🌐 PHASE 1: Enhanced P2P signaling handlers
-  socket.on('request-p2p-upgrade', ({ roomId, peers, maxPeers = 5 }) => {
-    try {
-      console.log(`🌐 P2P upgrade request from ${socket.id} for room ${roomId}`);
-      
-      if (!rooms.has(roomId)) {
-        socket.emit('p2p-upgrade-failed', { error: 'Room not found' });
-        return;
-      }
-      
-      const room = rooms.get(roomId);
-      const currentPeers = Array.from(room.keys());
-      
-      // Only enable P2P for small groups initially (safety limit)
-      if (currentPeers.length > maxPeers) {
-        console.log(`🌐 P2P upgrade denied - too many peers (${currentPeers.length} > ${maxPeers})`);
-        socket.emit('p2p-upgrade-failed', { 
-          error: 'Too many peers for P2P', 
-          currentPeers: currentPeers.length, 
-          maxPeers 
-        });
-        return;
-      }
-      
-      // Track P2P attempt
-      meshMetrics.totalP2PAttempts++;
-      
-      // Initialize P2P connection tracking for initiator
-      if (!p2pConnections.has(socket.id)) {
-        p2pConnections.set(socket.id, {
-          peers: new Set(),
-          status: 'connecting',
-          roomId,
-          initiatedAt: Date.now()
-        });
-      }
-      
-      // Notify other peers in room about P2P upgrade opportunity
-      socket.to(roomId).emit('p2p-upgrade-available', {
-        initiator: socket.id,
-        roomId,
-        peerCount: currentPeers.length,
-        timestamp: Date.now()
-      });
-      
-      // Confirm to initiator
-      socket.emit('p2p-upgrade-initiated', {
-        roomId,
-        eligiblePeers: currentPeers.filter(id => id !== socket.id).length,
-        timestamp: Date.now()
-      });
-      
-      // Log activity
-      addActivityLog('p2p-upgrade-request', {
-        roomId,
-        initiator: socket.id,
-        peerCount: currentPeers.length,
-        eligible: currentPeers.length <= maxPeers
-      }, '🌐');
-      
-      console.log(`🌐 P2P upgrade initiated for room ${roomId} with ${currentPeers.length} peers`);
-    } catch (error) {
-      console.error('❌ P2P upgrade request error:', error);
-      socket.emit('p2p-upgrade-failed', { error: 'Internal server error' });
-    }
-  });
-  
-  socket.on('p2p-connection-established', ({ targetSocketId, roomId }) => {
-    try {
-      console.log(`🌐 P2P connection established: ${socket.id} <-> ${targetSocketId}`);
-      
-      // Update connection tracking for both peers
-      [socket.id, targetSocketId].forEach(socketId => {
-        if (p2pConnections.has(socketId)) {
-          const connection = p2pConnections.get(socketId);
-          connection.peers.add(targetSocketId === socketId ? socket.id : targetSocketId);
-          connection.status = 'connected';
-        }
-      });
-      
-      // Update metrics
-      meshMetrics.successfulP2PConnections++;
-      meshMetrics.activeP2PConnections++;
-      
-      // Notify target peer
-      socket.to(targetSocketId).emit('p2p-connection-confirmed', {
-        peer: socket.id,
-        roomId,
-        timestamp: Date.now()
-      });
-      
-      // Log activity
-      addActivityLog('p2p-connection-established', {
-        peer1: socket.id,
-        peer2: targetSocketId,
-        roomId
-      }, '🔗');
-      
-    } catch (error) {
-      console.error('❌ P2P connection establishment error:', error);
-    }
-  });
-  
-  socket.on('p2p-connection-failed', ({ targetSocketId, roomId, error }) => {
-    try {
-      console.log(`🌐 P2P connection failed: ${socket.id} <-> ${targetSocketId} - ${error}`);
-      
-      // Update connection tracking
-      if (p2pConnections.has(socket.id)) {
-        p2pConnections.get(socket.id).status = 'failed';
-      }
-      
-      // Update metrics
-      meshMetrics.failedP2PConnections++;
-      
-      // Notify target peer
-      socket.to(targetSocketId).emit('p2p-connection-failed', {
-        peer: socket.id,
-        roomId,
-        error,
-        timestamp: Date.now()
-      });
-      
-      // Log activity
-      addActivityLog('p2p-connection-failed', {
-        peer1: socket.id,
-        peer2: targetSocketId,
-        roomId,
-        error
-      }, '❌');
-      
-    } catch (error) {
-      console.error('❌ P2P connection failure handling error:', error);
-    }
-  });
-  
-  socket.on('request-mesh-stats', () => {
-    try {
-      const connectionData = p2pConnections.get(socket.id);
-      const meshStats = {
-        ...meshMetrics,
-        myConnections: connectionData ? {
-          peers: Array.from(connectionData.peers),
-          status: connectionData.status,
-          connectedSince: connectionData.initiatedAt
-        } : null,
-        totalActiveConnections: Array.from(p2pConnections.values())
-          .filter(conn => conn.status === 'connected').length
-      };
-      
-      socket.emit('mesh-stats', meshStats);
-    } catch (error) {
-      console.error('❌ Mesh stats request error:', error);
-    }
-  });
-  
   socket.on('disconnect', () => {
     try {
       const connectionDuration = Date.now() - connectionHealth.connectedAt;
@@ -2161,15 +1979,7 @@ function cleanupOldData() {
     console.log(`   - Trimmed activity log: removed ${removed} old entries`);
   }
 
-  // 4. Clean P2P connection tracking for disconnected sockets
-  for (const [socketId, connectionData] of p2pConnections.entries()) {
-    const socket = io.sockets.sockets.get(socketId);
-    if (!socket || !socket.connected) {
-      p2pConnections.delete(socketId);
-    }
-  }
-
-  // 5. Report memory usage
+  // 4. Report memory usage (P2P cleanup removed in Phase 2)
   const memoryUsage = process.memoryUsage();
   const heapUsedMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
   const heapTotalMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
