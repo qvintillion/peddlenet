@@ -325,7 +325,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       reconnectionAttempts: 0,
       reconnectionDelay: 0,
       reconnectionDelayMax: 0,
-      randomizationFactor: 0
+      randomizationFactor: 0,
 
       // Cloud Run optimized transport settings
       upgrade: true,
