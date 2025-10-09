@@ -524,17 +524,59 @@ app.get('/admin/mesh-status', requireAdminAuth, (req, res) => {
     // Deduplicate connections by displayName (show most recent connection per user)
     // This handles page navigation where user briefly has sockets in multiple rooms
     //
+    // PRIORITY RULES:
+    // 1. ALWAYS prefer chat connections over background notification connections
+    // 2. Among chat connections, prefer most recent (highest lastSeen)
+    // 3. Only show background connections if no chat connection exists
+    //
     // SCENARIO: User navigates from Room A → Room B
-    //   - Socket 1 in Room A (joinedAt: 1000, waiting for cleanup)
-    //   - Socket 2 in Room B (joinedAt: 2000, newly joined)
-    //   - Admin sees: User in Room B only (most recent)
-    //   - totalConnections: 2 (shows user has multiple sockets)
+    //   - Chat socket in Room B (joinedAt: 2000)
+    //   - Background socket in Room A (joinedAt: 2500, listening for notifications)
+    //   - Admin sees: User in Room B only (active chat, not background listener)
     //
     const uniqueConnectionsMap = new Map();
     for (const connection of meshConnections) {
       const existing = uniqueConnectionsMap.get(connection.displayName);
-      // Keep the connection with highest lastSeen (most recently joined room)
-      if (!existing || connection.lastSeen > existing.lastSeen) {
+
+      // Determine if we should replace existing connection
+      let shouldReplace = false;
+
+      if (!existing) {
+        shouldReplace = true; // No existing, always add
+      } else {
+        // Get connection types from userData
+        const existingUserData = activeUsers.get(`${existing.displayName}_${existing.socketId.replace('...', '')}`);
+        const currentUserData = activeUsers.get(`${connection.displayName}_${connection.socketId.replace('...', '')}`);
+
+        // Extract full socket IDs to lookup userData
+        let existingIsBackground = false;
+        let currentIsBackground = false;
+
+        // Find userData by checking all userKeys with matching displayName
+        for (const [userKey, userData] of activeUsers.entries()) {
+          if (userData.displayName === existing.displayName && existing.socketId.startsWith(userData.socketId.substring(0, 8))) {
+            existingIsBackground = userData.isBackgroundConnection || false;
+          }
+          if (userData.displayName === connection.displayName && connection.socketId.startsWith(userData.socketId.substring(0, 8))) {
+            currentIsBackground = userData.isBackgroundConnection || false;
+          }
+        }
+
+        // Priority logic:
+        // 1. If existing is background and current is chat → replace
+        // 2. If existing is chat and current is background → keep existing
+        // 3. If both same type → prefer most recent
+        if (existingIsBackground && !currentIsBackground) {
+          shouldReplace = true; // Chat connection takes priority over background
+        } else if (!existingIsBackground && currentIsBackground) {
+          shouldReplace = false; // Keep chat connection, ignore background
+        } else {
+          // Both same type, prefer most recent
+          shouldReplace = connection.lastSeen > existing.lastSeen;
+        }
+      }
+
+      if (shouldReplace) {
         uniqueConnectionsMap.set(connection.displayName, {
           ...connection,
           // Count total sockets across all rooms for this display name
