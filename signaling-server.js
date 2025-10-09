@@ -417,7 +417,7 @@ function generateMessageId() {
 app.get('/', (req, res) => {
   res.json({
     service: 'PeddleNet Signaling Server',
-    version: '1.2.0-phase1-optimized',
+    version: '4.0-optimized',
     status: 'running',
     description: 'Phase 1 WebSocket optimizations: improved timeouts, memory cleanup, cold start detection, health monitoring',
     features: [
@@ -471,7 +471,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'PeddleNet Signaling Server',
-    version: '1.2.0-phase1-optimized',
+    version: '4.0-optimized',
     timestamp: Date.now()
   });
 });
@@ -1528,7 +1528,7 @@ app.get('/signaling-proxy', (req, res) => {
   res.json({
     signalingAvailable: true,
     endpoint: '/socket.io/',
-    version: '1.2.0-phase1-optimized',
+    version: '4.0-optimized',
     features: [
       'peer-discovery',
       'room-management',
