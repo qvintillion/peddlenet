@@ -1,6 +1,15 @@
 # 🎪 Festival Chat - PeddleNet
 
-A real-time chat application designed for festivals and events with instant QR code connections, mobile-first architecture, and **fully restored comprehensive admin dashboard**.
+**Version:** 4.1-websocket-only (Phase 2 Complete - October 2025)
+
+A real-time chat application designed for festivals and events with WebSocket-only architecture, instant QR code connections, mobile-first design, and comprehensive admin dashboard.
+
+## 📖 Current State
+
+**Status:** ✅ Production Ready - Phase 2 Complete (P2P removed, WebSocket-only)
+
+For detailed current state, architecture, and recent changes, see:
+👉 **[docs/CURRENT-STATE-OCT-2025.md](docs/CURRENT-STATE-OCT-2025.md)**
 
 ## 🚀 Quick Start
 
@@ -32,17 +41,27 @@ npm run dev
 ## ✨ Features
 
 - **🔗 Instant QR Connections:** Scan to join rooms in 5-10 seconds
-- **💬 Real-time Messaging:** WebSocket-based with polling fallback
+- **💬 Real-time Messaging:** Pure WebSocket server-relayed messaging (Phase 2: P2P removed)
 - **💜 Smart Favorites System:** Heart-based room bookmarking with notification integration
-- **📊 Admin Dashboard:** ✅ **FULLY RESTORED - Professional festival management interface with 24-hour sessions**
+- **📊 Admin Dashboard:** Professional festival management interface with real-time analytics
 - **📱 Mobile Optimized:** Works seamlessly across devices
 - **🔄 Auto-Reconnection:** Intelligent reconnection without manual refresh
-- **🔄 Message Persistence:** Survives page refreshes and reconnections
-- **🌐 Network Discovery:** Automatic IP detection for mobile access
+- **🔄 Background Notifications:** Cross-room message monitoring
+- **🌐 Cloud Deployment:** Google Cloud Run backend with automatic scaling
 - **🎯 Zero Configuration:** No signups, accounts, or complex setup
-- **🛡️ Privacy Focused:** Messages stored locally and in server memory only
+- **🛡️ Privacy Focused:** Messages stored in server memory only (24h retention)
 - **📋 Room Codes:** Memorable codes for easy room sharing (blue-stage-42)
 - **🎨 Clean Interface:** Streamlined UI with dark mode design
+
+## 🏗️ Architecture (Phase 2 - WebSocket Only)
+
+**Frontend:** Next.js 14 + React + TypeScript (Vercel)
+**Backend:** Node.js + Socket.IO WebSocket server (Google Cloud Run)
+**Messaging:** Server-relayed only (P2P removed in Phase 2)
+
+**Recent Changes:**
+- ✅ Phase 1: Simplified data structures, fixed duplicate connections
+- ✅ Phase 2: Removed P2P code (~200 lines), WebSocket-only architecture
 
 ## 🎪 **ADMIN DASHBOARD - FULLY RESTORED (JUNE 13, 2025)**
 
