@@ -123,10 +123,8 @@ export default function ChatRoomPage() {
   // Set up message notifications
   const { triggerNotification } = useMessageNotifications(roomId, displayName);
 
-  // DISABLED: Background notifications auto-subscribe to all visited rooms
-  // This causes duplicate connections in admin dashboard during testing
-  // Re-enable when background notifications are explicitly needed
-  // useRoomBackgroundNotifications(roomId, displayName);
+  // Set up background notifications for when user navigates away
+  useRoomBackgroundNotifications(roomId, displayName);
 
   // Track current room for background notification manager
   const { setCurrentRoom } = useBackgroundNotifications();
