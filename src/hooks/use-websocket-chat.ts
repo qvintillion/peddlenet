@@ -319,12 +319,13 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       forceNew: true,
       autoConnect: true,
 
-      // PHASE 1: Enable automatic reconnection for server disconnects
-      reconnection: true,
-      reconnectionAttempts: 5,           // Try up to 5 times
-      reconnectionDelay: 1000,           // Start with 1s delay
-      reconnectionDelayMax: 5000,        // Max 5s between attempts
-      randomizationFactor: 0.5,          // Add jitter to prevent thundering herd
+      // CRITICAL FIX: Disable automatic reconnection to prevent stale sockets from rejoining old rooms
+      // Manual reconnection is handled by our circuit breaker and cleanup logic
+      reconnection: false,
+      reconnectionAttempts: 0,
+      reconnectionDelay: 0,
+      reconnectionDelayMax: 0,
+      randomizationFactor: 0
 
       // Cloud Run optimized transport settings
       upgrade: true,
@@ -353,14 +354,6 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
 
     // Enhanced connection event handlers with Cloud Run awareness
     socket.on('connect', () => {
-      // CRITICAL: Check if this socket is still the active one before joining
-      // Prevents auto-reconnections from old sockets rejoining previous rooms
-      if (socketRef.current !== socket) {
-        console.log(`⚠️ [${connectionId.current}] Stale socket reconnected - ignoring (not current socket)`);
-        socket.disconnect();
-        return;
-      }
-
       const now = Date.now();
       console.log(`🚀 [${connectionId.current}] Cloud Run connection established as:`, effectiveDisplayName);
       console.log(`   Transport: ${socket.io.engine.transport.name}, Upgraded: ${socket.io.engine.upgraded}`);
