@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useBackgroundNotifications } from '@/hooks/use-background-notifications';
+import { RoomCodeManager } from '@/utils/room-codes';
 
 interface FavoriteButtonProps {
   roomId: string;
@@ -45,12 +46,15 @@ export function FavoriteButton({ roomId, displayName, className = '' }: Favorite
         const updatedFavorites = [...favorites, roomId];
         localStorage.setItem('favoriteRooms', JSON.stringify(updatedFavorites));
       }
-      
+
+      // Ensure room is in recent rooms list (needed for favorites display)
+      RoomCodeManager.addToRecentRooms(roomId);
+
       // Subscribe to notifications
       subscribeToRoom(roomId, displayName);
-      
+
       setIsFavorite(true);
-      
+
       // Dispatch custom event to notify Favorites component
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('favoritesChanged'));
