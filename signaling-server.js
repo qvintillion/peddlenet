@@ -181,6 +181,10 @@ const connectionStats = {
 // Room code mapping (keep existing)
 const roomCodes = new Map(); // roomCode → roomId
 
+// Room metadata storage (for display names, etc.)
+// roomId → { displayName, createdBy, createdAt, lastActivity }
+const roomMetadata = new Map();
+
 // ===== PHASE 2 COMPLETE: P2P Code Removed =====
 // Removed in Phase 2 (unused - Android handles mesh independently):
 // - p2pConnections Map
@@ -1469,15 +1473,64 @@ app.post('/register-room-code', (req, res) => {
 app.get('/resolve-room-code/:code', (req, res) => {
   const code = req.params.code.toLowerCase();
   const roomId = roomCodes.get(code);
-  
+
   if (!roomId) {
     return res.status(404).json({ error: 'Room code not found' });
   }
-  
-  res.json({ 
-    roomId, 
+
+  res.json({
+    roomId,
     roomCode: code,
     message: `Room code "${code}" resolves to room ${roomId}`
+  });
+});
+
+// ===== ROOM METADATA ENDPOINTS =====
+
+// Store room metadata (display name, etc.)
+app.post('/room/:roomId/metadata', (req, res) => {
+  const { roomId } = req.params;
+  const { displayName, createdBy } = req.body;
+
+  if (!displayName) {
+    return res.status(400).json({ error: 'Display name is required' });
+  }
+
+  const metadata = {
+    displayName,
+    createdBy: createdBy || 'unknown',
+    createdAt: Date.now(),
+    lastActivity: Date.now()
+  };
+
+  roomMetadata.set(roomId, metadata);
+
+  console.log(`📝 Stored metadata for room ${roomId}:`, metadata);
+
+  res.json({
+    success: true,
+    roomId,
+    metadata
+  });
+});
+
+// Get room metadata
+app.get('/room/:roomId/metadata', (req, res) => {
+  const { roomId } = req.params;
+
+  const metadata = roomMetadata.get(roomId);
+
+  if (!metadata) {
+    return res.status(404).json({
+      error: 'Room metadata not found',
+      roomId
+    });
+  }
+
+  res.json({
+    success: true,
+    roomId,
+    metadata
   });
 });
 
