@@ -4,10 +4,12 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBackgroundNotifications } from '@/hooks/use-background-notifications';
 import { RoomCodeManager } from '@/utils/room-codes';
+import { prettifyRoomCode } from '@/utils/generate-room-code';
 
 interface FavoriteRoom {
   roomId: string;
   code: string;
+  displayName: string;
   timestamp: number;
   isSubscribed?: boolean;
 }
@@ -50,9 +52,14 @@ export function JoinedRooms({ className = '' }: FavoritesProps) {
       .map(room => {
         const subscription = subscriptions.find(sub => sub.roomId === room.roomId);
         const isSubscribed = subscription ? subscription.subscribed : false;
-        
+
+        // Get display name from localStorage or prettify the code
+        const storedName = localStorage.getItem(`room:${room.roomId}:name`);
+        const displayName = storedName || prettifyRoomCode(room.roomId);
+
         return {
           ...room,
+          displayName,
           isSubscribed
         };
       });
@@ -149,11 +156,11 @@ export function JoinedRooms({ className = '' }: FavoritesProps) {
             
             <div className="p-4 pr-8">
               {/* Room Info */}
-              <div className="text-xs text-gray-300 mb-1 truncate" title={room.roomId}>
-                {room.roomId}
+              <div className="text-sm font-semibold text-white mb-1 truncate" title={room.displayName}>
+                {room.displayName}
               </div>
-              <div className="font-mono text-sm font-medium text-purple-400 mb-2">
-                {room.code}
+              <div className="font-mono text-xs text-purple-400 mb-2">
+                {room.roomId}
               </div>
               <div className="text-xs text-gray-400 mb-3">
                 {RoomCodeManager.formatTimeAgo(room.timestamp)}

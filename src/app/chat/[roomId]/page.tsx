@@ -12,7 +12,6 @@ import { MobileConnectionDebug } from '@/components/MobileConnectionDebug';
 import type { Message } from '@/lib/types';
 import { QRModal } from '@/components/QRModal';
 import { NetworkStatus, ConnectionError } from '@/components/NetworkStatus';
-import { RoomCodeDisplay } from '@/components/RoomCode';
 import { ChatRoomSettings } from '@/components/ChatRoomSettings';
 import { ConnectionTest } from '@/components/ConnectionTest';
 import { NotificationTest } from '@/components/NotificationTest';
@@ -24,6 +23,7 @@ import { useRoomUnreadTracker } from '@/hooks/use-unread-messages';
 import { RoomCodeDiagnosticPanel } from '@/components/RoomCodeDiagnostics';
 import { MeshNetworkDebug } from '@/components/MeshNetworkDebug';
 import { prettifyRoomCode } from '@/utils/generate-room-code';
+import { RoomCodeManager } from '@/utils/room-codes';
 
 // Disable static generation for chat pages to avoid SSR issues
 export const dynamic = 'force-dynamic';
@@ -168,6 +168,14 @@ export default function ChatRoomPage() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Add room to recent rooms when visiting
+  useEffect(() => {
+    if (isClient && roomId) {
+      console.log('📋 Adding room to recent list:', roomId);
+      RoomCodeManager.addToRecentRooms(roomId);
+    }
+  }, [isClient, roomId]);
 
   // Detect if we're on mobile for UI purposes
   const [isMobile, setIsMobile] = useState(false);
@@ -632,11 +640,6 @@ export default function ChatRoomPage() {
         )}
 
 
-      </div>
-
-      {/* Room Code Card - floating above messages */}
-      <div className="px-3 sm:px-4 pt-2 pb-3">
-        <RoomCodeDisplay roomId={roomId} className="" />
       </div>
 
       {/* Enhanced Messages */}

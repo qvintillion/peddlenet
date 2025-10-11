@@ -278,9 +278,15 @@ export function QRModal({ roomId, roomName, peerId, displayName, isOpen, onClose
           <>
             {/* Room Status */}
             <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              {roomName && (
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-gray-600">Room Name:</span>
+                  <span className="font-semibold text-gray-900">{roomName}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Room:</span>
-                <span className="font-semibold text-gray-900">{roomId}</span>
+                <span className="text-gray-600">Room Code:</span>
+                <span className="font-mono font-semibold text-purple-700">{roomId}</span>
               </div>
               {peerId && (
                 <div className="flex items-center justify-between text-sm mt-1">
