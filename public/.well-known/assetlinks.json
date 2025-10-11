@@ -1,0 +1,11 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.peddlenet.festivalchat",
+    "sha256_cert_fingerprints": [
+      "5F:20:7E:E3:BF:5A:C9:EE:18:97:E4:53:39:9E:F0:E7:FC:08:C9:02:C6:40:D9:84:A0:AA:7D:AE:24:9F:F1:F5",
+      "7A:75:C0:73:3B:5E:85:4B:69:F3:37:9C:D7:B5:A7:E6:40:EA:F6:7F:AF:8F:D5:2B:09:CD:45:BA:E4:F5:09:D0"
+    ]
+  }
+}]
