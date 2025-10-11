@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { RoomCodeManager } from '@/utils/room-codes';
 import { useUnreadMessages } from '@/hooks/use-unread-messages';
+import { prettifyRoomCode } from '@/utils/generate-room-code';
 
 interface ChatRoomSwitcherProps {
   currentRoomId: string;
@@ -14,6 +15,7 @@ interface ChatRoomSwitcherProps {
 interface SwitcherRoom {
   roomId: string;
   code: string;
+  displayName: string;
   timestamp: number;
   isFavorite: boolean;
   isRecent: boolean;
@@ -43,25 +45,35 @@ export function ChatRoomSwitcher({ currentRoomId, className = '' }: ChatRoomSwit
         favorites.forEach(roomId => {
           const roomData = recentRooms.find(r => r.roomId === roomId);
           if (roomData && roomId !== currentRoomId) {
+            // Get display name from localStorage or prettify the code
+            const storedName = localStorage.getItem(`room:${roomId}:name`);
+            const displayName = storedName || prettifyRoomCode(roomId);
+
             roomMap.set(roomId, {
               roomId,
               code: roomData.code,
+              displayName,
               timestamp: roomData.timestamp,
               isFavorite: true,
               isRecent: false
             });
           }
         });
-        
+
         // Add 1 most recent room (that's not current and not already favorited)
-        const mostRecentRoom = recentRooms.find(room => 
+        const mostRecentRoom = recentRooms.find(room =>
           room.roomId !== currentRoomId && !favorites.includes(room.roomId)
         );
-        
+
         if (mostRecentRoom) {
+          // Get display name from localStorage or prettify the code
+          const storedName = localStorage.getItem(`room:${mostRecentRoom.roomId}:name`);
+          const displayName = storedName || prettifyRoomCode(mostRecentRoom.roomId);
+
           roomMap.set(mostRecentRoom.roomId, {
             roomId: mostRecentRoom.roomId,
             code: mostRecentRoom.code,
+            displayName,
             timestamp: mostRecentRoom.timestamp,
             isFavorite: false,
             isRecent: true
@@ -136,6 +148,13 @@ export function ChatRoomSwitcher({ currentRoomId, className = '' }: ChatRoomSwit
     return roomId.substring(0, maxLength - 3) + '...';
   };
 
+  // Get display name for current room
+  const currentRoomDisplayName = React.useMemo(() => {
+    if (typeof window === 'undefined') return prettifyRoomCode(currentRoomId);
+    const storedName = localStorage.getItem(`room:${currentRoomId}:name`);
+    return storedName || prettifyRoomCode(currentRoomId);
+  }, [currentRoomId]);
+
   // Check if any of the available rooms have unread messages for button styling
   const hasUnreadMessages = availableRooms.some(room => getUnreadCount(room.roomId) > 0);
   // Always show dropdown now - even with no other rooms, we want "View all rooms" option
@@ -154,7 +173,7 @@ export function ChatRoomSwitcher({ currentRoomId, className = '' }: ChatRoomSwit
         title="Switch room or view all rooms"
       >
         <span className="text-sm text-white truncate max-w-[150px]">
-          🎪 {truncateRoomId(currentRoomId)}
+          🎪 {truncateRoomId(currentRoomDisplayName)}
         </span>
         
         {/* Always show dropdown arrow now */}
@@ -214,7 +233,7 @@ export function ChatRoomSwitcher({ currentRoomId, className = '' }: ChatRoomSwit
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center space-x-2 mb-1">
                           <span className="text-sm font-medium text-white truncate">
-                            {truncateRoomId(room.roomId, 18)}
+                            {truncateRoomId(room.displayName, 18)}
                           </span>
                           {room.isFavorite && (
                             <span className="text-red-400 text-xs" title="Favorite">❤️</span>
@@ -222,13 +241,13 @@ export function ChatRoomSwitcher({ currentRoomId, className = '' }: ChatRoomSwit
                           {room.isRecent && (
                             <span className="text-blue-400 text-xs" title="Recent">🕐</span>
                           )}
-                          
+
                           {/* Unread message pill */}
                           {(() => {
                             const unreadCount = getUnreadCount(room.roomId);
                             if (unreadCount > 0) {
                               return (
-                                <span 
+                                <span
                                   className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-orange-500 text-white text-xs font-bold rounded-full"
                                   title={`${unreadCount} unread message${unreadCount === 1 ? '' : 's'}`}
                                 >
@@ -237,10 +256,10 @@ export function ChatRoomSwitcher({ currentRoomId, className = '' }: ChatRoomSwit
                               );
                             }
                             return null;
-                          })()} 
+                          })()}
                         </div>
                         <div className="font-mono text-xs text-purple-400 mb-1">
-                          {room.code}
+                          {room.roomId}
                         </div>
                         <div className="text-xs text-gray-500">
                           {RoomCodeManager.formatTimeAgo(room.timestamp)}
