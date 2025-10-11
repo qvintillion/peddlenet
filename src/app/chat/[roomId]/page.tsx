@@ -12,7 +12,6 @@ import { MobileConnectionDebug } from '@/components/MobileConnectionDebug';
 import type { Message } from '@/lib/types';
 import { QRModal } from '@/components/QRModal';
 import { NetworkStatus, ConnectionError } from '@/components/NetworkStatus';
-import { RoomCodeDisplay } from '@/components/RoomCode';
 import { ChatRoomSettings } from '@/components/ChatRoomSettings';
 import { ConnectionTest } from '@/components/ConnectionTest';
 import { NotificationTest } from '@/components/NotificationTest';
@@ -632,11 +631,6 @@ export default function ChatRoomPage() {
         )}
 
 
-      </div>
-
-      {/* Room Code Card - floating above messages */}
-      <div className="px-3 sm:px-4 pt-2 pb-3">
-        <RoomCodeDisplay roomId={roomId} className="" />
       </div>
 
       {/* Enhanced Messages */}
