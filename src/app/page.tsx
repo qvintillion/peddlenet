@@ -155,11 +155,8 @@ export default function HomePage() {
                 required
                 suppressHydrationWarning={true}
               />
-              <p className="mt-1 text-xs text-gray-400">
-                This creates Room ID: {roomName ? slugifyRoomName(roomName) : 'room-name-here'}
-              </p>
               <p className="mt-1 text-xs text-purple-200">
-                💡 Others will join using the Room Code shown in chat
+                💡 A memorable room code will be generated (e.g., "cosmic-dragon-42")
               </p>
             </div>
 
