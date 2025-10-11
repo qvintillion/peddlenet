@@ -42,7 +42,7 @@ echo "📋 Using universal server configuration:"
 echo "   🐳 Dockerfile: Dockerfile.minimal"
 echo "   🖥️ Server: signaling-server.js (universal with auto-detection)"
 echo "   📦 Dependencies: Minimal (no SQLite compilation issues)"
-echo "   🔧 Version: 4.1-websocket-only (Phase 2: P2P removed)"
+echo "   🔧 Version: 4.2-roomdata (Server-side room metadata)"
 echo ""
 
 # Build specifically for staging

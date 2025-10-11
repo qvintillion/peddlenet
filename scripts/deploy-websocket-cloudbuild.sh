@@ -2,16 +2,16 @@
 
 # 🚀 PRODUCTION WebSocket Server Deployment Script
 # Deploy universal WebSocket server to production Cloud Run
-# Version: 4.1-websocket-only
-# Date: October 9, 2025
-# Includes: Phase 1 + Phase 2 optimizations (P2P removed, WebSocket-only)
+# Version: 4.2-roomdata
+# Date: October 11, 2025
+# Includes: Server-side room metadata storage for cross-platform sync
 
-echo "🚀 Production WebSocket Server Deployment - Phase 2 Complete"
-echo "=============================================================="
+echo "🚀 Production WebSocket Server Deployment - Version 4.2"
+echo "========================================================"
 echo "🎯 Target: PRODUCTION Environment"
 echo "🌍 Platform: Google Cloud Run"
-echo "🔧 Features: Phase 2 - WebSocket-only (P2P removed)"
-echo "📈 Version: 4.1-websocket-only"
+echo "🔧 Features: Room metadata storage & sync"
+echo "📈 Version: 4.2-roomdata"
 echo ""
 
 # Check if we're in the right directory
@@ -37,17 +37,16 @@ echo "📋 Using universal server configuration:"
 echo "   🐳 Dockerfile: Dockerfile.cloudrun"
 echo "   🖥️ Server: signaling-server.js (universal with auto-detection)"
 echo "   📦 Build: Google Cloud Build (no local Docker required)"
-echo "   🔧 Version: 4.1-websocket-only"
+echo "   🔧 Version: 4.2-roomdata"
 echo ""
-echo "✅ Phase 2 Optimization Checklist:"
-echo "====================================="
-echo "✅ WebSocket-Only Architecture: All P2P code removed (~200 lines)"
-echo "✅ Simplified Data Structures: Phase 1 optimizations (activeUsers Map)"
-echo "✅ Duplicate Socket Prevention: Phase 1 fix for admin dashboard accuracy"
-echo "✅ Automatic reconnection enabled on client (handles scale-to-zero)"
-echo "✅ Memory cleanup: Hourly cleanup, 24h message retention for public rooms"
-echo "✅ CORS fix: Vercel preview domain support with regex patterns"
-echo "✅ Cold start detection: Adaptive timeouts for Cloud Run startup"
+echo "✅ Version 4.2 Features:"
+echo "========================"
+echo "✅ Room Metadata Storage: Server-side display name storage"
+echo "✅ Cross-Platform Sync: Webapp ↔ Android room name sharing"
+echo "✅ Room Validation: Check if room exists before joining"
+echo "✅ POST /room/:roomId/metadata - Store room display names"
+echo "✅ GET /room/:roomId/metadata - Retrieve room info"
+echo "✅ Previous features: WebSocket-only, Phase 1+2 optimizations"
 echo "✅ Connection health monitoring: Ping/pong statistics tracking"
 echo "✅ Environment detection: Correctly identifies staging vs production"
 echo ""

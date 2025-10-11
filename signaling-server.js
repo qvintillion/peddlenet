@@ -409,9 +409,9 @@ function generateMessageId() {
 app.get('/', (req, res) => {
   res.json({
     service: 'PeddleNet Signaling Server',
-    version: '4.1-websocket-only',
+    version: '4.2-roomdata',
     status: 'running',
-    description: 'Phase 1 WebSocket optimizations: improved timeouts, memory cleanup, cold start detection, health monitoring',
+    description: 'Server-side room metadata storage for cross-platform room name sync',
     features: [
       'admin-dashboard-enhanced', 
       'unique-user-counting', 
@@ -462,7 +462,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'PeddleNet Signaling Server',
-    version: '4.1-websocket-only',
+    version: '4.2-roomdata',
     timestamp: Date.now()
   });
 });
@@ -707,7 +707,7 @@ app.get('/admin/analytics', requireAdminAuth, (req, res) => {
       server: {
         uptime: process.uptime(),
         uptimeFormatted: formatUptime(process.uptime()),
-        version: '4.1-websocket-only',
+        version: '4.2-roomdata',
         environment: getEnvironment(),
         memoryUsage: process.memoryUsage(),
         timestamp: Date.now()
