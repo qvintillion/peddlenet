@@ -440,22 +440,38 @@ const connectionAttempts = new Map(); // IP -> attempts info
 
 ## 📊 Data Architecture
 
-### **Room Code System**
+### **Room Code System** (Simplified - October 2025)
+
+> **📝 For detailed information, see [Room Code/ID Simplification Guide](./ROOM-CODE-ID-SIMPLIFICATION.md)**
 
 ```typescript
-// Deterministic room code generation
-function generateRoomCode(roomId: string): string {
-  const adjectives = ['blue', 'bright', 'magic', 'cosmic', ...];
-  const nouns = ['stage', 'beat', 'vibe', 'party', ...];
-  
-  const hash = simpleHash(roomId);
-  const adjIndex = Math.abs(hash) % adjectives.length;
-  const nounIndex = Math.abs(hash >> 8) % nouns.length;
-  const number = (Math.abs(hash >> 16) % 99) + 1;
-  
-  return `${adjectives[adjIndex]}-${nouns[nounIndex]}-${number}`;
+// Random memorable code generation - codes ARE the room IDs
+function generateRoomCode(): string {
+  const adjectives = ['cosmic', 'happy', 'bright', 'electric', ...];
+  const nouns = ['dragon', 'phoenix', 'tiger', 'eagle', ...];
+
+  const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  const number = Math.floor(Math.random() * 90) + 10; // 10-99
+
+  return `${adjective}-${noun}-${number}`;
+}
+
+// Prettification fallback when no custom display name exists
+function prettifyRoomCode(code: string): string {
+  return code
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 ```
+
+**Key Changes (October 2025):**
+- ✅ Memorable codes ARE the room IDs (no dual system)
+- ✅ Random generation (not deterministic)
+- ✅ Display names stored in localStorage: `room:${roomCode}:name`
+- ✅ Prettification as fallback: `cosmic-dragon-42` → `Cosmic Dragon 42`
+- ✅ Same system on web and Android
 
 ### **Message Storage Strategy**
 

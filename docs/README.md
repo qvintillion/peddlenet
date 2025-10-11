@@ -14,6 +14,7 @@
 ### Technical Documentation
 3. **[Mesh Networking](./03-MESH-NETWORKING.md)** - Future: P2P architecture (not currently implemented)
 4. **[Architecture](./04-ARCHITECTURE.md)** - System design and components
+5. **[Room Code/ID Simplification](./ROOM-CODE-ID-SIMPLIFICATION.md)** - Simplified room identification system (October 2025)
 6. **[Deployment Guide](./06-DEPLOYMENT.md)** - Deployment workflows and platforms
 7. **[Mobile Optimization](./07-MOBILE-OPTIMIZATION.md)** - Mobile-first design
 8. **[Connection Resilience](./08-CONNECTION-RESILIENCE.md)** - Reliability patterns

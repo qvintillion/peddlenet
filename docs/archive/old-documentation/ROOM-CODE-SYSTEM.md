@@ -1,6 +1,18 @@
 # 🎫 Room Code System - Technical Documentation
 
-## 🎯 Overview
+> **⚠️ DEPRECATED - October 2025**
+>
+> This document describes the OLD room code system with dual identifiers (room IDs + codes).
+>
+> **For the current simplified system, see:**
+> - [Room Code/ID Simplification Guide](../../ROOM-CODE-ID-SIMPLIFICATION.md)
+> - [Architecture Documentation](../../04-ARCHITECTURE.md)
+>
+> The system described below has been replaced with a simpler approach where **memorable codes ARE the room IDs**.
+
+---
+
+## 🎯 Overview (DEPRECATED)
 
 The Room Code System enables users to join chat rooms using memorable codes like `blue-stage-42` instead of scanning QR codes. This is particularly useful when QR scanning isn't possible (poor lighting, distance, technical issues) or when sharing room access via text/voice.
 
