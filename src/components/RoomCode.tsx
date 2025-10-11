@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RoomCodeManager, RoomCodeDiagnostics } from '@/utils/room-codes';
+import { ServerUtils } from '@/utils/server-utils';
+import { prettifyRoomCode } from '@/utils/generate-room-code';
 
 interface RoomCodeJoinProps {
   className?: string;
@@ -36,42 +38,40 @@ export function RoomCodeJoin({ className = '' }: RoomCodeJoinProps) {
         localStorage.setItem('displayName', userName);
       }
 
-      console.log('🔍 Looking up room code:', roomCode);
-      console.log('🔍 Available cache mappings:', Object.keys(RoomCodeManager.getCodeMappings()));
-      
-      // Try to find room ID from code (now async with server lookup)
-      const roomId = await RoomCodeManager.getRoomIdFromCode(roomCode);
-      
-      if (roomId) {
-        // Found existing mapping, join directly
-        console.log('🎯 Joining existing room via code:', roomCode, '→', roomId);
-        router.push(`/chat/${roomId}`);
-      } else {
-        // No existing mapping found - this could mean:
-        // 1. Server is offline/unreachable
-        // 2. Room code doesn't exist yet
-        // 3. Room code expired
-        
-        console.warn('❌ Room code not found on server:', roomCode);
-        
-        // Instead of creating a new room automatically, ask the user
-        const shouldCreateNew = confirm(
-          `Room code "${roomCode}" not found.\n\n` +
-          'This could mean:\n' +
-          '• The room doesn\'t exist yet\n' +
-          '• The server is offline\n' +
-          '• The code expired\n\n' +
-          'Would you like to create a new room with this code?'
-        );
-        
-        if (shouldCreateNew) {
-          const slugifiedCode = roomCode.toLowerCase().replace(/[^a-z0-9-]/g, '');
-          console.log('🆕 Creating new room from code:', roomCode, '→', slugifiedCode);
-          router.push(`/chat/${slugifiedCode}`);
+      const normalizedCode = roomCode.toLowerCase().trim();
+      console.log('🔍 Looking up room metadata for code:', normalizedCode);
+
+      // Try to fetch room metadata from server
+      try {
+        const serverUrl = ServerUtils.getHttpServerUrl();
+        const response = await fetch(`${serverUrl}/room/${normalizedCode}/metadata`);
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Found room metadata:', data.metadata);
+
+          // Store display name in localStorage for quick access
+          if (data.metadata.displayName) {
+            localStorage.setItem(`room:${normalizedCode}:name`, data.metadata.displayName);
+          }
+
+          // Room exists! Join it
+          console.log('🎯 Joining existing room:', normalizedCode);
+          router.push(`/chat/${normalizedCode}`);
         } else {
-          setError('Room code not found. Please check the code and try again.');
+          // Room not found on server
+          console.warn('❌ Room metadata not found on server');
+
+          setError(
+            `Room code "${roomCode}" not found.\n\n` +
+            'Please check the code and try again, or ask the room creator to share a QR code.'
+          );
           setIsJoining(false);
         }
+      } catch (error) {
+        console.error('Failed to fetch room metadata:', error);
+        setError('Failed to connect to server. Please check your connection and try again.');
+        setIsJoining(false);
       }
     } catch (error) {
       console.error('Failed to join room by code:', error);

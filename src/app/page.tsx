@@ -10,6 +10,7 @@ import { JoinedRooms } from '@/components/JoinedRooms';
 import { RecentRooms } from '@/components/RecentRooms';
 import { PublicRooms } from '@/components/PublicRooms';
 import { generateRoomCode } from '@/utils/generate-room-code';
+import { ServerUtils } from '@/utils/server-utils';
 
 export default function HomePage() {
   const router = useRouter();
@@ -67,8 +68,31 @@ export default function HomePage() {
       const roomCode = generateRoomCode();
       console.log('🏷️ Generated room code:', roomCode);
 
-      // Store the display name for this room
+      // Store the display name for this room (localStorage for immediate access)
       localStorage.setItem(`room:${roomCode}:name`, roomName);
+
+      // Store metadata on server for cross-platform sync
+      try {
+        const serverUrl = ServerUtils.getHttpServerUrl();
+        const response = await fetch(`${serverUrl}/room/${roomCode}/metadata`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            displayName: roomName,
+            createdBy: userName
+          })
+        });
+
+        if (response.ok) {
+          console.log('✅ Room metadata stored on server');
+        } else {
+          console.warn('⚠️ Failed to store room metadata on server, using localStorage only');
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not reach server, using localStorage only:', error);
+      }
 
       const targetUrl = `/chat/${roomCode}`;
       console.log('🗺️ Navigating to:', targetUrl);
