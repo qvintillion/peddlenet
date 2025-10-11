@@ -23,6 +23,7 @@ import { useRoomUnreadTracker } from '@/hooks/use-unread-messages';
 // import { QRPeerUtils } from '@/utils/qr-peer-utils';
 import { RoomCodeDiagnosticPanel } from '@/components/RoomCodeDiagnostics';
 import { MeshNetworkDebug } from '@/components/MeshNetworkDebug';
+import { prettifyRoomCode } from '@/utils/generate-room-code';
 
 // Disable static generation for chat pages to avoid SSR issues
 export const dynamic = 'force-dynamic';
@@ -60,6 +61,13 @@ export default function ChatRoomPage() {
     }
     return '';
   }, [params.roomId]);
+
+  // Get room display name from localStorage or prettify the code
+  const roomDisplayName = React.useMemo(() => {
+    if (typeof window === 'undefined') return prettifyRoomCode(roomId);
+    const storedName = localStorage.getItem(`room:${roomId}:name`);
+    return storedName || prettifyRoomCode(roomId);
+  }, [roomId]);
   
   // Early return if no valid roomId
   if (!roomId) {
@@ -638,7 +646,7 @@ export default function ChatRoomPage() {
             {status.connectedPeers === 0 ? (
               <div className="space-y-4">
                 <div className="text-6xl mb-4">🎪</div>
-                <h3 className="text-xl font-semibold text-white">Welcome to {roomId}!</h3>
+                <h3 className="text-xl font-semibold text-white">Welcome to {roomDisplayName}!</h3>
                 <p className="text-gray-400">You're the first person here.</p>
                 <div className="bg-purple-900/30 border border-purple-500/30 p-4 rounded-lg max-w-md mx-auto">
                   <p className="text-sm text-purple-200 font-medium mb-2 flex items-center gap-2">

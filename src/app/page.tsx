@@ -9,15 +9,7 @@ import { CompactGlobalNotificationBanner } from '@/components/CompactGlobalNotif
 import { JoinedRooms } from '@/components/JoinedRooms';
 import { RecentRooms } from '@/components/RecentRooms';
 import { PublicRooms } from '@/components/PublicRooms';
-
-function slugifyRoomName(roomName: string): string {
-  return roomName
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 32);
-}
+import { generateRoomCode } from '@/utils/generate-room-code';
 
 export default function HomePage() {
   const router = useRouter();
@@ -71,13 +63,16 @@ export default function HomePage() {
         console.log('📝 Set display name:', userName);
       }
 
-      // Create room ID and auto-join
-      const roomId = slugifyRoomName(roomName);
-      console.log('🏷️ Generated room ID:', roomId);
-      
-      const targetUrl = `/chat/${roomId}`;
+      // Generate memorable room code - this IS the room ID
+      const roomCode = generateRoomCode();
+      console.log('🏷️ Generated room code:', roomCode);
+
+      // Store the display name for this room
+      localStorage.setItem(`room:${roomCode}:name`, roomName);
+
+      const targetUrl = `/chat/${roomCode}`;
       console.log('🗺️ Navigating to:', targetUrl);
-      
+
       // Use Next.js router now that we have SSR
       router.push(targetUrl);
       console.log('✅ Navigation initiated');
