@@ -403,22 +403,23 @@ export class RoomCodeManager {
 
   /**
    * Add room to recent list
+   * Note: With the new system, roomId IS the code, so we just use roomId for both
    */
-  static addToRecentRooms(roomId: string, code: string): void {
+  static addToRecentRooms(roomId: string, code?: string): void {
     try {
       const recent = this.getRecentRoomCodes();
       const newRoom = {
-        code,
-        roomId,
+        code: roomId,  // roomId IS the code now
+        roomId: roomId,
         timestamp: Date.now()
       };
 
       // Remove existing entry for this room
       const filtered = recent.filter(room => room.roomId !== roomId);
-      
+
       // Add new entry at the beginning
       const updated = [newRoom, ...filtered].slice(0, 8); // Keep max 8 for horizontal scroll
-      
+
       localStorage.setItem('peddlenet_recent_rooms', JSON.stringify(updated));
     } catch (error) {
       console.warn('Failed to update recent rooms:', error);

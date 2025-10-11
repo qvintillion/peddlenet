@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RoomCodeManager } from '@/utils/room-codes';
+import { prettifyRoomCode } from '@/utils/generate-room-code';
 
 interface RecentRoomsProps {
   className?: string;
@@ -61,23 +62,30 @@ export function RecentRooms({ className = '' }: RecentRoomsProps) {
       
       {/* Horizontal Scrolling Cards - Simple Design */}
       <div className="flex space-x-3 overflow-x-auto pb-3 scrollbar-hide">
-        {recentRooms.map((room) => (
-          <button
-            key={room.roomId}
-            onClick={() => handleQuickRejoin(room.roomId)}
-            className="flex-shrink-0 min-w-[140px] p-4 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-600 hover:border-purple-500 transition-all"
-          >
-            <div className="text-xs text-gray-300 mb-1 truncate" title={room.roomId}>
-              {room.roomId}
-            </div>
-            <div className="font-mono text-sm font-medium text-purple-400 mb-1">
-              {room.code}
-            </div>
-            <div className="text-xs text-gray-400">
-              {RoomCodeManager.formatTimeAgo(room.timestamp)}
-            </div>
-          </button>
-        ))}
+        {recentRooms.map((room) => {
+          // Get display name from localStorage or prettify the code
+          const displayName = typeof window !== 'undefined'
+            ? (localStorage.getItem(`room:${room.roomId}:name`) || prettifyRoomCode(room.roomId))
+            : prettifyRoomCode(room.roomId);
+
+          return (
+            <button
+              key={room.roomId}
+              onClick={() => handleQuickRejoin(room.roomId)}
+              className="flex-shrink-0 min-w-[140px] p-4 bg-gray-800 hover:bg-gray-700 rounded-lg border border-gray-600 hover:border-purple-500 transition-all"
+            >
+              <div className="text-sm font-medium text-white mb-1 truncate" title={displayName}>
+                {displayName}
+              </div>
+              <div className="font-mono text-xs text-purple-400 mb-1">
+                {room.roomId}
+              </div>
+              <div className="text-xs text-gray-400">
+                {RoomCodeManager.formatTimeAgo(room.timestamp)}
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
