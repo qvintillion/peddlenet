@@ -868,6 +868,7 @@ export default function ChatRoomPage() {
       {/* QR Modal */}
       <QRModal
         roomId={roomId}
+        roomName={roomDisplayName} // Pass display name for cross-platform sharing
         peerId={peerId} // Use actual peer ID for connections
         displayName={displayName}
         isOpen={showQRModal}

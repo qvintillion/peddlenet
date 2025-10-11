@@ -7,13 +7,14 @@ import { MobileNetworkDebug } from '@/utils/mobile-network-debug';
 
 interface QRModalProps {
   roomId: string;
+  roomName?: string;
   peerId?: string | null;
   displayName?: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModalProps) {
+export function QRModal({ roomId, roomName, peerId, displayName, isOpen, onClose }: QRModalProps) {
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [fullUrl, setFullUrl] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -26,10 +27,10 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
   useEffect(() => {
     if (isOpen && roomId) {
       const currentHostname = window.location.hostname;
-      
+
       // Check if we have a pre-detected IP from dev script
       const detectedIP = process.env.NEXT_PUBLIC_DETECTED_IP;
-      
+
       if (detectedIP && detectedIP !== 'localhost') {
         // Use the IP detected by dev script - this is the most reliable
         console.log('✅ Using IP detected by dev script:', detectedIP);
@@ -46,7 +47,7 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
         autoDetectAndGenerateQR();
       }
     }
-  }, [isOpen, roomId, peerId, displayName]);
+  }, [isOpen, roomId, roomName, peerId, displayName]);
 
   const autoDetectAndGenerateQR = async () => {
     setIsDetectingIP(true);
@@ -93,16 +94,27 @@ export function QRModal({ roomId, peerId, displayName, isOpen, onClose }: QRModa
     // Detect if we're on test page or regular chat page
     const isTestPage = typeof window !== 'undefined' && window.location.pathname === '/test-room';
     let chatUrl = isTestPage ? `${baseUrl}/test-room` : `${baseUrl}/chat/${roomId}`;
-    
-    // Always include peer info for direct connection when available
+
+    // Build query parameters
+    const params = new URLSearchParams();
+
+    // Always include room name if available
+    if (roomName) {
+      params.set('roomName', roomName);
+    }
+
+    // Include peer info for direct connection when available
     if (peerId && displayName) {
-      const params = new URLSearchParams({
-        host: peerId,
-        name: displayName,
-        t: Date.now().toString() // timestamp for uniqueness
-      });
-      chatUrl += `?${params.toString()}`;
+      params.set('host', peerId);
+      params.set('name', displayName);
+      params.set('t', Date.now().toString()); // timestamp for uniqueness
       console.log('📱 Generated invite QR with peer info:', peerId);
+    }
+
+    // Append query params if any exist
+    const queryString = params.toString();
+    if (queryString) {
+      chatUrl += `?${queryString}`;
     }
     
     console.log('🌐 QR URL for mobile access:', chatUrl);
