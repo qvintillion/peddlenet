@@ -22,7 +22,7 @@
   "dependencies": {
     "firebase-admin": "^13.4.0",
     "firebase-functions": "^6.3.2",
-    "next": "^15.3.3"
+    "next": "^15.3.6"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
