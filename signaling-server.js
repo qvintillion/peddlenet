@@ -1847,15 +1847,26 @@ io.on('connection', (socket) => {
         return;
       }
 
+      // Phase 10.3: BLE→WebSocket bridge. When an Android bridge node relays a
+      // mesh-originated message on behalf of another peer, it sets relayed=true and
+      // carries the original sender. Honor it so the message is attributed to the
+      // real author instead of the bridge node's socket identity. Falls back to the
+      // socket's displayName for normal (non-relayed) messages.
+      const originalSender = (message.relayed === true && message.sender)
+        ? message.sender
+        : sender.userData.displayName;
+
       const enhancedMessage = {
         id: message.id || generateMessageId(),
         content: message.content || message,
-        sender: sender.userData.displayName,
-        senderId: sender.userData.displayName, // Use displayName as consistent ID
+        sender: originalSender,
+        senderId: originalSender, // Use displayName as consistent ID
         timestamp: Date.now(),
         type,
         roomId,
-        fromSocket: socket.id
+        fromSocket: socket.id,
+        relayed: message.relayed === true,
+        relayedBy: message.relayed === true ? sender.userData.displayName : undefined
       };
 
       // Store the message
