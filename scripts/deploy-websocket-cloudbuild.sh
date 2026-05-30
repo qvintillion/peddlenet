@@ -2,16 +2,16 @@
 
 # 🚀 PRODUCTION WebSocket Server Deployment Script
 # Deploy universal WebSocket server to production Cloud Run
-# Version: 4.2-roomdata
-# Date: October 11, 2025
-# Includes: Server-side room metadata storage for cross-platform sync
+# Version: 4.3-relay-sender
+# Date: May 30, 2026
+# Includes: BLE→WebSocket relay sender attribution (Android mesh bridge)
 
-echo "🚀 Production WebSocket Server Deployment - Version 4.2"
+echo "🚀 Production WebSocket Server Deployment - Version 4.3"
 echo "========================================================"
 echo "🎯 Target: PRODUCTION Environment"
 echo "🌍 Platform: Google Cloud Run"
-echo "🔧 Features: Room metadata storage & sync"
-echo "📈 Version: 4.2-roomdata"
+echo "🔧 Features: Relayed-sender attribution for BLE mesh bridge"
+echo "📈 Version: 4.3-relay-sender"
 echo ""
 
 # Check if we're in the right directory
@@ -37,15 +37,14 @@ echo "📋 Using universal server configuration:"
 echo "   🐳 Dockerfile: Dockerfile.cloudrun"
 echo "   🖥️ Server: signaling-server.js (universal with auto-detection)"
 echo "   📦 Build: Google Cloud Build (no local Docker required)"
-echo "   🔧 Version: 4.2-roomdata"
+echo "   🔧 Version: 4.3-relay-sender"
 echo ""
-echo "✅ Version 4.2 Features:"
+echo "✅ Version 4.3 Features:"
 echo "========================"
-echo "✅ Room Metadata Storage: Server-side display name storage"
-echo "✅ Cross-Platform Sync: Webapp ↔ Android room name sharing"
-echo "✅ Room Validation: Check if room exists before joining"
-echo "✅ POST /room/:roomId/metadata - Store room display names"
-echo "✅ GET /room/:roomId/metadata - Retrieve room info"
+echo "✅ Relayed-Sender Attribution: chat-message honors message.sender when relayed=true"
+echo "✅ BLE→WebSocket Bridge: mesh-origin messages attributed to real author, not bridge node"
+echo "✅ Adds relayed/relayedBy fields to broadcast payload"
+echo "✅ Previous features: Room metadata storage & cross-platform sync (4.2)"
 echo "✅ Previous features: WebSocket-only, Phase 1+2 optimizations"
 echo "✅ Connection health monitoring: Ping/pong statistics tracking"
 echo "✅ Environment detection: Correctly identifies staging vs production"
@@ -102,7 +101,7 @@ echo "🚀 Environment: PRODUCTION"
 echo "📍 Service URL: $SERVICE_URL"
 echo "🏥 Health check: $SERVICE_URL/health"
 echo "📊 Admin dashboard: $SERVICE_URL/admin"
-echo "🛠️ Version: 4.1-websocket-only"
+echo "🛠️ Version: 4.3-relay-sender"
 echo ""
 echo "📋 Phase 2 Features Active:"
 echo "============================"
