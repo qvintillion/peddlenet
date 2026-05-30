@@ -409,7 +409,7 @@ function generateMessageId() {
 app.get('/', (req, res) => {
   res.json({
     service: 'PeddleNet Signaling Server',
-    version: '4.2-roomdata',
+    version: '4.3-relay-sender',
     status: 'running',
     description: 'Server-side room metadata storage for cross-platform room name sync',
     features: [
@@ -462,7 +462,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'PeddleNet Signaling Server',
-    version: '4.2-roomdata',
+    version: '4.3-relay-sender',
     timestamp: Date.now()
   });
 });
@@ -707,7 +707,7 @@ app.get('/admin/analytics', requireAdminAuth, (req, res) => {
       server: {
         uptime: process.uptime(),
         uptimeFormatted: formatUptime(process.uptime()),
-        version: '4.2-roomdata',
+        version: '4.3-relay-sender',
         environment: getEnvironment(),
         memoryUsage: process.memoryUsage(),
         timestamp: Date.now()
