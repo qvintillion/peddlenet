@@ -62,8 +62,10 @@ export default function ChatRoomPage() {
     return '';
   }, [params.roomId]);
 
-  // Get room display name from localStorage or prettify the code
-  const roomDisplayName = React.useMemo(() => {
+  // Fallback room name from localStorage (set when this client created/cached
+  // the room). The authoritative server-supplied name is applied below once the
+  // WebSocket connection reports it.
+  const cachedRoomDisplayName = React.useMemo(() => {
     if (typeof window === 'undefined') return prettifyRoomCode(roomId);
     const storedName = localStorage.getItem(`room:${roomId}:name`);
     return storedName || prettifyRoomCode(roomId);
@@ -113,8 +115,14 @@ export default function ChatRoomPage() {
     forceReconnect,
     connectToPeer,
     getConnectedPeers,
-    connectionQuality: wsConnectionQuality
+    connectionQuality: wsConnectionQuality,
+    roomName: serverRoomName
   } = useWebSocketChat(roomId, displayName);
+
+  // Prefer the authoritative name the server sends on join (covers join-by-code
+  // and QR/BLE cases where this client never cached the name); fall back to the
+  // locally cached/prettified name until the server reports it.
+  const roomDisplayName = serverRoomName || cachedRoomDisplayName;
 
   // Map WebSocket interface to expected interface
   const hybridMessages = chatMessages;

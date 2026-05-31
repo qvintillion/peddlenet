@@ -204,7 +204,8 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
   const [connectionCooldown, setConnectionCooldown] = useState(false);
   const [shouldAutoReconnect, setShouldAutoReconnect] = useState(true);
   const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'poor' | 'unknown'>('unknown');
-  
+  const [roomName, setRoomName] = useState<string | null>(null);
+
   const socketRef = useRef<Socket | null>(null);
   const messageHandlersRef = useRef<Set<(message: Message) => void>>(new Set());
   const healthMonitor = useRef(createHealthMonitor());
@@ -695,6 +696,25 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       });
     });
 
+    // Learn the room's friendly display name from the server. Clients that
+    // joined by code/QR never created the room, so they have no cached name -
+    // the server supplies it here so we can show and persist the real name
+    // instead of falling back to the room code.
+    socket.on('room-joined', (data: any) => {
+      const serverName = data && typeof data.roomDisplayName === 'string'
+        ? data.roomDisplayName.trim()
+        : '';
+      if (serverName) {
+        try {
+          localStorage.setItem(`room:${roomId}:name`, serverName);
+        } catch {
+          // localStorage may be unavailable - non-fatal
+        }
+        setRoomName(serverName);
+        console.log('🏷️ Room display name from server:', serverName);
+      }
+    });
+
     // Enhanced peer management with strict deduplication
     socket.on('room-peers', (peers: any[]) => {
       console.log('Enhanced room peers total:', peers.length);
@@ -949,6 +969,7 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
   return {
     peerId: myPeerId.current,
     status,
+    roomName,
     isRetrying,
     retryCount,
     connectionQuality,

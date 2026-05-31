@@ -409,7 +409,7 @@ function generateMessageId() {
 app.get('/', (req, res) => {
   res.json({
     service: 'PeddleNet Signaling Server',
-    version: '4.3.1-metadata-durable',
+    version: '4.3.2-name-on-join',
     status: 'running',
     description: 'Server-side room metadata storage for cross-platform room name sync',
     features: [
@@ -462,7 +462,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'PeddleNet Signaling Server',
-    version: '4.3.1-metadata-durable',
+    version: '4.3.2-name-on-join',
     timestamp: Date.now()
   });
 });
@@ -707,7 +707,7 @@ app.get('/admin/analytics', requireAdminAuth, (req, res) => {
       server: {
         uptime: process.uptime(),
         uptimeFormatted: formatUptime(process.uptime()),
-        version: '4.3.1-metadata-durable',
+        version: '4.3.2-name-on-join',
         environment: getEnvironment(),
         memoryUsage: process.memoryUsage(),
         timestamp: Date.now()
@@ -1836,10 +1836,15 @@ io.on('connection', (socket) => {
           joinedAt: user.joinedAt
         }));
 
+      // Include the room's friendly display name (if known) so clients that
+      // joined by code/QR - and never had it cached locally - can show and
+      // persist the real name instead of falling back to the room code.
+      const joinedMeta = roomMetadata.get(roomId);
       socket.emit('room-joined', {
         roomId,
         userCount,
-        otherPeers
+        otherPeers,
+        roomDisplayName: joinedMeta && joinedMeta.displayName ? joinedMeta.displayName : undefined
       });
 
       // Emit peer-joined for compatibility

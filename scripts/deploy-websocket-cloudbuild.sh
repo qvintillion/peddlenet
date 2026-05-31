@@ -2,16 +2,16 @@
 
 # 🚀 PRODUCTION WebSocket Server Deployment Script
 # Deploy universal WebSocket server to production Cloud Run
-# Version: 4.3.1-metadata-durable
+# Version: 4.3.2-name-on-join
 # Date: May 30, 2026
-# Includes: BLE→WebSocket relay sender attribution + repopulate-on-join room metadata durability
+# Includes: room-name-on-join (server sends room display name in room-joined) + metadata durability + relay-sender attribution
 
-echo "🚀 Production WebSocket Server Deployment - Version 4.3.1"
+echo "🚀 Production WebSocket Server Deployment - Version 4.3.2"
 echo "========================================================"
 echo "🎯 Target: PRODUCTION Environment"
 echo "🌍 Platform: Google Cloud Run"
 echo "🔧 Features: Relay-sender attribution + room metadata durability"
-echo "📈 Version: 4.3.1-metadata-durable"
+echo "📈 Version: 4.3.2-name-on-join"
 echo ""
 
 # Check if we're in the right directory
@@ -37,7 +37,7 @@ echo "📋 Using universal server configuration:"
 echo "   🐳 Dockerfile: Dockerfile.cloudrun"
 echo "   🖥️ Server: signaling-server.js (universal with auto-detection)"
 echo "   📦 Build: Google Cloud Build (no local Docker required)"
-echo "   🔧 Version: 4.3.1-metadata-durable"
+echo "   🔧 Version: 4.3.2-name-on-join"
 echo ""
 echo "✅ Version 4.3.1 Features:"
 echo "=========================="
@@ -102,7 +102,7 @@ echo "🚀 Environment: PRODUCTION"
 echo "📍 Service URL: $SERVICE_URL"
 echo "🏥 Health check: $SERVICE_URL/health"
 echo "📊 Admin dashboard: $SERVICE_URL/admin"
-echo "🛠️ Version: 4.3.1-metadata-durable"
+echo "🛠️ Version: 4.3.2-name-on-join"
 echo ""
 echo "📋 Phase 2 Features Active:"
 echo "============================"
