@@ -10,6 +10,11 @@ import { prettifyRoomCode } from '@/utils/generate-room-code';
 interface ChatRoomSwitcherProps {
   currentRoomId: string;
   className?: string;
+  // Authoritative display name for the current room, resolved by the parent
+  // (server-supplied on join, falling back to cached/prettified). When present
+  // it overrides the locally-derived name so the switcher reflects the real
+  // room name even for clients that joined by code/QR.
+  currentRoomName?: string;
 }
 
 interface SwitcherRoom {
@@ -21,7 +26,7 @@ interface SwitcherRoom {
   isRecent: boolean;
 }
 
-export function ChatRoomSwitcher({ currentRoomId, className = '' }: ChatRoomSwitcherProps) {
+export function ChatRoomSwitcher({ currentRoomId, className = '', currentRoomName }: ChatRoomSwitcherProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [availableRooms, setAvailableRooms] = useState<SwitcherRoom[]>([]);
@@ -148,12 +153,15 @@ export function ChatRoomSwitcher({ currentRoomId, className = '' }: ChatRoomSwit
     return roomId.substring(0, maxLength - 3) + '...';
   };
 
-  // Get display name for current room
+  // Get display name for current room. Prefer the parent-resolved name (which
+  // includes the server-supplied name on join); fall back to localStorage /
+  // prettified code only until that arrives.
   const currentRoomDisplayName = React.useMemo(() => {
+    if (currentRoomName && currentRoomName.trim()) return currentRoomName;
     if (typeof window === 'undefined') return prettifyRoomCode(currentRoomId);
     const storedName = localStorage.getItem(`room:${currentRoomId}:name`);
     return storedName || prettifyRoomCode(currentRoomId);
-  }, [currentRoomId]);
+  }, [currentRoomId, currentRoomName]);
 
   // Check if any of the available rooms have unread messages for button styling
   const hasUnreadMessages = availableRooms.some(room => getUnreadCount(room.roomId) > 0);

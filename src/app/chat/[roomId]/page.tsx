@@ -528,8 +528,9 @@ export default function ChatRoomPage() {
 
         {/* Room Title Row with Actions */}
         <div className="flex items-center justify-between mb-2">
-          <ChatRoomSwitcher 
+          <ChatRoomSwitcher
             currentRoomId={roomId}
+            currentRoomName={roomDisplayName}
             className="flex-1 mr-3"
           />
           <div className="flex gap-2 shrink-0">
