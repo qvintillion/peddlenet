@@ -54,24 +54,25 @@ export function RoomCodeJoin({ className = '' }: RoomCodeJoinProps) {
           if (data.metadata.displayName) {
             localStorage.setItem(`room:${normalizedCode}:name`, data.metadata.displayName);
           }
-
-          // Room exists! Join it
-          console.log('🎯 Joining existing room:', normalizedCode);
-          router.push(`/chat/${normalizedCode}`);
         } else {
-          // Room not found on server
-          console.warn('❌ Room metadata not found on server');
-
-          setError(
-            `Room code "${roomCode}" not found.\n\n` +
-            'Please check the code and try again, or ask the room creator to share a QR code.'
-          );
-          setIsJoining(false);
+          // Metadata not found is NOT a fatal error. A valid-format room code maps
+          // deterministically to a room ID, and metadata is only a display-name
+          // nicety. Server metadata lives in an in-memory Map that Cloud Run wipes
+          // on scale-to-zero cold starts, so a 404 here is expected and routine -
+          // it must not block joining. We simply join without a pre-fetched name.
+          console.warn('ℹ️ No server metadata for room (cold start or never stored) - joining anyway:', normalizedCode);
         }
+
+        // Join the room regardless of metadata availability. The room code is the
+        // room ID; the chat page only needs a display name (already set above).
+        console.log('🎯 Joining room:', normalizedCode);
+        router.push(`/chat/${normalizedCode}`);
       } catch (error) {
-        console.error('Failed to fetch room metadata:', error);
-        setError('Failed to connect to server. Please check your connection and try again.');
-        setIsJoining(false);
+        // Only a genuine network/transport failure reaches here (fetch threw).
+        // A 404 response does NOT throw, so this no longer blocks valid joins.
+        console.error('Failed to reach metadata endpoint - joining anyway:', error);
+        console.log('🎯 Joining room (metadata lookup failed):', normalizedCode);
+        router.push(`/chat/${normalizedCode}`);
       }
     } catch (error) {
       console.error('Failed to join room by code:', error);
