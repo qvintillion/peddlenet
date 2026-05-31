@@ -391,10 +391,22 @@ export function useWebSocketChat(roomId: string, displayName?: string) {
       // Start enhanced health monitoring
       startHealthMonitoring(socket);
 
+      // Server room metadata lives in an in-memory Map that Cloud Run wipes on
+      // scale-to-zero cold starts. If this client has the room's friendly name
+      // cached locally, send it so the server can repopulate metadata when it's
+      // missing - keeping shared-by-code room names durable across cold starts.
+      let cachedRoomName: string | null = null;
+      try {
+        cachedRoomName = localStorage.getItem(`room:${roomId}:name`);
+      } catch {
+        // localStorage may be unavailable (SSR/private mode) - non-fatal
+      }
+
       socket.emit('join-room', {
         roomId,
         peerId: myPeerId.current,
-        displayName: effectiveDisplayName
+        displayName: effectiveDisplayName,
+        roomDisplayName: cachedRoomName || undefined
       });
       
       // Enhanced message history handling with longer timeout for cold starts

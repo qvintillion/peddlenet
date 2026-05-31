@@ -2,16 +2,16 @@
 
 # 🚀 PRODUCTION WebSocket Server Deployment Script
 # Deploy universal WebSocket server to production Cloud Run
-# Version: 4.3-relay-sender
+# Version: 4.3.1-metadata-durable
 # Date: May 30, 2026
-# Includes: BLE→WebSocket relay sender attribution (Android mesh bridge)
+# Includes: BLE→WebSocket relay sender attribution + repopulate-on-join room metadata durability
 
-echo "🚀 Production WebSocket Server Deployment - Version 4.3"
+echo "🚀 Production WebSocket Server Deployment - Version 4.3.1"
 echo "========================================================"
 echo "🎯 Target: PRODUCTION Environment"
 echo "🌍 Platform: Google Cloud Run"
-echo "🔧 Features: Relayed-sender attribution for BLE mesh bridge"
-echo "📈 Version: 4.3-relay-sender"
+echo "🔧 Features: Relay-sender attribution + room metadata durability"
+echo "📈 Version: 4.3.1-metadata-durable"
 echo ""
 
 # Check if we're in the right directory
@@ -37,10 +37,11 @@ echo "📋 Using universal server configuration:"
 echo "   🐳 Dockerfile: Dockerfile.cloudrun"
 echo "   🖥️ Server: signaling-server.js (universal with auto-detection)"
 echo "   📦 Build: Google Cloud Build (no local Docker required)"
-echo "   🔧 Version: 4.3-relay-sender"
+echo "   🔧 Version: 4.3.1-metadata-durable"
 echo ""
-echo "✅ Version 4.3 Features:"
-echo "========================"
+echo "✅ Version 4.3.1 Features:"
+echo "=========================="
+echo "✅ Metadata Durability: repopulate-on-join restores room names after cold starts"
 echo "✅ Relayed-Sender Attribution: chat-message honors message.sender when relayed=true"
 echo "✅ BLE→WebSocket Bridge: mesh-origin messages attributed to real author, not bridge node"
 echo "✅ Adds relayed/relayedBy fields to broadcast payload"
@@ -101,7 +102,7 @@ echo "🚀 Environment: PRODUCTION"
 echo "📍 Service URL: $SERVICE_URL"
 echo "🏥 Health check: $SERVICE_URL/health"
 echo "📊 Admin dashboard: $SERVICE_URL/admin"
-echo "🛠️ Version: 4.3-relay-sender"
+echo "🛠️ Version: 4.3.1-metadata-durable"
 echo ""
 echo "📋 Phase 2 Features Active:"
 echo "============================"

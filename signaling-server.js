@@ -409,7 +409,7 @@ function generateMessageId() {
 app.get('/', (req, res) => {
   res.json({
     service: 'PeddleNet Signaling Server',
-    version: '4.3-relay-sender',
+    version: '4.3.1-metadata-durable',
     status: 'running',
     description: 'Server-side room metadata storage for cross-platform room name sync',
     features: [
@@ -462,7 +462,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'PeddleNet Signaling Server',
-    version: '4.3-relay-sender',
+    version: '4.3.1-metadata-durable',
     timestamp: Date.now()
   });
 });
@@ -707,7 +707,7 @@ app.get('/admin/analytics', requireAdminAuth, (req, res) => {
       server: {
         uptime: process.uptime(),
         uptimeFormatted: formatUptime(process.uptime()),
-        version: '4.3-relay-sender',
+        version: '4.3.1-metadata-durable',
         environment: getEnvironment(),
         memoryUsage: process.memoryUsage(),
         timestamp: Date.now()
@@ -1648,7 +1648,7 @@ io.on('connection', (socket) => {
 
   socket.on('join-room', (data) => {
     try {
-      const { roomId, peerId, displayName } = data;
+      const { roomId, peerId, displayName, roomDisplayName } = data;
       console.log(`🔍 join-room received data:`, JSON.stringify(data));
 
       // Detect connection type
@@ -1763,6 +1763,30 @@ io.on('connection', (socket) => {
 
       // Join socket.io room
       socket.join(roomId);
+
+      // ===== Metadata durability (v4.3): repopulate-on-join =====
+      // roomMetadata is in-memory and is wiped on Cloud Run scale-to-zero cold
+      // starts. If a joining client carries the room's friendly name (cached
+      // locally from when it was created/first joined) and the server has no
+      // metadata for this room, restore it. This keeps shared-by-code room names
+      // durable: the first client that still remembers the name re-seeds it for
+      // everyone else. Never overwrite existing metadata; only refresh activity.
+      if (!isBackground) {
+        const existingMeta = roomMetadata.get(roomId);
+        if (!existingMeta && roomDisplayName && String(roomDisplayName).trim()) {
+          const restored = {
+            displayName: String(roomDisplayName).trim(),
+            createdBy: displayName || 'unknown',
+            createdAt: Date.now(),
+            lastActivity: Date.now(),
+            restoredOnJoin: true
+          };
+          roomMetadata.set(roomId, restored);
+          console.log(`♻️ Repopulated room metadata on join for ${roomId}:`, restored);
+        } else if (existingMeta) {
+          existingMeta.lastActivity = Date.now();
+        }
+      }
 
       // Calculate accurate user count
       const userCount = getRoomUserCount(roomId);
