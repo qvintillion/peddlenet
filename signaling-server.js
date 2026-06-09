@@ -1929,6 +1929,42 @@ io.on('connection', (socket) => {
   socket.on('health-ping', (data) => {
     socket.emit('health-pong', { timestamp: Date.now(), received: data.timestamp });
   });
+
+  // ===== PHASE 12: Relay backbone events =====
+  // Room-agnostic: relay nodes forward all BLE-heard messages to the backbone.
+  // The server fans out to all sockets in the "relays" room (excluding sender).
+  // Room scoping is handled by the receiving peer, not by the relay layer.
+
+  socket.on('register-relay', (data) => {
+    try {
+      const nodeId = data?.nodeId || 'unknown';
+      socket.join('relays');
+      socket.data.isRelay = true;
+      socket.data.relayNodeId = nodeId;
+      console.log(`📡 [RELAY] Socket ${socket.id} registered as relay (nodeId=${nodeId})`);
+    } catch (err) {
+      console.error('[RELAY] register-relay error:', err);
+    }
+  });
+
+  socket.on('relay-forward', (data) => {
+    try {
+      const messageJson = data?.message;
+      if (!messageJson || typeof messageJson !== 'string') return;
+
+      // Fan out to all OTHER relay sockets (socket.io excludes sender automatically with .to())
+      socket.to('relays').emit('relay-forward', {
+        message: messageJson,
+        fromRelay: socket.id
+      });
+
+      console.log(`📡 [RELAY] relay-forward from ${socket.id} (${messageJson.length}B) → all relays`);
+    } catch (err) {
+      console.error('[RELAY] relay-forward error:', err);
+    }
+  });
+  // ===== END PHASE 12 =====
+
   // ===== PHASE 2: P2P handlers removed =====
   // Legacy P2P connection handlers have been removed as they are unused.
   // The Android app handles mesh networking independently.
