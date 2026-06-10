@@ -2,18 +2,18 @@
 
 # 🚀 PRODUCTION WebSocket Server Deployment Script
 # Deploy universal WebSocket server to production Cloud Run
-# Version: 4.3.3-relay-presence-replay
+# Version: 4.3.4-relay-message-history
 # Date: June 10, 2026
 # Includes: relay-presence replay on join (WebSocket clients now see BLE-only mesh
 #           peers even after a cold-start reconnect) + room-name-on-join + metadata
 #           durability + relay-sender attribution
 
-echo "🚀 Production WebSocket Server Deployment - Version 4.3.3"
+echo "🚀 Production WebSocket Server Deployment - Version 4.3.4"
 echo "========================================================"
 echo "🎯 Target: PRODUCTION Environment"
 echo "🌍 Platform: Google Cloud Run"
 echo "🔧 Features: Relay-presence replay on join + relay-sender attribution + room metadata durability"
-echo "📈 Version: 4.3.3-relay-presence-replay"
+echo "📈 Version: 4.3.4-relay-message-history"
 echo ""
 
 # Check if we're in the right directory
@@ -39,11 +39,14 @@ echo "📋 Using universal server configuration:"
 echo "   🐳 Dockerfile: Dockerfile.cloudrun"
 echo "   🖥️ Server: signaling-server.js (universal with auto-detection)"
 echo "   📦 Build: Google Cloud Build (no local Docker required)"
-echo "   🔧 Version: 4.3.3-relay-presence-replay"
+echo "   🔧 Version: 4.3.4-relay-message-history"
 echo ""
-echo "✅ Version 4.3.3 Features:"
+echo "✅ Version 4.3.4 Features:"
 echo "=========================="
-echo "✅ Relay-Presence Replay: join-room now replays fresh relayPresence entries so"
+echo "✅ Relayed-Message Persistence + History Replay: relayed BLE chat is now stored and"
+echo "   join-room replays recent message-history, so a client that reconnected after a"
+echo "   cold-start drop catches up on messages it missed"
+echo "✅ Relay-Presence Replay: join-room replays fresh relayPresence entries so"
 echo "   WebSocket clients see BLE-only peers even if they missed the one-shot peer-joined"
 echo "✅ Metadata Durability: repopulate-on-join restores room names after cold starts"
 echo "✅ Relayed-Sender Attribution: chat-message honors message.sender when relayed=true"
@@ -106,7 +109,7 @@ echo "🚀 Environment: PRODUCTION"
 echo "📍 Service URL: $SERVICE_URL"
 echo "🏥 Health check: $SERVICE_URL/health"
 echo "📊 Admin dashboard: $SERVICE_URL/admin"
-echo "🛠️ Version: 4.3.3-relay-presence-replay"
+echo "🛠️ Version: 4.3.4-relay-message-history"
 echo ""
 echo "📋 Phase 2 Features Active:"
 echo "============================"

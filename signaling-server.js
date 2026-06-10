@@ -421,9 +421,9 @@ function generateMessageId() {
 app.get('/', (req, res) => {
   res.json({
     service: 'PeddleNet Signaling Server',
-    version: '4.3.3-relay-presence-replay',
+    version: '4.3.4-relay-message-history',
     status: 'running',
-    description: 'Replays BLE relay-presence to joining clients so WebSocket peers see BLE-only mesh peers',
+    description: 'Persists relayed BLE messages and replays message-history + relay-presence on join so reconnecting clients catch up',
     features: [
       'admin-dashboard-enhanced', 
       'unique-user-counting', 
@@ -474,7 +474,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'PeddleNet Signaling Server',
-    version: '4.3.3-relay-presence-replay',
+    version: '4.3.4-relay-message-history',
     timestamp: Date.now()
   });
 });
@@ -719,7 +719,7 @@ app.get('/admin/analytics', requireAdminAuth, (req, res) => {
       server: {
         uptime: process.uptime(),
         uptimeFormatted: formatUptime(process.uptime()),
-        version: '4.3.3-relay-presence-replay',
+        version: '4.3.4-relay-message-history',
         environment: getEnvironment(),
         memoryUsage: process.memoryUsage(),
         timestamp: Date.now()
@@ -1884,6 +1884,16 @@ io.on('connection', (socket) => {
       // Send current peers for compatibility
       socket.emit('room-peers', otherPeers);
 
+      // Replay recent message history so a client that reconnects (e.g. after a
+      // Cloud Run cold-start drop) catches up on messages broadcast while it was
+      // gone — including relayed BLE messages, which are now persisted too. Both
+      // web and Android clients merge this against their local store by id.
+      const history = messageStore.has(roomId) ? messageStore.get(roomId).slice(-50) : [];
+      if (history.length > 0) {
+        socket.emit('message-history', history);
+        console.log(`📚 Sent ${history.length} message(s) of history to ${displayName} on join`);
+      }
+
       console.log(`✅ User ${displayName} joined room ${roomId}. Room now has ${userCount} users (${rooms.get(roomId).size} total connections)`);
     } catch (error) {
       console.error('❌ Error in join-room:', error);
@@ -2023,6 +2033,10 @@ io.on('connection', (socket) => {
             relayedBy: socket.data.relayNodeId || socket.id
           };
           io.to(roomId).emit('chat-message', broadcastMsg);
+          // Persist so a client that was disconnected when this broadcast fired
+          // (e.g. mid Cloud-Run-cold-start reconnect) catches up via message-history
+          // on its next join-room. Relayed BLE messages were previously never stored.
+          storeMessage(roomId, broadcastMsg);
           console.log(`📡 [RELAY] broadcast chat-message to room ${roomId} from relay ${socket.id}`);
         }
       } catch (parseErr) {
@@ -2258,7 +2272,7 @@ process.on('SIGTERM', () => {
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🎪 ===== PEDDLENET SIGNALING SERVER STARTED =====`);
-  console.log(`🏷️ Version: 4.3.3-relay-presence-replay`);
+  console.log(`🏷️ Version: 4.3.4-relay-message-history`);
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${getEnvironment()}`);
   console.log(`🔧 Build Target: ${buildTarget}`);
