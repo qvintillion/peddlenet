@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBackgroundNotifications } from '@/hooks/use-background-notifications';
 import { RoomCodeManager } from '@/utils/room-codes';
-import { prettifyRoomCode } from '@/utils/generate-room-code';
+import { getRoomDisplayName } from '@/utils/generate-room-code';
 
 interface FavoriteRoom {
   roomId: string;
@@ -54,8 +54,7 @@ export function JoinedRooms({ className = '' }: FavoritesProps) {
         const isSubscribed = subscription ? subscription.subscribed : false;
 
         // Get display name from localStorage or prettify the code
-        const storedName = localStorage.getItem(`room:${room.roomId}:name`);
-        const displayName = storedName || prettifyRoomCode(room.roomId);
+        const displayName = getRoomDisplayName(room.roomId);
 
         return {
           ...room,

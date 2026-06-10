@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { RoomCodeManager } from '@/utils/room-codes';
 import { useUnreadMessages } from '@/hooks/use-unread-messages';
-import { prettifyRoomCode } from '@/utils/generate-room-code';
+import { getRoomDisplayName } from '@/utils/generate-room-code';
 
 interface ChatRoomSwitcherProps {
   currentRoomId: string;
@@ -51,8 +51,7 @@ export function ChatRoomSwitcher({ currentRoomId, className = '', currentRoomNam
           const roomData = recentRooms.find(r => r.roomId === roomId);
           if (roomData && roomId !== currentRoomId) {
             // Get display name from localStorage or prettify the code
-            const storedName = localStorage.getItem(`room:${roomId}:name`);
-            const displayName = storedName || prettifyRoomCode(roomId);
+            const displayName = getRoomDisplayName(roomId);
 
             roomMap.set(roomId, {
               roomId,
@@ -72,8 +71,7 @@ export function ChatRoomSwitcher({ currentRoomId, className = '', currentRoomNam
 
         if (mostRecentRoom) {
           // Get display name from localStorage or prettify the code
-          const storedName = localStorage.getItem(`room:${mostRecentRoom.roomId}:name`);
-          const displayName = storedName || prettifyRoomCode(mostRecentRoom.roomId);
+          const displayName = getRoomDisplayName(mostRecentRoom.roomId);
 
           roomMap.set(mostRecentRoom.roomId, {
             roomId: mostRecentRoom.roomId,
@@ -158,9 +156,10 @@ export function ChatRoomSwitcher({ currentRoomId, className = '', currentRoomNam
   // prettified code only until that arrives.
   const currentRoomDisplayName = React.useMemo(() => {
     if (currentRoomName && currentRoomName.trim()) return currentRoomName;
-    if (typeof window === 'undefined') return prettifyRoomCode(currentRoomId);
-    const storedName = localStorage.getItem(`room:${currentRoomId}:name`);
-    return storedName || prettifyRoomCode(currentRoomId);
+    // getRoomDisplayName guards typeof window, falling back to prettifyRoomCode
+    // during SSR — and the parent-provided currentRoomName takes precedence
+    // anyway, so this localStorage read is a low-severity render-phase access.
+    return getRoomDisplayName(currentRoomId);
   }, [currentRoomId, currentRoomName]);
 
   // Check if any of the available rooms have unread messages for button styling

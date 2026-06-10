@@ -22,7 +22,7 @@ import { useRoomUnreadTracker } from '@/hooks/use-unread-messages';
 // import { QRPeerUtils } from '@/utils/qr-peer-utils';
 import { RoomCodeDiagnosticPanel } from '@/components/RoomCodeDiagnostics';
 import { MeshNetworkDebug } from '@/components/MeshNetworkDebug';
-import { prettifyRoomCode } from '@/utils/generate-room-code';
+import { prettifyRoomCode, getRoomDisplayName } from '@/utils/generate-room-code';
 import { RoomCodeManager } from '@/utils/room-codes';
 
 // Disable static generation for chat pages to avoid SSR issues
@@ -69,8 +69,7 @@ export default function ChatRoomPage() {
   const [cachedRoomDisplayName, setCachedRoomDisplayName] = useState(() => prettifyRoomCode(roomId));
   useEffect(() => {
     if (!roomId) return;
-    const storedName = localStorage.getItem(`room:${roomId}:name`);
-    setCachedRoomDisplayName(storedName || prettifyRoomCode(roomId));
+    setCachedRoomDisplayName(getRoomDisplayName(roomId));
   }, [roomId]);
   
   // Early return if no valid roomId

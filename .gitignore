@@ -9,6 +9,9 @@ out/
 build/
 dist/
 
+# TypeScript
+*.tsbuildinfo
+
 # Runtime data
 .env*.local
 *.log

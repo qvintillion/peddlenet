@@ -56,3 +56,23 @@ export function prettifyRoomCode(code: string): string {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
+
+/**
+ * Resolve a room's display name: the locally-cached name (set when this client
+ * created/cached the room) if present, otherwise the prettified room code.
+ *
+ * NOTE: this reads localStorage, so it must only be called in the browser
+ * (event handlers, effects, or memoized render-phase reads in client
+ * components). For SSR-rendered initial state, use prettifyRoomCode(roomId)
+ * directly to avoid a hydration mismatch (React error #418).
+ *
+ * @param roomId - The room ID
+ * @returns Cached display name, or prettified room code as fallback
+ */
+export function getRoomDisplayName(roomId: string): string {
+  if (typeof window !== 'undefined') {
+    const storedName = localStorage.getItem(`room:${roomId}:name`);
+    if (storedName) return storedName;
+  }
+  return prettifyRoomCode(roomId);
+}

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RoomCodeManager } from '@/utils/room-codes';
-import { prettifyRoomCode } from '@/utils/generate-room-code';
+import { getRoomDisplayName } from '@/utils/generate-room-code';
 
 interface RecentRoomsProps {
   className?: string;
@@ -64,9 +64,7 @@ export function RecentRooms({ className = '' }: RecentRoomsProps) {
       <div className="flex space-x-3 overflow-x-auto pb-3 scrollbar-hide">
         {recentRooms.map((room) => {
           // Get display name from localStorage or prettify the code
-          const displayName = typeof window !== 'undefined'
-            ? (localStorage.getItem(`room:${room.roomId}:name`) || prettifyRoomCode(room.roomId))
-            : prettifyRoomCode(room.roomId);
+          const displayName = getRoomDisplayName(room.roomId);
 
           return (
             <button
