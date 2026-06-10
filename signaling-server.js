@@ -421,9 +421,9 @@ function generateMessageId() {
 app.get('/', (req, res) => {
   res.json({
     service: 'PeddleNet Signaling Server',
-    version: '4.3.2-name-on-join',
+    version: '4.3.3-relay-presence-replay',
     status: 'running',
-    description: 'Server-side room metadata storage for cross-platform room name sync',
+    description: 'Replays BLE relay-presence to joining clients so WebSocket peers see BLE-only mesh peers',
     features: [
       'admin-dashboard-enhanced', 
       'unique-user-counting', 
@@ -474,7 +474,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'PeddleNet Signaling Server',
-    version: '4.3.2-name-on-join',
+    version: '4.3.3-relay-presence-replay',
     timestamp: Date.now()
   });
 });
@@ -719,7 +719,7 @@ app.get('/admin/analytics', requireAdminAuth, (req, res) => {
       server: {
         uptime: process.uptime(),
         uptimeFormatted: formatUptime(process.uptime()),
-        version: '4.3.2-name-on-join',
+        version: '4.3.3-relay-presence-replay',
         environment: getEnvironment(),
         memoryUsage: process.memoryUsage(),
         timestamp: Date.now()
@@ -1848,6 +1848,23 @@ io.on('connection', (socket) => {
           joinedAt: user.joinedAt
         }));
 
+      // Phase 12: replay BLE-relayed presence to the joining client. relay-presence
+      // (line ~2025) only broadcasts a one-shot peer-joined, so a client that wasn't
+      // connected at that instant — e.g. after a Cloud Run cold-start reconnect —
+      // never learns the BLE peer exists. Fold the persistent relayPresence entries
+      // for this room (same 120s freshness gate as getRoomUserCount) into otherPeers
+      // so they ride the room-joined / room-peers payloads like any other peer.
+      for (const entry of relayPresence.values()) {
+        if (entry.roomId !== roomId) continue;
+        if ((Date.now() - entry.ts) >= 120_000) continue;
+        otherPeers.push({
+          peerId: peerId, // Use same peerId for compatibility
+          displayName: entry.displayName,
+          joinedAt: entry.ts,
+          relayed: true
+        });
+      }
+
       // Include the room's friendly display name (if known) so clients that
       // joined by code/QR - and never had it cached locally - can show and
       // persist the real name instead of falling back to the room code.
@@ -2241,6 +2258,7 @@ process.on('SIGTERM', () => {
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🎪 ===== PEDDLENET SIGNALING SERVER STARTED =====`);
+  console.log(`🏷️ Version: 4.3.3-relay-presence-replay`);
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${getEnvironment()}`);
   console.log(`🔧 Build Target: ${buildTarget}`);
