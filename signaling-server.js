@@ -1935,6 +1935,24 @@ io.on('connection', (socket) => {
   // The server fans out to all sockets in the "relays" room (excluding sender).
   // Room scoping is handled by the receiving peer, not by the relay layer.
 
+  /**
+   * relay-subscribe: join a room silently — receives chat-message events but
+   * does NOT appear in activeUsers, peer counts, or user-joined broadcasts.
+   * Used by relay nodes that forward between BLE mesh and backbone.
+   */
+  socket.on('relay-subscribe', (data) => {
+    try {
+      const roomId = data?.roomId;
+      if (!roomId) return;
+      socket.join(roomId);
+      socket.data.relayRooms = socket.data.relayRooms || new Set();
+      socket.data.relayRooms.add(roomId);
+      console.log(`📡 [RELAY] ${socket.id} silently subscribed to room ${roomId}`);
+    } catch (err) {
+      console.error('[RELAY] relay-subscribe error:', err);
+    }
+  });
+
   socket.on('register-relay', (data) => {
     try {
       const nodeId = data?.nodeId || 'unknown';
@@ -1952,13 +1970,37 @@ io.on('connection', (socket) => {
       const messageJson = data?.message;
       if (!messageJson || typeof messageJson !== 'string') return;
 
-      // Fan out to all OTHER relay sockets (socket.io excludes sender automatically with .to())
+      // Fan out to other relay nodes (Android relay phones, etc.)
       socket.to('relays').emit('relay-forward', {
         message: messageJson,
         fromRelay: socket.id
       });
 
-      console.log(`📡 [RELAY] relay-forward from ${socket.id} (${messageJson.length}B) → all relays`);
+      // Also broadcast as chat-message to the room so regular WebSocket clients
+      // (web browsers, non-relay Android phones) receive it.
+      // Parse roomId from the embedded MeshMessage JSON.
+      try {
+        const parsed = JSON.parse(messageJson);
+        const roomId = parsed.roomId || parsed.room;
+        if (roomId && parsed.type === 'chat') {
+          const broadcastMsg = {
+            id: parsed.msgId || parsed.id,
+            roomId,
+            content: parsed.msg || parsed.content || '',
+            sender: parsed.from || 'unknown',
+            timestamp: parsed.timestamp || Date.now(),
+            type: 'text',
+            relayed: true,
+            relayedBy: socket.data.relayNodeId || socket.id
+          };
+          io.to(roomId).emit('chat-message', broadcastMsg);
+          console.log(`📡 [RELAY] broadcast chat-message to room ${roomId} from relay ${socket.id}`);
+        }
+      } catch (parseErr) {
+        console.error('[RELAY] relay-forward parse error for chat-message broadcast:', parseErr);
+      }
+
+      console.log(`📡 [RELAY] relay-forward from ${socket.id} (${messageJson.length}B) → all relays + room`);
     } catch (err) {
       console.error('[RELAY] relay-forward error:', err);
     }
