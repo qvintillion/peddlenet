@@ -185,6 +185,11 @@ const roomCodes = new Map(); // roomCode → roomId
 // roomId → { displayName, createdBy, createdAt, lastActivity }
 const roomMetadata = new Map();
 
+// Phase 12: Virtual BLE-peer presence announced by relay nodes.
+// presenceKey (relay:nodeId or relay:displayName) → { displayName, roomId, relaySocket, ts }
+// Keyed by nodeId so RPA rotation on the BLE side doesn't create duplicates.
+const relayPresence = new Map();
+
 // ===== PHASE 2 COMPLETE: P2P Code Removed =====
 // Removed in Phase 2 (unused - Android handles mesh independently):
 // - p2pConnections Map
@@ -258,12 +263,19 @@ function getActiveRoomCount() {
  */
 function getRoomUserCount(roomId) {
   const room = rooms.get(roomId);
-  if (!room) return 0;
+  const wsCount = room
+    ? Array.from(room)
+        .map(userKey => activeUsers.get(userKey))
+        .filter(user => user && !user.isBackgroundConnection)
+        .length
+    : 0;
 
-  return Array.from(room)
-    .map(userKey => activeUsers.get(userKey))
-    .filter(user => user && !user.isBackgroundConnection)
+  // Also count BLE-relayed peers announced via relay-presence.
+  const relayCount = Array.from(relayPresence.values())
+    .filter(p => p.roomId === roomId && (Date.now() - p.ts) < 120_000)
     .length;
+
+  return wsCount + relayCount;
 }
 
 /**
@@ -2005,6 +2017,35 @@ io.on('connection', (socket) => {
       console.error('[RELAY] relay-forward error:', err);
     }
   });
+  // Phase 12: relay-presence — nord announces a BLE peer's room membership so WebSocket
+  // clients (Mac browser) see a non-zero peer count even though a5 never sent a WS join.
+  // This is presence-only: no activeUsers entry, no message history, no socket.
+  // The relay sends this on every BLE room-join it processes; the server upserts the
+  // virtual entry and fans out a peer-joined event to the room.
+  socket.on('relay-presence', (data) => {
+    try {
+      const { roomId, displayName, nodeId } = data || {};
+      if (!roomId || !displayName) return;
+      if (!socket.data.isRelay) return; // only relays may do this
+
+      // Upsert a virtual presence entry for the BLE peer (keyed by nodeId so
+      // RPA rotation doesn't create duplicates).
+      const presenceKey = `relay:${nodeId || displayName}`;
+      if (!relayPresence) return; // guard: map initialised below at module scope
+
+      relayPresence.set(presenceKey, { displayName, roomId, relaySocket: socket.id, ts: Date.now() });
+
+      // Subscribe the relay socket to the room if not already (so chat-message fan-out reaches it).
+      socket.join(roomId);
+
+      // Tell room members a new peer appeared.
+      socket.to(roomId).emit('peer-joined', { displayName, roomId, relayed: true });
+      console.log(`📡 [RELAY-PRESENCE] ${displayName} (${presenceKey}) present in ${roomId} via relay ${socket.id}`);
+    } catch (err) {
+      console.error('[RELAY-PRESENCE] error:', err);
+    }
+  });
+
   // ===== END PHASE 12 =====
 
   // ===== PHASE 2: P2P handlers removed =====
@@ -2031,6 +2072,17 @@ io.on('connection', (socket) => {
 
       // Find user by socket ID
       const user = findUserBySocketId(socket.id);
+
+      // Phase 12: clean up relay-presence entries owned by this socket.
+      if (socket.data.isRelay) {
+        for (const [key, entry] of relayPresence.entries()) {
+          if (entry.relaySocket === socket.id) {
+            relayPresence.delete(key);
+            socket.to(entry.roomId).emit('peer-left', { displayName: entry.displayName, roomId: entry.roomId, relayed: true });
+            console.log(`📡 [RELAY-PRESENCE] removed ${entry.displayName} from ${entry.roomId} (relay disconnected)`);
+          }
+        }
+      }
 
       if (user) {
         const { userKey, userData } = user;
