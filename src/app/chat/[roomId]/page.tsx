@@ -64,11 +64,13 @@ export default function ChatRoomPage() {
 
   // Fallback room name from localStorage (set when this client created/cached
   // the room). The authoritative server-supplied name is applied below once the
-  // WebSocket connection reports it.
-  const cachedRoomDisplayName = React.useMemo(() => {
-    if (typeof window === 'undefined') return prettifyRoomCode(roomId);
+  // WebSocket connection reports it. Read localStorage only after mount: the
+  // first client render must match the server HTML or hydration fails (#418).
+  const [cachedRoomDisplayName, setCachedRoomDisplayName] = useState(() => prettifyRoomCode(roomId));
+  useEffect(() => {
+    if (!roomId) return;
     const storedName = localStorage.getItem(`room:${roomId}:name`);
-    return storedName || prettifyRoomCode(roomId);
+    setCachedRoomDisplayName(storedName || prettifyRoomCode(roomId));
   }, [roomId]);
   
   // Early return if no valid roomId
