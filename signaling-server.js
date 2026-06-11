@@ -190,6 +190,14 @@ const roomMetadata = new Map();
 // Keyed by nodeId so RPA rotation on the BLE side doesn't create duplicates.
 const relayPresence = new Map();
 
+// Phase 12: how long a relay-presence entry survives without a refresh before it's swept.
+// A relay re-announces every ~10s (Android presence heartbeat), so 30s = refreshed 3x per
+// window for a present peer (never falsely swept), while a peer that left BLE range / whose
+// relay stopped bridging it clears within ~30-45s. Must stay < the 120s replay freshness gate
+// (line ~1858) so a stale entry is gone before it could be replayed to a newly-joining client.
+const STALE_RELAY_PRESENCE_MS = 30_000;
+const RELAY_PRESENCE_SWEEP_INTERVAL = 15_000; // sweep twice per staleness window
+
 // ===== PHASE 2 COMPLETE: P2P Code Removed =====
 // Removed in Phase 2 (unused - Android handles mesh independently):
 // - p2pConnections Map
@@ -2077,6 +2085,27 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Phase 12: explicit relay-presence removal. The relay emits this the instant it stops bridging
+  // a BLE peer (peer left BLE range, or relay mode turned off) so WebSocket clients drop it within
+  // ~1s instead of waiting for the ~30s staleness sweep. The sweep (sweepStaleRelayPresence) remains
+  // the safety net for cases where the relay can't send this (crash, network loss). Same removal +
+  // peer-left broadcast as the sweep and the disconnect cleanup.
+  socket.on('relay-presence-leave', (data) => {
+    try {
+      const { roomId, displayName, nodeId } = data || {};
+      if (!socket.data.isRelay) return; // only relays may do this
+      const presenceKey = `relay:${nodeId || displayName}`;
+      const entry = relayPresence.get(presenceKey);
+      // Only act on an entry this relay owns (don't let one relay evict another's peer).
+      if (!entry || entry.relaySocket !== socket.id) return;
+      relayPresence.delete(presenceKey);
+      io.to(entry.roomId).emit('peer-left', { displayName: entry.displayName, roomId: entry.roomId, relayed: true });
+      console.log(`📡 [RELAY-PRESENCE] ${entry.displayName} (${presenceKey}) left ${entry.roomId} (explicit leave from relay ${socket.id})`);
+    } catch (err) {
+      console.error('[RELAY-PRESENCE-LEAVE] error:', err);
+    }
+  });
+
   // ===== END PHASE 12 =====
 
   // ===== PHASE 2: P2P handlers removed =====
@@ -2251,6 +2280,23 @@ function cleanupOldData() {
 // Run cleanup every hour
 const cleanupTimer = setInterval(cleanupOldData, CLEANUP_INTERVAL);
 
+// Phase 12: sweep stale relay-presence entries. A relay re-announces a bridged BLE peer every
+// ~10s; when the peer leaves BLE range (or the relay stops bridging it but its socket stays up),
+// the entry stops refreshing. Without this sweep the only removal path is the relay SOCKET fully
+// disconnecting (disconnect handler ~line 2117) — so a gone BLE peer lingered in every WebSocket
+// client's UI (e.g. the Mac kept showing a5) until the relay went offline entirely. Emit peer-left
+// per swept entry so clients drop it promptly, mirroring the disconnect-cleanup broadcast.
+function sweepStaleRelayPresence() {
+  const now = Date.now();
+  for (const [key, entry] of relayPresence.entries()) {
+    if (now - entry.ts < STALE_RELAY_PRESENCE_MS) continue;
+    relayPresence.delete(key);
+    io.to(entry.roomId).emit('peer-left', { displayName: entry.displayName, roomId: entry.roomId, relayed: true });
+    console.log(`📡 [RELAY-PRESENCE] swept stale ${entry.displayName} from ${entry.roomId} (${Math.round((now - entry.ts) / 1000)}s since last announce)`);
+  }
+}
+const relayPresenceSweepTimer = setInterval(sweepStaleRelayPresence, RELAY_PRESENCE_SWEEP_INTERVAL);
+
 // Run initial cleanup after 10 minutes of uptime (let server stabilize first)
 setTimeout(() => {
   console.log('⏰ Running initial cleanup after 10 minutes uptime');
@@ -2261,6 +2307,7 @@ setTimeout(() => {
 process.on('SIGTERM', () => {
   console.log('🛑 SIGTERM received, cleaning up...');
   clearInterval(cleanupTimer);
+  clearInterval(relayPresenceSweepTimer);
   cleanupOldData();
   server.close(() => {
     console.log('👋 Server closed gracefully');
