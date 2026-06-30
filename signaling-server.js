@@ -190,6 +190,14 @@ const roomMetadata = new Map();
 // Keyed by nodeId so RPA rotation on the BLE side doesn't create duplicates.
 const relayPresence = new Map();
 
+// Phase 12: how long a relay-presence entry survives without a refresh before it's swept.
+// A relay re-announces every ~10s (Android presence heartbeat), so 30s = refreshed 3x per
+// window for a present peer (never falsely swept), while a peer that left BLE range / whose
+// relay stopped bridging it clears within ~30-45s. Must stay < the 120s replay freshness gate
+// (line ~1858) so a stale entry is gone before it could be replayed to a newly-joining client.
+const STALE_RELAY_PRESENCE_MS = 30_000;
+const RELAY_PRESENCE_SWEEP_INTERVAL = 15_000; // sweep twice per staleness window
+
 // ===== PHASE 2 COMPLETE: P2P Code Removed =====
 // Removed in Phase 2 (unused - Android handles mesh independently):
 // - p2pConnections Map
@@ -421,9 +429,9 @@ function generateMessageId() {
 app.get('/', (req, res) => {
   res.json({
     service: 'PeddleNet Signaling Server',
-    version: '4.3.2-name-on-join',
+    version: '4.3.5-cleanup-crash-fix',
     status: 'running',
-    description: 'Server-side room metadata storage for cross-platform room name sync',
+    description: 'Persists relayed BLE messages and replays message-history + relay-presence on join so reconnecting clients catch up',
     features: [
       'admin-dashboard-enhanced', 
       'unique-user-counting', 
@@ -474,7 +482,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'PeddleNet Signaling Server',
-    version: '4.3.2-name-on-join',
+    version: '4.3.5-cleanup-crash-fix',
     timestamp: Date.now()
   });
 });
@@ -719,7 +727,7 @@ app.get('/admin/analytics', requireAdminAuth, (req, res) => {
       server: {
         uptime: process.uptime(),
         uptimeFormatted: formatUptime(process.uptime()),
-        version: '4.3.2-name-on-join',
+        version: '4.3.5-cleanup-crash-fix',
         environment: getEnvironment(),
         memoryUsage: process.memoryUsage(),
         timestamp: Date.now()
@@ -1418,7 +1426,7 @@ app.post('/admin/database/wipe', requireAdminAuth, (req, res) => {
     rooms.clear();
     allRoomsEverCreated.clear();
     messageStore.clear();
-    allUsersEver.clear();
+    activeUsers.clear();
     activityLog.length = 0;
     roomCodes.clear();
     
@@ -1848,6 +1856,23 @@ io.on('connection', (socket) => {
           joinedAt: user.joinedAt
         }));
 
+      // Phase 12: replay BLE-relayed presence to the joining client. relay-presence
+      // (line ~2025) only broadcasts a one-shot peer-joined, so a client that wasn't
+      // connected at that instant — e.g. after a Cloud Run cold-start reconnect —
+      // never learns the BLE peer exists. Fold the persistent relayPresence entries
+      // for this room (same 120s freshness gate as getRoomUserCount) into otherPeers
+      // so they ride the room-joined / room-peers payloads like any other peer.
+      for (const entry of relayPresence.values()) {
+        if (entry.roomId !== roomId) continue;
+        if ((Date.now() - entry.ts) >= 120_000) continue;
+        otherPeers.push({
+          peerId: peerId, // Use same peerId for compatibility
+          displayName: entry.displayName,
+          joinedAt: entry.ts,
+          relayed: true
+        });
+      }
+
       // Include the room's friendly display name (if known) so clients that
       // joined by code/QR - and never had it cached locally - can show and
       // persist the real name instead of falling back to the room code.
@@ -1867,6 +1892,16 @@ io.on('connection', (socket) => {
       // Send current peers for compatibility
       socket.emit('room-peers', otherPeers);
 
+      // Replay recent message history so a client that reconnects (e.g. after a
+      // Cloud Run cold-start drop) catches up on messages broadcast while it was
+      // gone — including relayed BLE messages, which are now persisted too. Both
+      // web and Android clients merge this against their local store by id.
+      const history = messageStore.has(roomId) ? messageStore.get(roomId).slice(-50) : [];
+      if (history.length > 0) {
+        socket.emit('message-history', history);
+        console.log(`📚 Sent ${history.length} message(s) of history to ${displayName} on join`);
+      }
+
       console.log(`✅ User ${displayName} joined room ${roomId}. Room now has ${userCount} users (${rooms.get(roomId).size} total connections)`);
     } catch (error) {
       console.error('❌ Error in join-room:', error);
@@ -1877,7 +1912,13 @@ io.on('connection', (socket) => {
   socket.on('chat-message', ({ roomId, message, type = 'chat' }) => {
     try {
       if (!rooms.has(roomId)) {
-        console.log(`❌ Message sent to non-existent room: ${roomId}`);
+        // A relay socket can be relay-subscribed to a room that has no app-level
+        // (`rooms` Map) members — that's expected, not an error. Skip the noisy
+        // log for those; only flag genuinely unknown rooms from regular clients.
+        const isRelaySubscribed = socket.data.relayRooms && socket.data.relayRooms.has(roomId);
+        if (!isRelaySubscribed) {
+          console.log(`❌ Message sent to non-existent room: ${roomId}`);
+        }
         return;
       }
 
@@ -2006,6 +2047,10 @@ io.on('connection', (socket) => {
             relayedBy: socket.data.relayNodeId || socket.id
           };
           io.to(roomId).emit('chat-message', broadcastMsg);
+          // Persist so a client that was disconnected when this broadcast fired
+          // (e.g. mid Cloud-Run-cold-start reconnect) catches up via message-history
+          // on its next join-room. Relayed BLE messages were previously never stored.
+          storeMessage(roomId, broadcastMsg);
           console.log(`📡 [RELAY] broadcast chat-message to room ${roomId} from relay ${socket.id}`);
         }
       } catch (parseErr) {
@@ -2043,6 +2088,27 @@ io.on('connection', (socket) => {
       console.log(`📡 [RELAY-PRESENCE] ${displayName} (${presenceKey}) present in ${roomId} via relay ${socket.id}`);
     } catch (err) {
       console.error('[RELAY-PRESENCE] error:', err);
+    }
+  });
+
+  // Phase 12: explicit relay-presence removal. The relay emits this the instant it stops bridging
+  // a BLE peer (peer left BLE range, or relay mode turned off) so WebSocket clients drop it within
+  // ~1s instead of waiting for the ~30s staleness sweep. The sweep (sweepStaleRelayPresence) remains
+  // the safety net for cases where the relay can't send this (crash, network loss). Same removal +
+  // peer-left broadcast as the sweep and the disconnect cleanup.
+  socket.on('relay-presence-leave', (data) => {
+    try {
+      const { roomId, displayName, nodeId } = data || {};
+      if (!socket.data.isRelay) return; // only relays may do this
+      const presenceKey = `relay:${nodeId || displayName}`;
+      const entry = relayPresence.get(presenceKey);
+      // Only act on an entry this relay owns (don't let one relay evict another's peer).
+      if (!entry || entry.relaySocket !== socket.id) return;
+      relayPresence.delete(presenceKey);
+      io.to(entry.roomId).emit('peer-left', { displayName: entry.displayName, roomId: entry.roomId, relayed: true });
+      console.log(`📡 [RELAY-PRESENCE] ${entry.displayName} (${presenceKey}) left ${entry.roomId} (explicit leave from relay ${socket.id})`);
+    } catch (err) {
+      console.error('[RELAY-PRESENCE-LEAVE] error:', err);
     }
   });
 
@@ -2136,7 +2202,6 @@ const INACTIVE_USER_THRESHOLD = 86400000; // 24 hours
 function cleanupOldData() {
   const now = Date.now();
   let messagesRemoved = 0;
-  let usersRemoved = 0;
   let roomsCleaned = 0;
 
   console.log('\n🧹 ===== STARTING MEMORY CLEANUP =====');
@@ -2185,15 +2250,11 @@ function cleanupOldData() {
     }
   }
 
-  // 2. Clean inactive users - remove users offline for > 24 hours
-  for (const [uniqueDisplayName, userData] of allUsersEver.entries()) {
-    if (!userData.isCurrentlyActive &&
-        (now - userData.lastSeen) > INACTIVE_USER_THRESHOLD) {
-      allUsersEver.delete(uniqueDisplayName);
-      connectionStats.totalUniqueUsers.delete(uniqueDisplayName);
-      usersRemoved++;
-    }
-  }
+  // 2. Inactive-user pruning removed: the long-lived `allUsersEver` Map was
+  // dropped in favor of `activeUsers`, which only holds connected users and is
+  // already cleaned on disconnect. The stale references here threw an uncaught
+  // ReferenceError in this timer callback and crashed the process (Cloud Run
+  // cold-restart wiped all in-memory presence → web clients saw "0 online").
 
   // 3. Clean activity log - keep only last 1000 entries
   if (activityLog.length > MAX_ACTIVITY_LOG) {
@@ -2209,16 +2270,32 @@ function cleanupOldData() {
 
   console.log('🧹 Cleanup Results:');
   console.log(`   - Messages removed: ${messagesRemoved} from ${roomsCleaned} rooms`);
-  console.log(`   - Inactive users removed: ${usersRemoved}`);
   console.log(`   - Current memory: ${heapUsedMB}MB / ${heapTotalMB}MB`);
   console.log(`   - Active rooms: ${rooms.size}`);
   console.log(`   - Total rooms ever: ${allRoomsEverCreated.size}`);
-  console.log(`   - Active users: ${Array.from(allUsersEver.values()).filter(u => u.isCurrentlyActive).length}`);
+  console.log(`   - Active users: ${activeUsers.size}`);
   console.log('🧹 ===== CLEANUP COMPLETE =====\n');
 }
 
 // Run cleanup every hour
 const cleanupTimer = setInterval(cleanupOldData, CLEANUP_INTERVAL);
+
+// Phase 12: sweep stale relay-presence entries. A relay re-announces a bridged BLE peer every
+// ~10s; when the peer leaves BLE range (or the relay stops bridging it but its socket stays up),
+// the entry stops refreshing. Without this sweep the only removal path is the relay SOCKET fully
+// disconnecting (disconnect handler ~line 2117) — so a gone BLE peer lingered in every WebSocket
+// client's UI (e.g. the Mac kept showing a5) until the relay went offline entirely. Emit peer-left
+// per swept entry so clients drop it promptly, mirroring the disconnect-cleanup broadcast.
+function sweepStaleRelayPresence() {
+  const now = Date.now();
+  for (const [key, entry] of relayPresence.entries()) {
+    if (now - entry.ts < STALE_RELAY_PRESENCE_MS) continue;
+    relayPresence.delete(key);
+    io.to(entry.roomId).emit('peer-left', { displayName: entry.displayName, roomId: entry.roomId, relayed: true });
+    console.log(`📡 [RELAY-PRESENCE] swept stale ${entry.displayName} from ${entry.roomId} (${Math.round((now - entry.ts) / 1000)}s since last announce)`);
+  }
+}
+const relayPresenceSweepTimer = setInterval(sweepStaleRelayPresence, RELAY_PRESENCE_SWEEP_INTERVAL);
 
 // Run initial cleanup after 10 minutes of uptime (let server stabilize first)
 setTimeout(() => {
@@ -2230,6 +2307,7 @@ setTimeout(() => {
 process.on('SIGTERM', () => {
   console.log('🛑 SIGTERM received, cleaning up...');
   clearInterval(cleanupTimer);
+  clearInterval(relayPresenceSweepTimer);
   cleanupOldData();
   server.close(() => {
     console.log('👋 Server closed gracefully');
@@ -2241,6 +2319,7 @@ process.on('SIGTERM', () => {
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🎪 ===== PEDDLENET SIGNALING SERVER STARTED =====`);
+  console.log(`🏷️ Version: 4.3.5-cleanup-crash-fix`);
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${getEnvironment()}`);
   console.log(`🔧 Build Target: ${buildTarget}`);
