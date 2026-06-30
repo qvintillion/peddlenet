@@ -2,18 +2,18 @@
 
 # 🚀 PRODUCTION WebSocket Server Deployment Script
 # Deploy universal WebSocket server to production Cloud Run
-# Version: 4.3.4-relay-message-history
+# Version: 4.3.5-cleanup-crash-fix
 # Date: June 10, 2026
 # Includes: relay-presence replay on join (WebSocket clients now see BLE-only mesh
 #           peers even after a cold-start reconnect) + room-name-on-join + metadata
 #           durability + relay-sender attribution
 
-echo "🚀 Production WebSocket Server Deployment - Version 4.3.4"
+echo "🚀 Production WebSocket Server Deployment - Version 4.3.5"
 echo "========================================================"
 echo "🎯 Target: PRODUCTION Environment"
 echo "🌍 Platform: Google Cloud Run"
 echo "🔧 Features: Relay-presence replay on join + relay-sender attribution + room metadata durability"
-echo "📈 Version: 4.3.4-relay-message-history"
+echo "📈 Version: 4.3.5-cleanup-crash-fix"
 echo ""
 
 # Check if we're in the right directory
@@ -39,9 +39,9 @@ echo "📋 Using universal server configuration:"
 echo "   🐳 Dockerfile: Dockerfile.cloudrun"
 echo "   🖥️ Server: signaling-server.js (universal with auto-detection)"
 echo "   📦 Build: Google Cloud Build (no local Docker required)"
-echo "   🔧 Version: 4.3.4-relay-message-history"
+echo "   🔧 Version: 4.3.5-cleanup-crash-fix"
 echo ""
-echo "✅ Version 4.3.4 Features:"
+echo "✅ Version 4.3.5 Features:"
 echo "=========================="
 echo "✅ Relayed-Message Persistence + History Replay: relayed BLE chat is now stored and"
 echo "   join-room replays recent message-history, so a client that reconnected after a"
@@ -109,7 +109,7 @@ echo "🚀 Environment: PRODUCTION"
 echo "📍 Service URL: $SERVICE_URL"
 echo "🏥 Health check: $SERVICE_URL/health"
 echo "📊 Admin dashboard: $SERVICE_URL/admin"
-echo "🛠️ Version: 4.3.4-relay-message-history"
+echo "🛠️ Version: 4.3.5-cleanup-crash-fix"
 echo ""
 echo "📋 Phase 2 Features Active:"
 echo "============================"
