@@ -429,7 +429,7 @@ function generateMessageId() {
 app.get('/', (req, res) => {
   res.json({
     service: 'PeddleNet Signaling Server',
-    version: '4.3.4-relay-message-history',
+    version: '4.3.5-cleanup-crash-fix',
     status: 'running',
     description: 'Persists relayed BLE messages and replays message-history + relay-presence on join so reconnecting clients catch up',
     features: [
@@ -482,7 +482,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'PeddleNet Signaling Server',
-    version: '4.3.4-relay-message-history',
+    version: '4.3.5-cleanup-crash-fix',
     timestamp: Date.now()
   });
 });
@@ -727,7 +727,7 @@ app.get('/admin/analytics', requireAdminAuth, (req, res) => {
       server: {
         uptime: process.uptime(),
         uptimeFormatted: formatUptime(process.uptime()),
-        version: '4.3.4-relay-message-history',
+        version: '4.3.5-cleanup-crash-fix',
         environment: getEnvironment(),
         memoryUsage: process.memoryUsage(),
         timestamp: Date.now()
@@ -1426,7 +1426,7 @@ app.post('/admin/database/wipe', requireAdminAuth, (req, res) => {
     rooms.clear();
     allRoomsEverCreated.clear();
     messageStore.clear();
-    allUsersEver.clear();
+    activeUsers.clear();
     activityLog.length = 0;
     roomCodes.clear();
     
@@ -1912,7 +1912,13 @@ io.on('connection', (socket) => {
   socket.on('chat-message', ({ roomId, message, type = 'chat' }) => {
     try {
       if (!rooms.has(roomId)) {
-        console.log(`❌ Message sent to non-existent room: ${roomId}`);
+        // A relay socket can be relay-subscribed to a room that has no app-level
+        // (`rooms` Map) members — that's expected, not an error. Skip the noisy
+        // log for those; only flag genuinely unknown rooms from regular clients.
+        const isRelaySubscribed = socket.data.relayRooms && socket.data.relayRooms.has(roomId);
+        if (!isRelaySubscribed) {
+          console.log(`❌ Message sent to non-existent room: ${roomId}`);
+        }
         return;
       }
 
@@ -2196,7 +2202,6 @@ const INACTIVE_USER_THRESHOLD = 86400000; // 24 hours
 function cleanupOldData() {
   const now = Date.now();
   let messagesRemoved = 0;
-  let usersRemoved = 0;
   let roomsCleaned = 0;
 
   console.log('\n🧹 ===== STARTING MEMORY CLEANUP =====');
@@ -2245,15 +2250,11 @@ function cleanupOldData() {
     }
   }
 
-  // 2. Clean inactive users - remove users offline for > 24 hours
-  for (const [uniqueDisplayName, userData] of allUsersEver.entries()) {
-    if (!userData.isCurrentlyActive &&
-        (now - userData.lastSeen) > INACTIVE_USER_THRESHOLD) {
-      allUsersEver.delete(uniqueDisplayName);
-      connectionStats.totalUniqueUsers.delete(uniqueDisplayName);
-      usersRemoved++;
-    }
-  }
+  // 2. Inactive-user pruning removed: the long-lived `allUsersEver` Map was
+  // dropped in favor of `activeUsers`, which only holds connected users and is
+  // already cleaned on disconnect. The stale references here threw an uncaught
+  // ReferenceError in this timer callback and crashed the process (Cloud Run
+  // cold-restart wiped all in-memory presence → web clients saw "0 online").
 
   // 3. Clean activity log - keep only last 1000 entries
   if (activityLog.length > MAX_ACTIVITY_LOG) {
@@ -2269,11 +2270,10 @@ function cleanupOldData() {
 
   console.log('🧹 Cleanup Results:');
   console.log(`   - Messages removed: ${messagesRemoved} from ${roomsCleaned} rooms`);
-  console.log(`   - Inactive users removed: ${usersRemoved}`);
   console.log(`   - Current memory: ${heapUsedMB}MB / ${heapTotalMB}MB`);
   console.log(`   - Active rooms: ${rooms.size}`);
   console.log(`   - Total rooms ever: ${allRoomsEverCreated.size}`);
-  console.log(`   - Active users: ${Array.from(allUsersEver.values()).filter(u => u.isCurrentlyActive).length}`);
+  console.log(`   - Active users: ${activeUsers.size}`);
   console.log('🧹 ===== CLEANUP COMPLETE =====\n');
 }
 
@@ -2319,7 +2319,7 @@ process.on('SIGTERM', () => {
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🎪 ===== PEDDLENET SIGNALING SERVER STARTED =====`);
-  console.log(`🏷️ Version: 4.3.4-relay-message-history`);
+  console.log(`🏷️ Version: 4.3.5-cleanup-crash-fix`);
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${getEnvironment()}`);
   console.log(`🔧 Build Target: ${buildTarget}`);
